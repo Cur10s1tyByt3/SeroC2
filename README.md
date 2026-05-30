@@ -64,16 +64,7 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 
 ## 📖 Table of Contents
 
-- [Remote Desktop](#️-remote-desktop)
-- [Remote Webcam](#-remote-webcam)
-- [HVNC](#-hvnc)
-- [File Manager](#-file-manager)
 - [RunPE / Process Hollowing](#-runpe--process-hollowing)
-- [AutoTask Plugins](#-autotask-plugins-c-dll)
-- [Persistence](#-persistence)
-- [Anti-Kill](#-anti-kill)
-- [Crypter](#-crypter)
-- [Anti-Analysis Suite](#️-anti-analysis-suite)
 - [Network Architecture](#-network-architecture)
 - [XMR Miner](#-xmr-miner)
 - [How to Compile](#️-how-to-compile)
