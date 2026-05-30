@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Server .NET](https://img.shields.io/badge/server-.NET%2%2F10-purple.svg)
+![Server .NET](https://img.shields.io/badge/server-.NET%209%2F10-purple.svg)
 ![Stub .NET](https://img.shields.io/badge/stub-NativeAOT%2010-blueviolet.svg)
 ![Arch](https://img.shields.io/badge/arch-x64-green.svg)
 
