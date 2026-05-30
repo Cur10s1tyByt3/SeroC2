@@ -18,7 +18,7 @@ if (Test-Path $Out) { Remove-Item $Out -Recurse -Force }
 New-Item -ItemType Directory -Path $Out | Out-Null
 
 # Build server (self-contained, no runtime needed on target)
-Write-Step "Building server (net9.0-windows)..."
+Write-Step "Building server (net10.0-windows)..."
 $csproj = Get-ChildItem $Server -Filter "*.csproj" | Select-Object -First 1
 if (-not $csproj) { Write-Err "No .csproj found in server/" }
 
