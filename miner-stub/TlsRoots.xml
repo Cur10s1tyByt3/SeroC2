@@ -1,0 +1,6 @@
+<linker>
+  <assembly fullname="System.Net.Security">
+    <type fullname="System.Net.Security.SslStream" preserve="all"/>
+    <type fullname="System.Net.Security.SslClientAuthenticationOptions" preserve="all"/>
+  </assembly>
+</linker>

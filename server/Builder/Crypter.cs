@@ -1,0 +1,130 @@
+﻿// STUB - replace with real Crypter.cs locally (see README)
+// After replacing: git update-index --assume-unchanged server/Builder/Crypter.cs
+
+using System.IO;
+
+namespace SeroServer.Builder;
+
+public record LoaderMetadata(
+    string? ProductName,
+    string? CompanyName,
+    string? FileVersion,
+    string? ProductVersion,
+    string? FileDescription,
+    string? Copyright);
+
+public static class CrypterBuilder
+{
+    public static Task ApplyAsync(
+        string exePath,
+        Action<string> log,
+        string? iconPath = null,
+        LoaderMetadata? metadata = null,
+        bool uacBypass = false)
+    {
+        log("[!] Crypter: not available (closed-source). Replace server/Builder/Crypter.cs.");
+        return Task.CompletedTask;
+    }
+
+    public static async Task<byte[]?> CompilePluginDllAsync(
+        string cppSource,
+        string? extraLibs,
+        Action<string> log)
+    {
+        string? clPath = FindClExe(log);
+        if (clPath == null) return null;
+
+        var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tempDir);
+        var srcPath = Path.Combine(tempDir, "plugin.cpp");
+        var dllPath = Path.Combine(tempDir, "plugin.dll");
+        try
+        {
+            await File.WriteAllTextAsync(srcPath, cppSource);
+            extraLibs ??= "kernel32.lib";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName               = clPath,
+                Arguments              = $"\"{srcPath}\" /LD /O2 /GS- /MT /W0 /nologo /Fe\"{dllPath}\" /Fo\"{tempDir}\\\" {extraLibs} /link /INCREMENTAL:NO /OPT:REF /OPT:ICF",
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
+            };
+            var vsEnv = GetVsEnvironment();
+            if (vsEnv != null) foreach (var kv in vsEnv) psi.Environment[kv.Key] = kv.Value;
+            using var proc = System.Diagnostics.Process.Start(psi)!;
+            var stdout = await proc.StandardOutput.ReadToEndAsync();
+            var stderr = await proc.StandardError.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+            if (proc.ExitCode != 0) { log($"[!] Plugin compile failed (exit {proc.ExitCode})"); if (!string.IsNullOrWhiteSpace(stderr)) log(stderr.TrimEnd()); return null; }
+            if (!File.Exists(dllPath)) { log("[!] Plugin DLL not found."); return null; }
+            var bytes = await File.ReadAllBytesAsync(dllPath);
+            log($"[+] Plugin compiled ({bytes.Length / 1024.0:F0} KB)");
+            return bytes;
+        }
+        catch (Exception ex) { log($"[!] Plugin compile error: {ex.Message}"); return null; }
+        finally { try { Directory.Delete(tempDir, true); } catch { } }
+    }
+
+    private static string? FindClExe(Action<string>? log = null)
+    {
+        var vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        if (File.Exists(vswhere))
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(vswhere,
+                    @"-latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe")
+                    { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                var line = p.StandardOutput.ReadLine()?.Trim();
+                p.WaitForExit(5000);
+                if (!string.IsNullOrEmpty(line) && File.Exists(line)) return line;
+            }
+            catch { }
+        }
+        try
+        {
+            var psi2 = new System.Diagnostics.ProcessStartInfo("where", "cl.exe")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+            using var p2 = System.Diagnostics.Process.Start(psi2)!;
+            var line2 = p2.StandardOutput.ReadLine()?.Trim();
+            p2.WaitForExit(3000);
+            if (!string.IsNullOrEmpty(line2) && File.Exists(line2)) return line2;
+        }
+        catch { }
+        log?.Invoke("[!] cl.exe not found. Install VS 2022 with C++ Desktop workload.");
+        return null;
+    }
+
+    private static Dictionary<string, string>? GetVsEnvironment()
+    {
+        try
+        {
+            var vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                "Microsoft Visual Studio", "Installer", "vswhere.exe");
+            if (!File.Exists(vswhere)) return null;
+            var psi = new System.Diagnostics.ProcessStartInfo(vswhere,
+                "-latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            var vsPath = p.StandardOutput.ReadLine()?.Trim();
+            p.WaitForExit(5000);
+            if (string.IsNullOrEmpty(vsPath)) return null;
+            var vcvars = Path.Combine(vsPath, "VC", "Auxiliary", "Build", "vcvars64.bat");
+            if (!File.Exists(vcvars)) return null;
+            var psi2 = new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c \"{vcvars}\" >nul 2>&1 && set")
+                { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+            using var p2 = System.Diagnostics.Process.Start(psi2)!;
+            var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            string? envLine;
+            while ((envLine = p2.StandardOutput.ReadLine()) != null)
+            { var idx = envLine.IndexOf('='); if (idx > 0) env[envLine[..idx]] = envLine[(idx + 1)..]; }
+            p2.WaitForExit(10000);
+            return env.Count > 0 ? env : null;
+        }
+        catch { return null; }
+    }
+}

