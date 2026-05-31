@@ -26,12 +26,12 @@ public partial class HvncWindow : Window
     private static readonly (string Label, string Cmd)[] AppEntries =
     [
         ("Explorer",  "explorer.exe"),
-        ("Chrome",    @"%ProgramFiles%\Google\Chrome\Application\chrome.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_chrome"),
-        ("Edge",      @"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_edge"),
-        ("Firefox",   @"%ProgramFiles%\Mozilla Firefox\firefox.exe -profile %TEMP%\hvnc_ff -no-remote"),
-        ("Brave",     @"%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --user-data-dir=%TEMP%\hvnc_brave"),
-        ("Opera",     @"%LOCALAPPDATA%\Programs\Opera\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --no-first-run --user-data-dir=%TEMP%\hvnc_opera"),
-        ("Opera GX",  @"%LOCALAPPDATA%\Programs\Opera GX\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --no-first-run --user-data-dir=%TEMP%\hvnc_operagx"),
+        ("Chrome",    @"%ProgramFiles%\Google\Chrome\Application\chrome.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized --user-data-dir=%TEMP%\hvnc_chrome"),
+        ("Edge",      @"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized --user-data-dir=%TEMP%\hvnc_edge"),
+        ("Firefox",   @"%ProgramFiles%\Mozilla Firefox\firefox.exe -profile %TEMP%\hvnc_ff -no-remote -width 1280 -height 720"),
+        ("Brave",     @"%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized --user-data-dir=%TEMP%\hvnc_brave"),
+        ("Opera",     @"%LOCALAPPDATA%\Programs\Opera\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized --no-first-run --user-data-dir=%TEMP%\hvnc_opera"),
+        ("Opera GX",  @"%LOCALAPPDATA%\Programs\Opera GX\opera.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized --no-first-run --user-data-dir=%TEMP%\hvnc_operagx"),
         ("AyuGram",   @"%APPDATA%\AyuGram Desktop\AyuGram.exe"),
         ("Telegram",  @"%APPDATA%\Telegram Desktop\Telegram.exe"),
         ("Discord",   @"%LOCALAPPDATA%\Discord\Update.exe --processStart Discord.exe"),

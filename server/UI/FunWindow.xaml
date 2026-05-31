@@ -18,6 +18,7 @@
             <Setter Property="Cursor"           Value="Hand"/>
             <Setter Property="FontSize"         Value="11"/>
             <Setter Property="Height"           Value="30"/>
+            <Setter Property="Margin"           Value="0,0,5,4"/>
             <Setter Property="Padding"          Value="10,0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -264,8 +265,9 @@
                                              Background="#0A0B14" Foreground="#DDE0F0"
                                              BorderBrush="#2A3058" BorderThickness="1"
                                              Padding="4,3" FontFamily="Consolas" FontSize="11"
+                                             Margin="0,0,4,0"
                                              VerticalContentAlignment="Center"/>
-                                    <TextBlock Text="sec" Foreground="#606880" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock Text="sec" Foreground="#606880" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                     <Button Content="🤪 Activate" Style="{StaticResource FBtnOrange}" Click="CrazyMouse_Click"/>
                                 </StackPanel>
                             </StackPanel>

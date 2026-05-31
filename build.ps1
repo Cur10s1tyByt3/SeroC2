@@ -27,21 +27,24 @@ dotnet publish $csproj.FullName `
     -c Release `
     -r win-x64 `
     --self-contained `
-    -p:PublishSingleFile=true `
-    -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None `
     -p:PublishTrimmed=false `
     -o $tmpOut
 
 if ($LASTEXITCODE -ne 0) { Write-Err "Server build failed" }
 
-$serverExe = Get-ChildItem $tmpOut -Filter "SeroServer.exe" | Select-Object -First 1
-if (-not $serverExe) {
-    $serverExe = Get-ChildItem $tmpOut -Filter "*.exe" | Select-Object -First 1
+# Copy the entire publish folder as dist\server\
+$serverOut = Join-Path $Out "server"
+if (Test-Path $serverOut) { Remove-Item $serverOut -Recurse -Force }
+Copy-Item $tmpOut $serverOut -Recurse
+Write-OK "Server -> dist\server\SeroServer.exe"
+
+# Also place a launcher at the root of dist for convenience
+$launcherSrc = Join-Path $serverOut "SeroServer.exe"
+if (Test-Path $launcherSrc) {
+    Copy-Item $launcherSrc (Join-Path $Out "SeroServer.exe") -ErrorAction SilentlyContinue
+    Write-OK "Launcher copy -> dist\SeroServer.exe"
 }
-if (-not $serverExe) { Write-Err "Server exe not found in publish output" }
-Copy-Item $serverExe.FullName (Join-Path $Out "SeroServer.exe")
-Write-OK "Server -> dist\SeroServer.exe"
 
 # Copy stub source (needed by builder at runtime)
 $stubSrc = Join-Path $Root "stub"
@@ -50,17 +53,12 @@ if (Test-Path $stubSrc) {
     New-Item -ItemType Directory -Path $stubOut | Out-Null
     Copy-Item (Join-Path $stubSrc "*.cs")     $stubOut -ErrorAction SilentlyContinue
     Copy-Item (Join-Path $stubSrc "*.csproj") $stubOut -ErrorAction SilentlyContinue
+    Copy-Item (Join-Path $stubSrc "*.xml")    $stubOut -ErrorAction SilentlyContinue
     Write-OK "Stub sources -> dist\stub\"
+} else {
+    Write-Host "[!] Warning: stub/ directory not found - builder tab will not work." -ForegroundColor Yellow
 }
 
-# Copy Stubs folder (loader.cpp)
-$loaderSrc = Join-Path $Server "Stubs\loader.cpp"
-if (Test-Path $loaderSrc) {
-    $stubsOut = Join-Path $Out "Stubs"
-    New-Item -ItemType Directory -Path $stubsOut | Out-Null
-    Copy-Item $loaderSrc $stubsOut
-    Write-OK "Loader -> dist\Stubs\"
-}
 
 # Copy icon
 Get-ChildItem $Root -Filter "*.ico" | ForEach-Object { Copy-Item $_.FullName $Out -ErrorAction SilentlyContinue }

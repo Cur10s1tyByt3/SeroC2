@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Server .NET](https://img.shields.io/badge/server-.NET%209%2F10-purple.svg)
+![Server .NET](https://img.shields.io/badge/server-.NET%2010-purple.svg)
 ![Stub .NET](https://img.shields.io/badge/stub-NativeAOT%2010-blueviolet.svg)
 ![Arch](https://img.shields.io/badge/arch-x64-green.svg)
 
@@ -47,8 +47,10 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 | File Manager | ✅ | Navigate, download, upload, rename, delete, hash, exec, wallpaper, 7-zip |
 | TCP Manager | ✅ | List all TCP connections per PID, force-close via SetTcpEntry |
 | Startup Manager | ✅ | List/delete Registry Run, Startup folder, Scheduled Tasks |
-| Microphone | ✅ | Real-time audio capture, waveform visualization, save WAV |
+| Microphone | ✅ | Real-time audio capture, waveform visualization, live listen in server, save WAV |
 | Fun | ✅ | CD-ROM, Taskbar, Screen, Mouse swap, Volume, TTS, Crazy Mouse, Screen Rotation… |
+| Keylogger | ✅ | Low-level WH_KEYBOARD_LL hook, window-title context headers, auto-sync every 10 s, save log |
+| Crypto Clipper | ✅ | Monitors clipboard for BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH/BNB, silent address swap |
 | File Execute | ✅ | Remote execution of arbitrary files |
 | RunPE / HollowExec | ✅ | In-memory PE injection with PPID spoofing |
 | UAC Elevation | ✅ | computerdefaults → fodhelper → sdclt → mmc fallback chain |
@@ -64,6 +66,12 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 
 ## 📖 Table of Contents
 
+- [Remote Desktop](#️-remote-desktop)
+- [Remote Webcam](#-remote-webcam)
+- [HVNC](#-hvnc)
+- [File Manager](#-file-manager)
+- [Keylogger](#️-keylogger)
+- [Crypto Clipper](#-crypto-clipper)
 - [RunPE / Process Hollowing](#-runpe--process-hollowing)
 - [Network Architecture](#-network-architecture)
 - [How to Compile](#️-how-to-compile)
@@ -188,6 +196,41 @@ Interactive prank / control panel:
 
 ---
 
+---
+
+## ⌨️ Keylogger
+
+Low-level global keyboard hook using `WH_KEYBOARD_LL` — invisible to the user, captures all keystrokes system-wide.
+
+### Features
+- **Window-title headers** — each context switch is logged with the app name and UTC timestamp
+- **Auto-sync** — server pulls buffered logs every 10 seconds while capturing
+- **Manual get / clear** — request logs on demand or wipe the buffer on client
+- **Save as TXT** — export the full log from the server UI
+
+### How it works
+The stub installs a low-level keyboard hook via `SetWindowsHookEx(WH_KEYBOARD_LL)`. The hook callback (`[UnmanagedCallersOnly]`, NativeAOT-safe) converts VK codes to characters using `ToUnicode` with the current keyboard layout (handles international keyboards, Shift, CapsLock). The log is buffered in memory and capped at 512 KB; the server drains and displays it in a scrollable monospace text area.
+
+---
+
+## ₿ Crypto Clipper
+
+Silently monitors the clipboard and replaces detected crypto addresses with your own.
+
+### Supported coins
+BTC · ETH/BNB · LTC · TRX · SOL · XMR · XRP · DASH · BCH
+
+### Features
+- **Per-coin addresses** — configure a replacement address for each currency independently
+- **Detection log** — every replacement is logged to the server UI with timestamp, coin type, and truncated original address
+- **Live counter** — total replacements shown in the server window
+- **Enable / disable** — toggle without reconnecting; state persists until changed
+
+### How it works
+The stub polls the clipboard every ~450 ms using native Win32 `OpenClipboard` / `GetClipboardData` / `SetClipboardData` (no Windows Forms dependency, fully NativeAOT-compatible). Detected addresses are matched against regex patterns and replaced atomically. A real-time notification is sent to the server via `ClipperDetected` packet so the operator sees every swap instantly.
+
+---
+
 ## 🪄 RunPE / Process Hollowing
 
 Full in-memory PE injection pipeline, NativeAOT-compatible.
@@ -301,7 +344,7 @@ Standalone Monero mining module, fully separate from the main RAT stub.
 ## 🛠️ How to Compile
 
 **Prerequisites:**
-- .NET 9 or 10 SDK
+- .NET 10 SDK
 - Visual Studio 2022 with **Desktop development with C++** workload
 - Windows SDK 10.0.22621+
 
@@ -348,7 +391,7 @@ Or open `Sero.sln` in Visual Studio 2022 and press `F6`.
 
 ```
 SeroC2/
-├── server/                        # C2 Server (WPF · .NET 9/10)
+├── server/                        # C2 Server (WPF · .NET 10)
 │   ├── UI/                        # Windows
 │   │   ├── ServerWindow.*         # Main dashboard + builder
 │   │   ├── RemoteDesktopWindow.*  # RDP viewer
@@ -358,8 +401,10 @@ SeroC2/
 │   │   ├── FileManagerWindow.*    # Remote file browser
 │   │   ├── TcpManagerWindow.*     # TCP connection manager
 │   │   ├── StartupManagerWindow.* # Startup entries manager
-│   │   ├── MicrophoneWindow.*     # Microphone capture + waveform
+│   │   ├── MicrophoneWindow.*     # Microphone capture + waveform + live listen
 │   │   ├── FunWindow.*            # Fun / prank controls
+│   │   ├── KeyloggerWindow.*      # Keylogger viewer
+│   │   ├── CryptoClipperWindow.*  # Crypto clipper config + detection log
 │   │   └── ClientLogWindow.*      # Per-client activity log
 │   ├── Builder/                   # Build pipeline (config gen, NativeAOT, crypter bridge)
 │   ├── Net/                       # TLS server + certificate + Discord RPC
@@ -383,6 +428,8 @@ SeroC2/
 │   ├── StartupManagerFeature.cs   # Startup enumeration + deletion
 │   ├── MicrophoneFeature.cs       # WaveIn PCM capture
 │   ├── FunFeature.cs              # Fun commands (TTS, msgbox, screen, etc.)
+│   ├── KeyloggerFeature.cs        # WH_KEYBOARD_LL keyboard hook
+│   ├── CryptoClipperFeature.cs    # Clipboard monitoring + crypto address swap
 │   ├── ProcessHollowing.cs        # RunPE + PPID spoofing
 │   ├── Rootkit.cs                 # Reflective hook DLL injection
 │   ├── Config.cs                  # ⚠️ AUTO-GENERATED by builder (no secrets in repo)
@@ -430,7 +477,8 @@ SeroC2/
 - [x] Telegram first-run notification
 - [x] AutoTask plugin system
 - [x] Multi-host + auto-reconnect
-- [ ] Keylogger
+- [x] Keylogger (WH_KEYBOARD_LL, window context headers, auto-sync)
+- [x] Crypto Clipper (BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH)
 - [ ] Reverse SOCKS5 proxy
 - [ ] Clipboard logger
 

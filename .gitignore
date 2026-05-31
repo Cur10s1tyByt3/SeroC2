@@ -78,6 +78,12 @@ packages/
 # ── Personal / dev artifacts ──────────────────────────────────────────────────
 .claude/
 query
+# Private build scripts (not for public repo)
+build_private.ps1
+build_private.bat
+# Pulsar reference (local research only)
+"Pulsar Premium 2.1.0/"
+Pulsar*/
 *.tmp
 *.temp
 *.bak

