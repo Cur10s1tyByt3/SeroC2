@@ -554,10 +554,14 @@ internal class Program
                 else
                 {
                     using var cts  = new CancellationTokenSource();
-                    var pass2 = string.IsNullOrEmpty(MinerConfig.WorkerName) ? MinerConfig.Password : MinerConfig.WorkerName;
+                    // Nanopool / F2Pool / most modern pools: user = wallet.workerName
+                    var user2 = !string.IsNullOrEmpty(MinerConfig.WorkerName)
+                        ? $"{MinerConfig.Wallet}.{MinerConfig.WorkerName}"
+                        : MinerConfig.Wallet;
+                    var pass2 = !string.IsNullOrEmpty(MinerConfig.Password) ? MinerConfig.Password : "x";
                     var effectivePool = (MinerConfig.PoolTls && _tlsProxyPort > 0)
                         ? $"127.0.0.1:{_tlsProxyPort}" : MinerConfig.PoolUrl;
-                    var xmrigArgs = $"-o \"{effectivePool}\" -u \"{MinerConfig.Wallet}\" -p \"{pass2}\" -a \"{MinerConfig.Algo}\" --no-color --donate-level=0 --cpu-max-threads-hint={cpu}";
+                    var xmrigArgs = $"-o \"{effectivePool}\" -u \"{user2}\" -p \"{pass2}\" -a \"{MinerConfig.Algo}\" --no-color --donate-level=0 --cpu-max-threads-hint={cpu}";
                     if (_internalApiPort > 0)
                         xmrigArgs += $" --http-host=127.0.0.1 --http-port={_internalApiPort}";
                     using var proc = Process.Start(new ProcessStartInfo
@@ -918,7 +922,7 @@ internal class Program
   ""colors"": false,
   ""donate-level"": 0,
   ""cpu"": {{ ""enabled"": true, ""max-threads-hint"": {cpuHint} }},
-  ""pools"": [{{ ""url"": ""{Js(_xmrigHasOpenSsl ? MinerConfig.PoolUrl : (MinerConfig.PoolTls && _tlsProxyPort > 0 ? $"127.0.0.1:{_tlsProxyPort}" : MinerConfig.PoolUrl))}"", ""user"": ""{Js(MinerConfig.Wallet)}"", ""pass"": ""{Js(string.IsNullOrEmpty(MinerConfig.WorkerName) ? MinerConfig.Password : MinerConfig.WorkerName)}"", ""tls"": {(MinerConfig.PoolTls && _xmrigHasOpenSsl ? "true" : "false")} }}],
+  ""pools"": [{{ ""url"": ""{Js(_xmrigHasOpenSsl ? MinerConfig.PoolUrl : (MinerConfig.PoolTls && _tlsProxyPort > 0 ? $"127.0.0.1:{_tlsProxyPort}" : MinerConfig.PoolUrl))}"", ""user"": ""{Js(!string.IsNullOrEmpty(MinerConfig.WorkerName) ? $"{MinerConfig.Wallet}.{MinerConfig.WorkerName}" : MinerConfig.Wallet)}"", ""pass"": ""{Js(!string.IsNullOrEmpty(MinerConfig.Password) ? MinerConfig.Password : "x")}"", ""tls"": {(MinerConfig.PoolTls && _xmrigHasOpenSsl ? "true" : "false")} }}],
   ""algo"": ""{Js(MinerConfig.Algo)}"",
   ""print-time"": 0,
   {apiSection}

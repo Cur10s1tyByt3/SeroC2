@@ -202,6 +202,47 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Type text and send -->
+                    <Border Padding="12,10" CornerRadius="6" Margin="0,0,0,8"
+                            Background="#07FFFFFF" BorderThickness="1" BorderBrush="#18283040">
+                        <StackPanel>
+                            <TextBlock Text="TYPE TEXT" FontSize="9" FontWeight="Bold"
+                                       Foreground="#C07C5CE8" FontFamily="Consolas" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtTypeText" Style="{StaticResource STxt}" Height="28"
+                                         Width="240" Margin="0,0,8,0" FontSize="12"
+                                         ToolTip="Text to type on all selected HVNC sessions"/>
+                                <Button Content="Type" Height="28" Padding="14,0"
+                                        Style="{StaticResource SBtn}" FontSize="11" Click="BtnTypeText_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- TikTok workflow -->
+                    <Border Padding="12,10" CornerRadius="6" Margin="0,0,0,8"
+                            Background="#0A080F" BorderThickness="1" BorderBrush="#2A1840">
+                        <StackPanel>
+                            <TextBlock Text="♪  TIKTOK SIGNUP WORKFLOW" FontSize="9" FontWeight="Bold"
+                                       Foreground="#C0f38ba8" FontFamily="Consolas" Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="#404868" FontSize="10" FontFamily="Segoe UI"
+                                       Margin="0,0,0,10"
+                                       Text="Opens Chrome with the existing profile (Google already logged in) then navigates to TikTok signup. You then view each HVNC and click Continue with Google."/>
+                            <WrapPanel>
+                                <Button Content="1. Open Chrome" Height="28" Padding="12,0" Margin="0,0,6,6"
+                                        Style="{StaticResource SGreenBtn}" FontSize="10" Click="BtnTtStep1_Click"
+                                        ToolTip="Launch Chrome with existing Google profile on all selected machines"/>
+                                <Button Content="2. TikTok Signup" Height="28" Padding="12,0" Margin="0,0,6,6"
+                                        Style="{StaticResource SBtn}" FontSize="10" Click="BtnTtStep2_Click"
+                                        ToolTip="Navigate to https://www.tiktok.com/signup"/>
+                                <Button Content="3. Tab → Enter" Height="28" Padding="12,0" Margin="0,0,6,6"
+                                        Style="{StaticResource SBtn}" FontSize="10" Click="BtnTtStep3_Click"
+                                        ToolTip="Tab to Continue with Google button + Enter (may vary by layout)"/>
+                                <Button Content="4. F5 Refresh" Height="28" Padding="12,0" Margin="0,0,0,6"
+                                        Style="{StaticResource SBtn}" FontSize="10" Click="BtnKey_Click" Tag="F5"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Log -->
                     <Border Padding="12,10" CornerRadius="6"
                             Background="#07FFFFFF" BorderThickness="1" BorderBrush="#18283040">

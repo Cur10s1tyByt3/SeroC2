@@ -199,6 +199,64 @@ public partial class HvncBroadcastWindow : Window
 
     private void BtnClearLog_Click(object s, RoutedEventArgs e) => TxtLog.Clear();
 
+    // ── Type text ─────────────────────────────────────────────────────────────
+
+    private async void BtnTypeText_Click(object s, RoutedEventArgs e)
+    {
+        var text = TxtTypeText.Text;
+        if (string.IsNullOrEmpty(text)) return;
+        var ids = SelectedIds.ToList();
+        if (ids.Count == 0) { TxtStatus.Text = "No clients selected."; return; }
+
+        foreach (char ch in text)
+        {
+            int vk = char.ToUpper(ch);
+            bool shift = char.IsUpper(ch) || "!@#$%^&*()_+{}|:\"<>?".Contains(ch);
+            await BroadcastInput(ids, new HvncInputData { T = "kd", VK = vk });
+            await BroadcastInput(ids, new HvncInputData { T = "ku", VK = vk });
+            await Task.Delay(30); // small delay between keystrokes
+        }
+        AddLog($"[⌨] Typed {text.Length} chars on {ids.Count} client(s)");
+        TxtStatus.Text = $"Typed on {ids.Count} client(s)";
+    }
+
+    // ── TikTok workflow steps ─────────────────────────────────────────────────
+
+    private async void BtnTtStep1_Click(object s, RoutedEventArgs e)
+    {
+        // Chrome with existing profile — Google account already logged in
+        await SendExecToAll(
+            @"%ProgramFiles%\Google\Chrome\Application\chrome.exe --no-sandbox --allow-no-sandbox-job --disable-gpu --start-maximized");
+        await Task.Delay(800);
+        // Also try Edge as fallback
+        AddLog("[1] Chrome (existing profile) launched — Google session will be reused");
+    }
+
+    private async void BtnTtStep2_Click(object s, RoutedEventArgs e)
+    {
+        await SendExecToAll(@"cmd.exe /c start """" ""https://www.tiktok.com/signup""");
+        AddLog("[2] Navigating to TikTok signup on all machines");
+        TxtStatus.Text = "Step 2: waiting for page to load (~3s), then do Step 3";
+    }
+
+    private async void BtnTtStep3_Click(object s, RoutedEventArgs e)
+    {
+        var ids = SelectedIds.ToList();
+        if (ids.Count == 0) return;
+        // Tab several times to reach "Continue with Google", then Enter
+        for (int i = 0; i < 4; i++)
+        {
+            await BroadcastInput(ids, new HvncInputData { T = "kd", VK = 0x09 }); // Tab
+            await BroadcastInput(ids, new HvncInputData { T = "ku", VK = 0x09 });
+            await Task.Delay(150);
+        }
+        await Task.Delay(200);
+        await BroadcastInput(ids, new HvncInputData { T = "kd", VK = 0x0D }); // Enter
+        await BroadcastInput(ids, new HvncInputData { T = "ku", VK = 0x0D });
+        AddLog("[3] Tab×4 + Enter sent — check each HVNC to confirm Google auth popup");
+        TxtStatus.Text = "Step 3 sent — look at each HVNC and confirm";
+    }
+
     private void AddLog(string msg)
     {
         TxtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}\n");
