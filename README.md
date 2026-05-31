@@ -480,7 +480,8 @@ SeroC2/
 - [x] Keylogger (WH_KEYBOARD_LL, window context headers, auto-sync)
 - [x] Crypto Clipper (BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH)
 - [ ] Reverse SOCKS5 proxy
-- [ ] Clipboard logger
+- [ ] Process Manager
+- [ ] TikTok Bot
 
 ---
 
