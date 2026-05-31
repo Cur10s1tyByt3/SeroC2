@@ -72,9 +72,17 @@ public partial class FunWindow : Window
     private async void OpenUrl_Click(object s, RoutedEventArgs e)
         => await Send("open_url", TxtUrl.Text.Trim());
 
+    private bool _max;
+    private void BtnMax_Click(object s, RoutedEventArgs e)
+    {
+        _max = !_max;
+        WindowState = _max ? WindowState.Maximized : WindowState.Normal;
+        BtnMaxFun.Content = _max ? "❐" : "☐";
+    }
+
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        if (e.LeftButton == MouseButtonState.Pressed && WindowState != WindowState.Maximized) DragMove();
     }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }

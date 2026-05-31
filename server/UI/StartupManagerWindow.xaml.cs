@@ -66,11 +66,16 @@ public partial class StartupManagerWindow : Window
         await Refresh();
     }
 
+    private bool _max;
+    private void BtnMax_Click(object s, RoutedEventArgs e)
+    {
+        _max = !_max; WindowState = _max ? WindowState.Maximized : WindowState.Normal;
+        BtnMaxStartup.Content = _max ? "❐" : "☐";
+    }
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        if (e.LeftButton == MouseButtonState.Pressed && WindowState != WindowState.Maximized) DragMove();
     }
-
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }
 

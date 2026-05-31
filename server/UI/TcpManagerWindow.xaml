@@ -47,6 +47,8 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="⟳ Refresh" Width="76" Height="26" Margin="0,0,6,0"
                                 Style="{StaticResource SBtn}" FontSize="10" Click="Refresh_Click"/>
+                        <Button x:Name="BtnMaxTcp" Content="☐" Width="28" Height="26" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="13" Padding="0" Click="BtnMax_Click"/>
                         <Button Content="✕" Width="28" Height="26" FontSize="10"
                                 Style="{StaticResource SRedBtn}" Click="Close_Click" Padding="0"/>
                     </StackPanel>

