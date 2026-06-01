@@ -633,11 +633,13 @@
                                         <!-- Monitoring -->
                                         <MenuItem Header="Monitoring">
                                             <MenuItem.Icon><TextBlock Text="&#x25CE;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon>
-                                            <MenuItem Header="Remote Desktop"     Click="RemoteDesktop_Click">     <MenuItem.Icon><TextBlock Text="&#x2B1B;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Webcam"             Click="RemoteWebcam_Click">      <MenuItem.Icon><TextBlock Text="&#x25CE;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="HVNC"               Click="Hvnc_Click">              <MenuItem.Icon><TextBlock Text="&#x25C9;" FontSize="11" Foreground="#7C5CE8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Microphone"         Click="Microphone_Click">        <MenuItem.Icon><TextBlock Text="&#x25CF;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Keylogger"          Click="Keylogger_Click">         <MenuItem.Icon><TextBlock Text="&#x2395;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x2B1B;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><TextBlock Text="&#x25CE;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x25C9;" FontSize="11" Foreground="#7C5CE8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><TextBlock Text="&#x25CF;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2395;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                            <Separator/>
+                                            <MenuItem Header="Performance Monitor" Click="PerformanceMonitor_Click">  <MenuItem.Icon><TextBlock Text="&#x25B3;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                         <!-- Miscellaneous -->
                                         <MenuItem Header="Miscellaneous">

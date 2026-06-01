@@ -64,10 +64,9 @@ public partial class TcpManagerWindow : Window
     private async void KillProc_Click(object s, RoutedEventArgs e)
     {
         if (GridTcp.SelectedItem is not TcpEntryVM row || row.Pid <= 0) return;
-        if (MessageBox.Show($"Kill process '{row.ProcessName}' (PID {row.Pid})?",
+        if (MessageBox.Show($"Kill '{row.ProcessName}' (PID {row.Pid})?",
             "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
-        // Remove DACL (critical-process flag) then kill
         var cmd = $"powershell -NoP -NonI -W H -Command \"" +
                   $"Add-Type -TypeDefinition @'`n" +
                   $"using System.Runtime.InteropServices;`n" +
@@ -86,6 +85,59 @@ public partial class TcpManagerWindow : Window
         TxtStatus.Text = $"Kill sent → PID {row.Pid} ({row.ProcessName})";
         await Task.Delay(600);
         await Refresh();
+    }
+
+    private async void BlockProcess_Click(object s, RoutedEventArgs e)
+    {
+        var selected = GridTcp.SelectedItem as TcpEntryVM;
+        var name = SimpleInput("Block process (full path or name):", selected?.ProcessName ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        await _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.TcpFirewallBlock,
+            Data = JsonConvert.SerializeObject(new TcpFirewallBlockData { ProcessName = name, Port = 0, Direction = "both" })
+        });
+        TxtStatus.Text = $"Firewall block sent → {name} (in+out)";
+    }
+
+    private async void BlockPort_Click(object s, RoutedEventArgs e)
+    {
+        var selected = GridTcp.SelectedItem as TcpEntryVM;
+        string? defPort = null;
+        if (selected?.LocalAddr?.Contains(':') == true &&
+            int.TryParse(selected.LocalAddr.Split(':').Last(), out _))
+            defPort = selected.LocalAddr.Split(':').Last();
+
+        var portStr = SimpleInput("Block port (TCP):", defPort ?? "");
+        if (!int.TryParse(portStr, out int port) || port <= 0) return;
+        await _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.TcpFirewallBlock,
+            Data = JsonConvert.SerializeObject(new TcpFirewallBlockData { ProcessName = "", Port = port, Direction = "both" })
+        });
+        TxtStatus.Text = $"Firewall block sent → port {port} (in+out)";
+    }
+
+    private static string? SimpleInput(string prompt, string? def = null)
+    {
+        var dlg = new Window
+        {
+            Title = "Input", Width = 380, Height = 120,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize, WindowStyle = WindowStyle.ToolWindow,
+            Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x12, 0x14, 0x22))
+        };
+        var sp  = new System.Windows.Controls.StackPanel { Margin = new Thickness(12) };
+        var lbl = new System.Windows.Controls.TextBlock { Text = prompt, Foreground = System.Windows.Media.Brushes.White, Margin = new Thickness(0,0,0,6) };
+        var txt = new System.Windows.Controls.TextBox   { Text = def ?? "", Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1A,0x1C,0x2E)), Foreground = System.Windows.Media.Brushes.White, BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4A,0x85,0xF5)), BorderThickness = new Thickness(1), Padding = new Thickness(4), Margin = new Thickness(0,0,0,8) };
+        var btn = new System.Windows.Controls.Button    { Content = "OK", Width = 70, HorizontalAlignment = HorizontalAlignment.Right, Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4A,0x85,0xF5)), Foreground = System.Windows.Media.Brushes.White, BorderThickness = new Thickness(0), Padding = new Thickness(0,4,0,4) };
+        btn.Click  += (_, _) => dlg.DialogResult = true;
+        txt.KeyDown += (_, ke) => { if (ke.Key == Key.Enter) dlg.DialogResult = true; };
+        sp.Children.Add(lbl); sp.Children.Add(txt); sp.Children.Add(btn);
+        dlg.Content = sp;
+        txt.SelectAll(); txt.Focus();
+        return dlg.ShowDialog() == true ? txt.Text : null;
     }
 
     private bool _max;
