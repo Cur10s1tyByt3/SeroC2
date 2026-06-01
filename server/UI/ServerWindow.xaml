@@ -1556,6 +1556,17 @@
                             <TextBlock Text="Clipper"/>
                         </StackPanel>
                     </TabItem.Header>
+                    <Grid>
+                        <!-- Blurred background logo overlay for Clipper tab -->
+                        <Rectangle IsHitTestVisible="False" Opacity="1">
+                            <Rectangle.Fill>
+                                <VisualBrush Visual="{Binding ElementName=BgLogoImage}" Stretch="Uniform" AlignmentX="Center" AlignmentY="Center"/>
+                            </Rectangle.Fill>
+                            <Rectangle.Effect>
+                                <BlurEffect Radius="14"/>
+                            </Rectangle.Effect>
+                        </Rectangle>
+                        <!-- Clipper content -->
                     <DockPanel Margin="14,10,14,14" LastChildFill="False" Background="Transparent">
 
                         <!-- Controls bar -->
@@ -1664,6 +1675,7 @@
                         </Border>
 
                     </DockPanel>
+                    </Grid>
                 </TabItem>
 
             </TabControl>

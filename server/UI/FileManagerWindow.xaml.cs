@@ -502,13 +502,15 @@ public partial class FileManagerWindow : Window
             }
             else if (isVideo)
             {
-                // Write to temp file for MediaElement
                 if (_previewTempFile != null) try { System.IO.File.Delete(_previewTempFile); } catch { }
                 _previewTempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sero_prev_" + Path.GetFileName(vm.Name));
                 await System.IO.File.WriteAllBytesAsync(_previewTempFile, bytes);
-                PreviewVideo.Source = new Uri(_previewTempFile);
-                PreviewVideo.Play();
+                // Make element visible BEFORE setting source so MediaElement can measure
                 ShowPreviewPanel("video");
+                PreviewVideo.Source = new Uri(System.IO.Path.GetFullPath(_previewTempFile), UriKind.Absolute);
+                PreviewVideo.Volume = 0.8;
+                PreviewVideo.Play();
+                TxtPreviewName.Text = vm.Name;
             }
             else if (isText)
             {

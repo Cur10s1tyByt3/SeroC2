@@ -144,11 +144,11 @@
             <!-- Main: Left sidebar + File list + Preview -->
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="160" MinWidth="120"/>
-                    <ColumnDefinition Width="4"/>
+                    <ColumnDefinition Width="160"/>                         <!-- sidebar fixed, no splitter -->
+                    <ColumnDefinition Width="1"/>                           <!-- thin separator, not draggable -->
                     <ColumnDefinition Width="*" MinWidth="280"/>
                     <ColumnDefinition Width="4"/>
-                    <ColumnDefinition Width="220" MinWidth="180" MaxWidth="400"/>
+                    <ColumnDefinition Width="220" MinWidth="180" MaxWidth="420"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- ── Left sidebar ─────────────────────────────── -->
@@ -265,8 +265,7 @@
                     </DockPanel>
                 </Border>
 
-                <GridSplitter Grid.Column="1" Width="4" Background="#0F1020"
-                              HorizontalAlignment="Stretch" Cursor="SizeWE"/>
+                <Rectangle Grid.Column="1" Fill="#1A1C2E" HorizontalAlignment="Stretch"/><!-- fixed separator -->
 
                 <!-- ── Center: file list + status + preview ──────────── -->
                 <DockPanel Grid.Column="2" LastChildFill="True">
@@ -300,7 +299,7 @@
                       FontFamily="Consolas" FontSize="13"
                       SelectionMode="Extended" SelectionUnit="FullRow"
                       CanUserAddRows="False" CanUserResizeRows="False"
-                      CanUserResizeColumns="False" CanUserReorderColumns="False"
+                      CanUserResizeColumns="True" CanUserReorderColumns="False"
                       ColumnHeaderHeight="28"
                       MouseDoubleClick="GridFiles_DoubleClick"
                       SelectionChanged="GridFiles_SelectionChanged">
@@ -353,9 +352,9 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}" Width="70"  CanUserSort="True" SortMemberPath="TypeDisplay"/>
-                    <DataGridTextColumn Header="Size"     Binding="{Binding SizeDisplay}" Width="80"  CanUserSort="True" SortMemberPath="SizeRaw"/>
-                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}"    Width="130" CanUserSort="True" SortMemberPath="Modified"/>
+                    <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}" Width="70"  CanUserSort="True" SortMemberPath="TypeDisplay" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Size"     Binding="{Binding SizeDisplay}" Width="80"  CanUserSort="True" SortMemberPath="SizeRaw"    CanUserResize="True"/>
+                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}"    Width="130" CanUserSort="True" SortMemberPath="Modified"   CanUserResize="False"/>
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -370,7 +369,7 @@
                         <Image x:Name="PreviewImage" Stretch="Uniform"
                                RenderOptions.BitmapScalingMode="HighQuality"
                                Visibility="Collapsed"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
                         <MediaElement x:Name="PreviewVideo" Visibility="Collapsed"
                                       LoadedBehavior="Manual" Stretch="Uniform"
                                       MouseLeftButtonUp="PreviewVideo_Click"/>
