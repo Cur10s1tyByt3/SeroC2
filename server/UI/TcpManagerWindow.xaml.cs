@@ -24,7 +24,7 @@ public partial class TcpManagerWindow : Window
         _server.RegisterHandler(clientId, PacketType.TcpListResult, OnTcpList);
 
         Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.TcpListResult);
-        Loaded += async (_, _) => await Refresh();
+        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Refresh(); };
     }
 
     private async Task Refresh()

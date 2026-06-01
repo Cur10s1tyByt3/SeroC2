@@ -159,8 +159,7 @@ public partial class MicrophoneWindow : Window
             _player?.Dispose();
             _player = null;
         };
-        Loaded += async (_, _) =>
-            await _server.SendToClient(_clientId, new Packet { Type = PacketType.MicGetDevices });
+        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await _server.SendToClient(_clientId, new Packet { Type = PacketType.MicGetDevices }); };
     }
 
     private void OnDevices(Packet pkt)

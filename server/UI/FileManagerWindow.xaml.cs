@@ -42,7 +42,7 @@ public partial class FileManagerWindow : Window
             _server.UnregisterHandler(clientId, PacketType.FmHashResult);
             _server.UnregisterHandler(clientId, PacketType.FmAck);
         };
-        Loaded += async (_, _) => await Navigate("");
+        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Navigate(""); };
     }
 
     // ── Navigation ────────────────────────────────────

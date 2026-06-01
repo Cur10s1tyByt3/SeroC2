@@ -33,7 +33,7 @@ public partial class ProcessManagerWindow : Window
         _server.RegisterHandler(clientId, PacketType.ProcListResult, OnProcList);
 
         Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.ProcListResult);
-        Loaded += async (_, _) => await Refresh();
+        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Refresh(); };
     }
 
     private async System.Threading.Tasks.Task Refresh()
@@ -46,14 +46,16 @@ public partial class ProcessManagerWindow : Window
     {
         var data = JsonConvert.DeserializeObject<ProcListResultData>(pkt.Data);
         if (data == null) return;
-        // BeginInvoke (async) — don't block the TlsServer read loop while loading icons
+        // Build VMs on background thread (SHGetFileInfo with SHGFI_USEFILEATTRIBUTES is MTA-safe)
+        _ = Task.Run(() => {
+        var vms = data.Processes.Select(p => new ProcEntryVM(p)).ToList();
         _ = Dispatcher.BeginInvoke(() =>
         {
             _procs.Clear();
             foreach (var p in data.Processes)
                 _procs.Add(new ProcEntryVM(p));
-            TxtCount.Text = $"  {data.Processes.Count} processes";
-            TxtStatus.Text = $"{data.Processes.Count} processes loaded";
+            TxtCount.Text = $"  {data.Processes.Count} processes";    TxtStatus.Text = $"{data.Processes.Count} processes loaded";
+        });
         });
     }
 

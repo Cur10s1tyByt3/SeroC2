@@ -23,7 +23,7 @@ public partial class StartupManagerWindow : Window
 
         _server.RegisterHandler(clientId, PacketType.StartupListResult, OnList);
         Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.StartupListResult);
-        Loaded += async (_, _) => await Refresh();
+        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Refresh(); };
     }
 
     private async Task Refresh()
