@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Newtonsoft.Json;
@@ -19,7 +18,7 @@ public partial class FunWindow : Window
     private static readonly SolidColorBrush _activeOrange = new(Color.FromRgb(0x40, 0x30, 0x10));
     private static readonly SolidColorBrush _dim          = new(Color.FromRgb(0x0E, 0x0F, 0x1A));
 
-    private void Activate(Button active, SolidColorBrush color, params Button[] others)
+    private void Activate(System.Windows.Controls.Button active, SolidColorBrush color, params System.Windows.Controls.Button[] others)
     {
         active.Background = color;
         foreach (var b in others) b.Background = _dim;

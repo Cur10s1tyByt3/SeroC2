@@ -26,6 +26,8 @@
     <ProductVersion>1.0.0.0</ProductVersion>
     <InformationalVersion>1.0.0.0</InformationalVersion>
     <Platforms>AnyCPU;x64</Platforms>
+    <!-- CS0162: intentional dead-code branches from compile-time const feature flags -->
+    <NoWarn>$(NoWarn);CS0162</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

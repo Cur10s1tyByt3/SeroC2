@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -11,9 +10,8 @@ using SeroServer.Protocol;
 
 namespace SeroServer.UI;
 
-public class RegValueVM : INotifyPropertyChanged
+public class RegValueVM
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
     public string Name      { get; set; } = "";
     public string ValueType { get; set; } = "";
     public string Data      { get; set; } = "";
@@ -100,7 +98,9 @@ public partial class RegistryEditorWindow : Window
     }
 
     private TreeViewItem? _pendingExpand;
+#pragma warning disable CS0414
     private string?       _pendingPath;
+#pragma warning restore CS0414
 
     private void TreeItem_Expanded(object s, RoutedEventArgs e)
     {
