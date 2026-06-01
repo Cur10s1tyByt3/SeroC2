@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -153,7 +153,7 @@ public partial class PerformanceMonitorWindow : Window
     }
 
     private void Window_MouseLeftButtonDown(object s, System.Windows.Input.MouseButtonEventArgs e)
-    { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed) DragMove(); }
+    { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && WindowState != WindowState.Maximized) DragMove(); }
 
     private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
     { Width = Math.Max(MinWidth, Width + e.HorizontalChange); Height = Math.Max(MinHeight, Height + e.VerticalChange); }

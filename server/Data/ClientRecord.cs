@@ -16,6 +16,9 @@ public class ClientRecord
     public string LastAntivirus { get; set; } = string.Empty;
     public string LastCpuName   { get; set; } = string.Empty;
     public string LastGpuName   { get; set; } = string.Empty;
+    public long   LastRamUsed   { get; set; }
+    public long   LastRamTotal  { get; set; }
+    public string LastRamDisplay => LastRamTotal > 0 ? $"{LastRamUsed}/{LastRamTotal} MB" : "—";
     public bool   LastIsAdmin   { get; set; }
     public int    LastPort { get; set; }
     public string Tag { get; set; } = string.Empty;

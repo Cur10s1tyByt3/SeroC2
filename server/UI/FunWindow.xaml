@@ -191,8 +191,8 @@
                             <StackPanel>
                                 <TextBlock Text="🗂  Taskbar" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="👁 Show"  Style="{StaticResource FBtnGreen}" Click="TaskbarShow_Click"/>
-                                    <Button Content="🙈 Hide"  Style="{StaticResource FBtnRed}"   Click="TaskbarHide_Click"/>
+                                    <Button x:Name="BtnTaskbarShow" Content="👁 Show"  Style="{StaticResource FBtnGreen}" Click="TaskbarShow_Click"/>
+                                    <Button x:Name="BtnTaskbarHide" Content="🙈 Hide"  Style="{StaticResource FBtnRed}"   Click="TaskbarHide_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -213,8 +213,8 @@
                             <StackPanel>
                                 <TextBlock Text="🖥  Screen" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="💡 On"    Style="{StaticResource FBtnGreen}" Click="ScreenOn_Click"/>
-                                    <Button Content="🌑 Off"   Style="{StaticResource FBtnRed}"   Click="ScreenOff_Click"/>
+                                    <Button x:Name="BtnScreenOn"  Content="💡 On"  Style="{StaticResource FBtnGreen}" Click="ScreenOn_Click"/>
+                                    <Button x:Name="BtnScreenOff" Content="🌑 Off" Style="{StaticResource FBtnRed}"   Click="ScreenOff_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -224,10 +224,10 @@
                             <StackPanel>
                                 <TextBlock Text="🕐  Clock / Tray" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="👁 Clock Show"  Style="{StaticResource FBtnGreen}" Click="ClockShow_Click"/>
-                                    <Button Content="🙈 Clock Hide"  Style="{StaticResource FBtnRed}"   Click="ClockHide_Click"/>
-                                    <Button Content="👁 Tray Show"   Style="{StaticResource FBtnGreen}" Click="TrayShow_Click"/>
-                                    <Button Content="🙈 Tray Hide"   Style="{StaticResource FBtnRed}"   Click="TrayHide_Click"/>
+                                    <Button x:Name="BtnClockShow" Content="👁 Clock Show"  Style="{StaticResource FBtnGreen}" Click="ClockShow_Click"/>
+                                    <Button x:Name="BtnClockHide" Content="🙈 Clock Hide"  Style="{StaticResource FBtnRed}"   Click="ClockHide_Click"/>
+                                    <Button x:Name="BtnTrayShow"  Content="👁 Tray Show"   Style="{StaticResource FBtnGreen}" Click="TrayShow_Click"/>
+                                    <Button x:Name="BtnTrayHide"  Content="🙈 Tray Hide"   Style="{StaticResource FBtnRed}"   Click="TrayHide_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -237,8 +237,8 @@
                             <StackPanel>
                                 <TextBlock Text="🖼  Desktop Icons" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="👁 Show"  Style="{StaticResource FBtnGreen}" Click="DesktopIconsShow_Click"/>
-                                    <Button Content="🙈 Hide"  Style="{StaticResource FBtnRed}"   Click="DesktopIconsHide_Click"/>
+                                    <Button x:Name="BtnDesktopIconsShow" Content="👁 Show"  Style="{StaticResource FBtnGreen}" Click="DesktopIconsShow_Click"/>
+                                    <Button x:Name="BtnDesktopIconsHide" Content="🙈 Hide"  Style="{StaticResource FBtnRed}"   Click="DesktopIconsHide_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -264,8 +264,8 @@
                             <StackPanel>
                                 <TextBlock Text="🖱  Mouse" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="↔ Normal"  Style="{StaticResource FBtnGreen}" Click="MouseNormal_Click"/>
-                                    <Button Content="↕ Swap"    Style="{StaticResource FBtnRed}"   Click="MouseSwap_Click"/>
+                                    <Button x:Name="BtnMouseNormal" Content="↔ Normal" Style="{StaticResource FBtnGreen}" Click="MouseNormal_Click"/>
+                                    <Button x:Name="BtnMouseSwap"   Content="↕ Swap"   Style="{StaticResource FBtnRed}"   Click="MouseSwap_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -275,10 +275,10 @@
                             <StackPanel>
                                 <TextBlock Text="🔄  Screen Rotation" Style="{StaticResource SectionLabel}"/>
                                 <WrapPanel>
-                                    <Button Content="0°"    Width="44" Style="{StaticResource FBtn}"       Click="Flip0_Click"/>
-                                    <Button Content="90°"   Width="44" Style="{StaticResource FBtnOrange}" Click="Flip90_Click"/>
-                                    <Button Content="180°"  Width="48" Style="{StaticResource FBtnOrange}" Click="Flip180_Click"/>
-                                    <Button Content="270°"  Width="48" Style="{StaticResource FBtnOrange}" Click="Flip270_Click"/>
+                                    <Button x:Name="BtnFlip0"   Content="0°"   Width="44" Style="{StaticResource FBtn}"       Click="Flip0_Click"/>
+                                    <Button x:Name="BtnFlip90"  Content="90°"  Width="44" Style="{StaticResource FBtnOrange}" Click="Flip90_Click"/>
+                                    <Button x:Name="BtnFlip180" Content="180°" Width="48" Style="{StaticResource FBtnOrange}" Click="Flip180_Click"/>
+                                    <Button x:Name="BtnFlip270" Content="270°" Width="48" Style="{StaticResource FBtnOrange}" Click="Flip270_Click"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>

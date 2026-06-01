@@ -124,27 +124,15 @@
                 </Grid>
             </Border>
 
-            <!-- Toolbar: actions + state legend -->
+            <!-- State legend bar -->
             <Border DockPanel.Dock="Top" Background="#0A0B14" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,6">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <!-- Action buttons -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Content="Close Connection" Height="27" Padding="12,0" Margin="0,0,4,0"
-                                Style="{StaticResource SBtn}" FontSize="11" Click="CloseConn_Click"/>
-                        <Button Content="Kill Process" Height="27" Padding="12,0" Margin="0,0,4,0"
-                                Style="{StaticResource SRedBtn}" FontSize="11" Click="KillProc_Click"/>
-                        <Button Content="Block Process" Height="27" Padding="12,0" Margin="0,0,4,0"
-                                Style="{StaticResource SBtn}" FontSize="11" Click="BlockProcess_Click"/>
-                        <Button Content="Block Port" Height="27" Padding="12,0" Margin="0,0,0,0"
-                                Style="{StaticResource SBtn}" FontSize="11" Click="BlockPort_Click"/>
-                    </StackPanel>
                     <!-- State legend -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="7" Height="7" Fill="#22C55E" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <TextBlock Text="ESTABLISHED" Foreground="#405060" FontSize="10" Margin="0,0,12,0" VerticalAlignment="Center"/>
                         <Ellipse Width="7" Height="7" Fill="#4A85F5" VerticalAlignment="Center" Margin="0,0,4,0"/>

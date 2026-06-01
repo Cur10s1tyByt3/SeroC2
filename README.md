@@ -53,10 +53,10 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 | Keylogger | ✅ | Low-level WH_KEYBOARD_LL hook, offline disk logging (by date), file browser UI, save .txt |
 | Crypto Clipper | ✅ | Monitors clipboard for BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH/BNB, silent address swap |
 | Performance Monitor | ✅ | Real-time CPU/RAM/Network streaming (1 s), sparkline graphs, color progress bars |
-| Process Manager | ✅ | Real-time list, CPU/RAM heat-map, suspend/resume/kill, native icons |
+| Process Manager | ✅ | Real-time list, CPU/RAM heat-map, suspend/resume/kill (right-click), native icons, search filter |
 | Service Manager | ✅ | List, start/stop/restart/disable/delete Windows services *(requires admin)* |
 | Window Manager | ✅ | Enumerate all windows, show/hide/focus/close/kill per handle |
-| Registry Editor | ✅ | Browse/read/write/delete keys and values *(requires admin for HKLM)* |
+| Registry Editor | ✅ | Browse/read/write/delete keys and values *(requires admin for HKLM)*, admin warning popup |
 | Installed Programs | ✅ | List all installed apps, trigger silent uninstall |
 | Device Manager | ✅ | Enumerate hardware devices via SetupAPI, uninstall device |
 | TCP Connections | ✅ | List connections, close sessions, block process/port via Windows Firewall |
@@ -254,8 +254,8 @@ Live view of all running processes on the target with native Windows shell icons
 - **Process list** — name, PID, working-set memory, main window title
 - **Native icons** — shell icon extracted from the process EXE via `SHGetFileInfo`
 - **Search** — filter by name or window title in real time
-- **Force-kill** — terminate any process instantly
-- **Auto-refresh** — manual or via the Refresh button
+- **Suspend / Resume / Kill** — right-click context menu
+- **Refresh** — manual refresh button
 
 ---
 
@@ -513,13 +513,16 @@ SeroC2/
 - [x] Multi-host + auto-reconnect — round-robin, configurable delay
 - [x] Keylogger — WH_KEYBOARD_LL, window-title headers, **offline disk logging by date**, file browser UI, download/delete log files
 - [x] Crypto Clipper — BTC / ETH / BNB / LTC / TRX / SOL / XMR / XRP / DASH / BCH, global server tab, auto-push on connect
-- [x] Process Manager — real-time auto-refresh, CPU/RAM heat-map (blue→orange→red), suspend/resume (NtSuspendProcess/NtResumeProcess), kill, native icons
-- [x] Service Manager — list all services via sc.exe query, start/stop/restart/disable/delete *(admin required for write operations)*
-- [x] Window Manager — EnumWindows P/Invoke, show/hide/focus/restore/minimize/maximize/close/kill per HWND
-- [x] Registry Editor — browse sub-keys, read/write/delete values and keys *(admin required for HKLM writes)*
-- [x] Installed Programs — HKLM+HKCU Uninstall registry enumeration, trigger UninstallString silently
-- [x] Device Manager — SetupAPI enumeration (no WMI), uninstall device by instance ID
-- [x] TCP Connections — netsh advfirewall block by process or port, list/unblock SeroBlock_ rules
+- [x] Process Manager — real-time list, CPU/RAM heat-map (blue→orange→red), suspend/resume/kill via right-click, native icons, search filter; Live button removed (on-demand refresh)
+- [x] Service Manager — list all services via sc.exe query, start/stop/restart/disable/delete via right-click *(admin required for write operations)*
+- [x] Window Manager — EnumWindows P/Invoke, show/hide/focus/restore/minimize/maximize/close/kill per HWND, right-click actions
+- [x] Registry Editor — browse sub-keys, read/write/delete values and keys, admin warning popup when client not elevated *(admin required for HKLM writes)*
+- [x] Installed Programs — HKLM+HKCU Uninstall registry enumeration, trigger UninstallString silently, right-click actions
+- [x] Device Manager — SetupAPI enumeration (no WMI), uninstall device by instance ID, right-click actions
+- [x] TCP Connections — netsh advfirewall block by process or port, list/unblock SeroBlock_ rules, right-click actions
+- [x] Fun panel toggle feedback — Show/Hide button pairs highlight the active state (green=active, red=active hide, dim=inactive); screen rotation shows current angle
+- [x] Offline clients RAM column — LastRamDisplay shown in the offline clients grid
+- [x] All feature windows — fullscreen (maximize/restore) button; drag blocked when maximized
 - [x] CPU/RAM telemetry — GetSystemTimes + GlobalMemoryStatusEx sampling every ~15 s, displayed as columns in client list with color-coded brush
 - [x] Reverse SOCKS5 proxy — tunnel traffic through the remote machine, local SOCKS5 listener
 - [x] TikTok Bot — multi-client panel: CDP session detection (navigates to tiktok.com and reads Chrome cookies via `Network.getCookies` — skips signup if session exists), CDP auto-signup via Google OAuth (Chrome hidden, no HVNC), account inventory, comment broadcast with rotation across all accounts; cookie auto-flows from signup to comment panel, post comments on videos and livestreams using an existing session

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -335,5 +335,15 @@ public partial class RegistryEditorWindow : Window
     { if (e.LeftButton == MouseButtonState.Pressed) DragMove(); }
     private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
     { Width = Math.Max(MinWidth, Width + e.HorizontalChange); Height = Math.Max(MinHeight, Height + e.VerticalChange); }
+    
+    private bool _max;
+    private void BtnMax_Click(object s, RoutedEventArgs e)
+    {
+        _max = !_max;
+        WindowState = _max ? WindowState.Maximized : WindowState.Normal;
+        RootBorder.CornerRadius = _max ? new System.Windows.CornerRadius(0) : new System.Windows.CornerRadius(8);
+        if (FindName("BtnMax") is System.Windows.Controls.Button btn)
+            btn.Content = _max ? "❐" : "☐";
+    }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }

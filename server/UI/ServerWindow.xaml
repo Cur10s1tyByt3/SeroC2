@@ -732,6 +732,7 @@
                                     <DataGridTextColumn Header="CPU"       Binding="{Binding LastCpuName}"                                  Width="120" FontSize="11"/>
                                     <DataGridTextColumn Header="GPU"       Binding="{Binding LastGpuName}"                                  Width="120" FontSize="11"/>
                                     <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding LastPayload}"                                  Width="90"  FontSize="11"/>
+                                    <DataGridTextColumn Header="RAM"        Binding="{Binding LastRamDisplay}"                               Width="105" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="FIRST SEEN" Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd HH:mm}"   Width="118" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="LAST SEEN"  Binding="{Binding LastSeen,  StringFormat=yyyy-MM-dd HH:mm}"   Width="*"   FontFamily="Consolas" FontSize="11"/>
                                 </DataGrid.Columns>

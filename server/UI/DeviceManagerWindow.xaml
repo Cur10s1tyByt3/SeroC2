@@ -19,15 +19,12 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="&#x27F3;" Height="27" Width="30" Margin="0,0,4,0" Style="{StaticResource SBtn}" FontSize="14" Padding="0" Click="BtnRefresh_Click"/>
+                        <Button x:Name="BtnMax" Content="&#x2610;" Width="30" Height="27" Margin="0,0,4,0" Style="{StaticResource SBtn}" FontSize="12" Padding="0" Click="BtnMax_Click"/>
                         <Button Content="&#x2715;" Width="30" Height="27" Style="{StaticResource SRedBtn}" FontSize="11" Padding="0" Click="Close_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
-            <Border DockPanel.Dock="Top" Background="#0A0B14" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,6">
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Uninstall Device" Height="28" Padding="14,0" Margin="0,0,0,0" Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnUninstall_Click"/>
-                </StackPanel>
-            </Border>
+            
             <Border DockPanel.Dock="Bottom" Height="26" Background="#0C0D18" BorderBrush="#181A28" BorderThickness="0,1,0,0">
                 <Grid>
                     <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#353858" FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="12,0"/>

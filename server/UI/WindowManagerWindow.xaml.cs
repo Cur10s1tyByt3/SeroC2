@@ -1,5 +1,4 @@
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using Newtonsoft.Json;
@@ -8,9 +7,8 @@ using SeroServer.Protocol;
 
 namespace SeroServer.UI;
 
-public class WindowEntryVM : INotifyPropertyChanged
+public class WindowEntryVM
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
     public long   Handle     { get; set; }
     public string Title      { get; set; } = "";
     public string ClassName  { get; set; } = "";
@@ -72,8 +70,18 @@ public partial class WindowManagerWindow : Window
     private void BtnKill_Click    (object s, RoutedEventArgs e) => SendAction("kill");
 
     private void Window_MouseLeftButtonDown(object s, System.Windows.Input.MouseButtonEventArgs e)
-    { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed) DragMove(); }
+    { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && WindowState != WindowState.Maximized) DragMove(); }
     private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
     { Width = Math.Max(MinWidth, Width + e.HorizontalChange); Height = Math.Max(MinHeight, Height + e.VerticalChange); }
+    
+    private bool _max;
+    private void BtnMax_Click(object s, RoutedEventArgs e)
+    {
+        _max = !_max;
+        WindowState = _max ? WindowState.Maximized : WindowState.Normal;
+        RootBorder.CornerRadius = _max ? new System.Windows.CornerRadius(0) : new System.Windows.CornerRadius(8);
+        if (FindName("BtnMax") is System.Windows.Controls.Button btn)
+            btn.Content = _max ? "❐" : "☐";
+    }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }

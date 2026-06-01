@@ -159,9 +159,9 @@ public partial class ProcessManagerWindow : Window
 
     private static BitmapSource? GetIcon(string path)
     {
-        // ExePath is the client machine's path — skip if it doesn't exist on the server.
+        // ExePath is the client's path — common Windows paths also exist on server.
         // CreateBitmapSourceFromHIcon must run on the UI thread (STA COM requirement).
-        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return null;
+        if (string.IsNullOrEmpty(path)) return null;
         try
         {
             BitmapSource? result = null;
@@ -217,8 +217,6 @@ public partial class ProcessManagerWindow : Window
         TxtStatus.Text = $"Resume → PID {vm.Pid} ({vm.Name})";
     }
 
-    private void AutoRefresh_Checked(object s, RoutedEventArgs e)   => _autoTimer.Start();
-    private void AutoRefresh_Unchecked(object s, RoutedEventArgs e) => _autoTimer.Stop();
 
     private void BtnMaximize_Click(object s, RoutedEventArgs e)
     {

@@ -846,6 +846,13 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
         {
+            if (!c.IsAdmin)
+            {
+                var r = MessageBox.Show(
+                    $"Client {c.Id} is NOT running as administrator.\n\nThe Registry Editor requires admin privileges to write/delete keys.\nReading HKCU keys will still work.\n\nOpen anyway?",
+                    "Admin Recommended", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (r != MessageBoxResult.Yes) continue;
+            }
             OpenFeatureWindow<RegistryEditorWindow>(c.Id, () => new RegistryEditorWindow(_server, c.Id, c.Id));
             if (clients.Count > 1) await Task.Delay(80);
         }
