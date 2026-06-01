@@ -99,69 +99,57 @@
                 </Grid>
             </Border>
 
-            <!-- Navigation bar -->
-            <Border DockPanel.Dock="Top" Height="38" Background="#111222"
+            <!-- Navigation bar (simplified) -->
+            <Border DockPanel.Dock="Top" Height="36" Background="#111222"
                     BorderBrush="#1A1C2E" BorderThickness="0,0,0,1">
                 <Grid Margin="8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="◀ Back" Height="26" Margin="0,0,4,0"
+                    <Button Grid.Column="0" Content="◀ Back" Height="26" Padding="10,0" Margin="0,0,4,0"
                             Style="{StaticResource FmBtn}" Click="Back_Click"/>
-                    <Button Grid.Column="1" Content="⟳ Refresh" Height="26" Padding="8,0" Margin="0,0,4,0"
-                            Style="{StaticResource FmBtn}" FontSize="11" Click="Refresh_Click"/>
-                    <!-- GoTo dropdown -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,8,0">
-                        <Button Height="26" Margin="0,0,2,0" Style="{StaticResource FmBtn}" Click="GoToDesktop_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🖥" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Desktop" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Height="26" Margin="0,0,2,0" Style="{StaticResource FmBtn}" Click="GoToUser_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="👤" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="User" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Height="26" Margin="0,0,2,0" Style="{StaticResource FmBtn}" Click="GoToTemp_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📋" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Temp" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Height="26" Margin="0,0,2,0" Style="{StaticResource FmBtn}" Click="GoToAppData_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="⚙" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="AppData" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Height="26" Style="{StaticResource FmBtn}" Click="GoToStartup_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="🚀" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="Startup" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <TextBox x:Name="TxtPath" Grid.Column="3" Height="26"
+                    <Button Grid.Column="1" Content="⟳" Height="26" Width="28" Margin="0,0,6,0"
+                            Style="{StaticResource FmBtn}" FontSize="13" Click="Refresh_Click"
+                            ToolTip="Refresh current folder"/>
+                    <TextBox x:Name="TxtPath" Grid.Column="2" Height="26"
                              Background="#0A0B14" Foreground="#C0CCDD" BorderBrush="#2A3058"
                              BorderThickness="1" Padding="6,3" FontFamily="Consolas" FontSize="11"
                              VerticalContentAlignment="Center" KeyDown="TxtPath_KeyDown"/>
-                    <Button Grid.Column="4" Content="Go" Height="26" Width="36" Margin="4,0,0,0"
+                    <Button Grid.Column="3" Content="Go" Height="26" Width="36" Margin="4,0,0,0"
                             Style="{StaticResource FmBtn}" Click="GoPath_Click"/>
                 </Grid>
             </Border>
 
+            <!-- Transfer strip (visible only when operation in progress) -->
+            <Border x:Name="TransferStrip" DockPanel.Dock="Bottom"
+                    Height="32" Background="#0A0C1A" BorderBrush="#1A2040"
+                    BorderThickness="0,1,0,0" Visibility="Collapsed" Padding="12,0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="⇅" Foreground="#89b4fa" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="TxtTransferName" Text="" Foreground="#C0CCDD"
+                                   FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                        <Border Background="#0F1428" CornerRadius="3" Width="200" Height="8" VerticalAlignment="Center">
+                            <Border x:Name="TransferBar" Background="#4A85F5" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
+                        </Border>
+                        <TextBlock x:Name="TxtTransferPct" Text="" Foreground="#404868"
+                                   FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock x:Name="TxtTransferStatus" Text="" Foreground="#404868"
+                               FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"
+                               HorizontalAlignment="Right"/>
+                </Grid>
+            </Border>
+
             <!-- Status bar -->
-            <Border DockPanel.Dock="Bottom" Height="28" Background="#111222"
+            <Border DockPanel.Dock="Bottom" Height="26" Background="#111222"
                     BorderBrush="#1A1C2E" BorderThickness="0,1,0,0">
-                                <Grid>
-<TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#606880"
-                           FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="14,0"/>
+                <Grid>
+                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#606880"
+                               FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="14,0"/>
                     <Thumb Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center"
                            Margin="0,0,4,0" Cursor="SizeNWSE" DragDelta="ResizeGrip_DragDelta">
                         <Thumb.Template>
@@ -174,15 +162,136 @@
                 </Grid>
             </Border>
 
-            <!-- File list + Preview pane -->
+            <!-- Main: Left sidebar + File list + Preview -->
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="320"/>
+                    <ColumnDefinition Width="160" MinWidth="120"/>
                     <ColumnDefinition Width="4"/>
-                    <ColumnDefinition Width="260" MinWidth="160"/>
+                    <ColumnDefinition Width="*" MinWidth="280"/>
+                    <ColumnDefinition Width="4"/>
+                    <ColumnDefinition Width="240" MinWidth="160"/>
                 </Grid.ColumnDefinitions>
 
-            <DataGrid x:Name="GridFiles" Grid.Column="0"
+                <!-- ── Left sidebar ─────────────────────────────── -->
+                <Border Grid.Column="0" Background="#0A0B14" BorderBrush="#1A1C2E" BorderThickness="0,0,1,0">
+                    <DockPanel LastChildFill="True">
+
+                        <!-- Quick Access header -->
+                        <Border DockPanel.Dock="Top" Padding="10,6" Background="#111222"
+                                BorderBrush="#1A1C2E" BorderThickness="0,0,0,1">
+                            <TextBlock Text="QUICK ACCESS" FontSize="9" FontWeight="Bold"
+                                       Foreground="#404868" FontFamily="Consolas"/>
+                        </Border>
+
+                        <!-- Quick access buttons -->
+                        <StackPanel DockPanel.Dock="Top" Margin="0,4,0,0">
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToDesktop_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🖥" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Desktop" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToUser_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="👤" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="User" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToTemp_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📋" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Temp" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToAppData_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚙" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="AppData" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToStartup_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🚀" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Startup" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToWindows_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🪟" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Windows" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Height="28" Margin="6,1" Style="{StaticResource FmBtn}" HorizontalContentAlignment="Left"
+                                    Click="GoToSystem32_Click" Padding="8,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚡" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="System32" FontSize="11" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Drives header -->
+                        <Border DockPanel.Dock="Top" Padding="10,6" Background="#111222"
+                                BorderBrush="#1A1C2E" BorderThickness="0,1,0,1" Margin="0,8,0,0">
+                            <TextBlock Text="DRIVES" FontSize="9" FontWeight="Bold"
+                                       Foreground="#404868" FontFamily="Consolas"/>
+                        </Border>
+
+                        <!-- Drives list -->
+                        <ListBox x:Name="DrivesList" Background="Transparent" BorderThickness="0"
+                                 Foreground="#C0CCDD" FontFamily="Consolas" FontSize="12"
+                                 Margin="0,4,0,0"
+                                 SelectionChanged="DrivesList_SelectionChanged">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Padding" Value="8,5"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#111830"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="bd" Property="Background" Value="#162040"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💾" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding}" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                    </DockPanel>
+                </Border>
+
+                <GridSplitter Grid.Column="1" Width="4" Background="#0F1020"
+                              HorizontalAlignment="Stretch" Cursor="SizeWE"/>
+
+                <!-- ── File list ──────────────────────────────────── -->
+
+            <DataGrid x:Name="GridFiles" Grid.Column="2"
                       AutoGenerateColumns="False" IsReadOnly="True"
                       Background="#0C0D18" Foreground="#DDE0F0"
                       BorderThickness="0" RowBackground="Transparent"
@@ -249,11 +358,11 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <GridSplitter Grid.Column="1" Width="4" Background="#0F1020"
+            <GridSplitter Grid.Column="3" Width="4" Background="#0F1020"
                           HorizontalAlignment="Stretch" Cursor="SizeWE"/>
 
             <!-- Preview pane -->
-            <Border Grid.Column="2" Background="#07080F" BorderBrush="#1A1C2E" BorderThickness="1,0,0,0">
+            <Border Grid.Column="4" Background="#07080F" BorderBrush="#1A1C2E" BorderThickness="1,0,0,0">
                 <DockPanel LastChildFill="True">
                     <Border DockPanel.Dock="Top" Height="30" Background="#0F1020"
                             BorderBrush="#1A1C2E" BorderThickness="0,0,0,1" Padding="10,0">
