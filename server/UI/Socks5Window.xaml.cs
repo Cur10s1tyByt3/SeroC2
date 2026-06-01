@@ -135,7 +135,7 @@ public partial class Socks5Window : Window
             });
 
             _connCount++;
-            Dispatcher.BeginInvoke(() => TxtConnCount.Text = $"{_connCount} active");
+            _ = Dispatcher.BeginInvoke(() => TxtConnCount.Text = $"{_connCount} active");
             AddLog($"[>] Session {sessionId}  local:{((System.Net.IPEndPoint?)client.Client.RemoteEndPoint)?.Port}");
 
             // Now relay from local to stub
@@ -178,7 +178,7 @@ public partial class Socks5Window : Window
         {
             // Send SOCKS5 success reply
             var reply = new byte[] { 5, 0, 0, 1, 0, 0, 0, 0, 0, 0 };
-            try { client.GetStream().WriteAsync(reply); } catch { }
+            try { _ = client.GetStream().WriteAsync(reply); } catch { }
             AddLog($"[✓] {d.SessionId} connected");
         }
     }
@@ -190,7 +190,7 @@ public partial class Socks5Window : Window
         if (_pending.TryRemove(d.SessionId, out var client))
         {
             var reply = new byte[] { 5, 4, 0, 1, 0, 0, 0, 0, 0, 0 }; // Host unreachable
-            try { client.GetStream().WriteAsync(reply); client.Close(); } catch { }
+            try { _ = client.GetStream().WriteAsync(reply); client.Close(); } catch { }
         }
         AddLog($"[✗] {d.SessionId}: {d.Error}");
     }
@@ -202,7 +202,7 @@ public partial class Socks5Window : Window
         if (_pending.TryGetValue(d.SessionId, out var client))
         {
             var bytes = Convert.FromBase64String(d.Data);
-            try { client.GetStream().WriteAsync(bytes); } catch { }
+            try { _ = client.GetStream().WriteAsync(bytes); } catch { }
         }
     }
 

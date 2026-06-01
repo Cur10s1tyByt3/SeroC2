@@ -46,7 +46,8 @@ public partial class ProcessManagerWindow : Window
     {
         var data = JsonConvert.DeserializeObject<ProcListResultData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        // BeginInvoke (async) — don't block the TlsServer read loop while loading icons
+        _ = Dispatcher.BeginInvoke(() =>
         {
             _procs.Clear();
             foreach (var p in data.Processes)
@@ -110,10 +111,10 @@ public class ProcEntryVM
         MemDisplay = e.Memory < 1024 ? $"{e.Memory} KB" : $"{e.Memory / 1024.0:F1} MB";
         Title      = e.Title;
         ExePath    = e.ExePath;
-        // Use exe path if available, otherwise use .exe extension
-        IconImage  = string.IsNullOrEmpty(e.ExePath)
-            ? ShellIcon.Get(".exe", false)
-            : ShellIconByPath.Get(e.ExePath);
+        // Use extension-based icon (exe paths are on the CLIENT, not this machine)
+        var ext    = string.IsNullOrEmpty(e.ExePath) ? ".exe"
+                     : (System.IO.Path.GetExtension(e.ExePath) is { } x && x.Length > 0 ? x : ".exe");
+        IconImage  = ShellIconByPath.Get("file" + ext);
     }
 }
 

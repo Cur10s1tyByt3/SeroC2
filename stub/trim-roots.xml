@@ -1,3 +1,2 @@
 <linker>
-  <assembly fullname="System.Management" preserve="all"/>
 </linker>

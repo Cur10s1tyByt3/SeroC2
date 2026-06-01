@@ -55,6 +55,10 @@
                         </Border>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="📡 Broadcast" Height="28" Padding="10,0" Margin="0,0,6,0"
+                                Style="{StaticResource SBtn}" FontSize="10"
+                                Click="BtnBroadcast_Click"
+                                ToolTip="Open HVNC Broadcast — TikTok workflow steps"/>
                         <Button x:Name="BtnMax" Content="☐" Width="30" Height="28" Margin="0,0,4,0"
                                 Style="{StaticResource SBtn}" FontSize="13" Padding="0" Click="BtnMax_Click"/>
                         <Button Content="✕" Width="30" Height="28"
@@ -176,6 +180,36 @@
                                 Click="BtnPostOnce_Click"
                                 ToolTip="Post only the first comment in the list once"/>
                     </StackPanel>
+
+                    <!-- CDP Auto-Signup -->
+                    <Border Padding="12,10" CornerRadius="6" Margin="0,8,0,0"
+                            Background="#0A0F08" BorderThickness="1" BorderBrush="#1A3020">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🤖  AUTO-SIGNUP (Chrome CDP)" FontSize="9" FontWeight="Bold"
+                                               Foreground="#C0a6e3a1" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Button x:Name="BtnCdpSignup" Content="🤖 Auto-Signup" Height="26" Padding="12,0"
+                                        HorizontalAlignment="Right"
+                                        Style="{StaticResource SGreenBtn}" FontSize="10"
+                                        Click="BtnCdpSignup_Click"
+                                        ToolTip="Launch Chrome CDP — auto-create TikTok account from client's Google session"/>
+                            </Grid>
+                            <TextBlock TextWrapping="Wrap" Foreground="#404868" FontSize="10" FontFamily="Segoe UI"
+                                       Margin="0,0,0,8"
+                                       Text="Creates a TikTok account using the client's saved Google session in Chrome. No HVNC needed — Chrome runs hidden."/>
+                            <Border Background="#05080A" CornerRadius="4" Height="80">
+                                <TextBox x:Name="TxtCdpLog"
+                                         Background="Transparent" Foreground="#a6e3a1"
+                                         FontFamily="Consolas" FontSize="10"
+                                         BorderThickness="0" Padding="8,6"
+                                         IsReadOnly="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         AcceptsReturn="True"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
 
                 </StackPanel>
                 </ScrollViewer>

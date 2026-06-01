@@ -66,22 +66,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="TxtSearch" Grid.Column="0" Height="28"
                              Style="{StaticResource STxt}" FontSize="12"
-                             TextChanged="TxtSearch_TextChanged"
-                             Tag="Search processes…">
-                        <TextBox.Template>
-                            <ControlTemplate TargetType="TextBox">
-                                <Border Background="#0D0E1A" BorderBrush="#1E2038" BorderThickness="1" CornerRadius="6">
-                                    <Grid>
-                                        <TextBlock Text="{TemplateBinding Tag}" Foreground="#303458" FontSize="12"
-                                                   Padding="10,4" VerticalAlignment="Center"
-                                                   Visibility="{Binding Text.IsEmpty, RelativeSource={RelativeSource TemplatedParent},
-                                                       Converter={StaticResource BoolToVis}}"/>
-                                        <ScrollViewer x:Name="PART_ContentHost" Padding="10,4" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
-                            </ControlTemplate>
-                        </TextBox.Template>
-                    </TextBox>
+                             TextChanged="TxtSearch_TextChanged"/>
                     <Button Grid.Column="1" Content="Kill" Height="28" Padding="16,0" Margin="8,0,0,0"
                             Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnKill_Click"/>
                 </Grid>

