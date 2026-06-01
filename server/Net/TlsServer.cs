@@ -274,6 +274,16 @@ public class TlsServer
                         }
                         break;
 
+                    case PacketType.HardwareStats:
+                        var hwStats = JsonConvert.DeserializeObject<HardwareStatsData>(packet.Data);
+                        if (hwStats != null)
+                        {
+                            client.CpuUsage = hwStats.CpuUsage;
+                            client.RamUsed  = hwStats.RamUsed;
+                            client.RamTotal = hwStats.RamTotal;
+                        }
+                        break;
+
                     case PacketType.ClientInfo:
                         var updated = JsonConvert.DeserializeObject<ClientInfoData>(packet.Data);
                         if (updated != null)

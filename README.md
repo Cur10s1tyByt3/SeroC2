@@ -51,11 +51,17 @@ Open `Sero.sln` in **Visual Studio 2026**, build (`F6`), and launch `SeroServer.
 | Fun | ✅ | CD-ROM, Taskbar, Screen, Mouse swap, Volume, TTS, Crazy Mouse, Screen Rotation… |
 | Keylogger | ✅ | Low-level WH_KEYBOARD_LL hook, offline disk logging (by date), file browser UI, save .txt |
 | Crypto Clipper | ✅ | Monitors clipboard for BTC/ETH/LTC/TRX/SOL/XMR/XRP/DASH/BCH/BNB, silent address swap |
-| Process Manager | ✅ | List all processes with native Windows icons, memory, search, force-kill |
+| Process Manager | ✅ | Real-time list, CPU/RAM heat-map, suspend/resume/kill, native icons |
+| Service Manager | ✅ | List, start/stop/restart/disable/delete Windows services *(requires admin)* |
+| Window Manager | ✅ | Enumerate all windows, show/hide/focus/close/kill per handle |
+| Registry Editor | ✅ | Browse/read/write/delete keys and values *(requires admin for HKLM)* |
+| Installed Programs | ✅ | List all installed apps, trigger silent uninstall |
+| Device Manager | ✅ | Enumerate hardware devices via SetupAPI, uninstall device |
+| TCP Connections | ✅ | List connections, close sessions, block process/port via Windows Firewall |
 | TikTok Bot | ✅ | Multi-client panel: CDP session detection (checks Chrome cookies before signup), auto-signup via Google OAuth (Chrome hidden), account inventory, comment broadcast with rotation across accounts |
 | SOCKS5 Proxy | ✅ | Reverse SOCKS5 — tunnel traffic through the remote machine |
 | File Execute | ✅ | Remote execution of arbitrary files |
-| RunPE / HollowExec | ✅ | In-memory PE injection with PPID spoofing |
+| RunPE | ✅ | In-memory PE injection with PPID spoofing *(builder only)* |
 | UAC Bypass | ✅ | computerdefaults → fodhelper → sdclt → mmc fallback chain *(closed-source)* |
 | UAC Elevation | ✅ | UAC loop/once prompt |
 | Update Client | ✅ | Seamless in-memory stub replacement |
@@ -276,7 +282,7 @@ Native DLL plugins compiled on-demand and delivered in-process. Only disk artifa
 | **Block AV DNS** | Redirects ~80 AV update/telemetry domains to `127.0.0.1` in hosts file. Blocks DoT (port 853). Flushes DNS. |
 | **Block Reset** | Patches `ReAgent.xml` to disable WRE. Blocks Etcher/Rufus/USB tools. |
 | **BotKiller** | Kills processes from `%TEMP%`, masquerade detections, unsigned random-name executables. Cleans startup. |
-| **Disable UAC** | Sets `EnableLUA=0` + prompt suppression registry keys (takes effect on next user logon). |
+| **Disable UAC** | Sets `EnableLUA=0`, `ConsentPromptBehaviorAdmin=0`, `ConsentPromptBehaviorUser=0`, `PromptOnSecureDesktop=0` via PowerShell (requires admin; takes effect on next logon). |
 
 ---
 
@@ -505,10 +511,17 @@ SeroC2/
 - [x] Multi-host + auto-reconnect — round-robin, configurable delay
 - [x] Keylogger — WH_KEYBOARD_LL, window-title headers, **offline disk logging by date**, file browser UI, download/delete log files
 - [x] Crypto Clipper — BTC / ETH / BNB / LTC / TRX / SOL / XMR / XRP / DASH / BCH, global server tab, auto-push on connect
-- [x] Process Manager — native Windows icons (SHGetFileInfo), memory, search, force-kill
+- [x] Process Manager — real-time auto-refresh, CPU/RAM heat-map (blue→orange→red), suspend/resume (NtSuspendProcess/NtResumeProcess), kill, native icons
+- [x] Service Manager — list all services via sc.exe query, start/stop/restart/disable/delete *(admin required for write operations)*
+- [x] Window Manager — EnumWindows P/Invoke, show/hide/focus/restore/minimize/maximize/close/kill per HWND
+- [x] Registry Editor — browse sub-keys, read/write/delete values and keys *(admin required for HKLM writes)*
+- [x] Installed Programs — HKLM+HKCU Uninstall registry enumeration, trigger UninstallString silently
+- [x] Device Manager — SetupAPI enumeration (no WMI), uninstall device by instance ID
+- [x] TCP Connections — netsh advfirewall block by process or port, list/unblock SeroBlock_ rules
+- [x] CPU/RAM telemetry — GetSystemTimes + GlobalMemoryStatusEx sampling every ~15 s, displayed as columns in client list with color-coded brush
 - [x] Reverse SOCKS5 proxy — tunnel traffic through the remote machine, local SOCKS5 listener
 - [x] TikTok Bot — multi-client panel: CDP session detection (navigates to tiktok.com and reads Chrome cookies via `Network.getCookies` — skips signup if session exists), CDP auto-signup via Google OAuth (Chrome hidden, no HVNC), account inventory, comment broadcast with rotation across all accounts; cookie auto-flows from signup to comment panel, post comments on videos and livestreams using an existing session
-- [x] Stub size −2 MB — replaced `System.Management` WMI with direct registry P/Invoke (`RegSetKeyValueW`); stub now **7.44 MB** NativeAOT (all features included)
+- [x] Stub size — **7.91 MB** NativeAOT (all features: + Service Manager, Window Manager, Registry Editor, Installed Apps, Device Manager, TCP Firewall, CPU/RAM telemetry)
 - [x] Polymorphic Crypter — AES-256-CBC, LZNT1, AMSI+ETW bypass *(closed-source)*
 - [x] UAC Bypass chain — computerdefaults → fodhelper → sdclt → mmc *(closed-source)*
 - [x] Rootkit — reflective DLL, NtQuerySystemInformation / NtQueryDirectoryFile hooks

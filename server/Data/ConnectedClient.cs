@@ -58,6 +58,21 @@ public class ConnectedClient : INotifyPropertyChanged
         set { if (_cameraStatus != value) { _cameraStatus = value; Notify(); } }
     }
 
+    private float _cpuUsage;
+    public float CpuUsage
+    {
+        get => _cpuUsage;
+        set { if (_cpuUsage != value) { _cpuUsage = value; Notify(); Notify(nameof(CpuDisplay)); Notify(nameof(CpuBrush)); } }
+    }
+    public string CpuDisplay => _cpuUsage > 0 ? $"{_cpuUsage:F0}%" : "—";
+    public Brush CpuBrush => _cpuUsage < 40 ? _brushGreen : _cpuUsage < 75 ? _brushYellow : _brushRed;
+
+    private long _ramUsed;
+    private long _ramTotal;
+    public long RamUsed  { get => _ramUsed;  set { if (_ramUsed  != value) { _ramUsed  = value; Notify(); Notify(nameof(RamDisplay)); } } }
+    public long RamTotal { get => _ramTotal; set { if (_ramTotal != value) { _ramTotal = value; Notify(); Notify(nameof(RamDisplay)); } } }
+    public string RamDisplay => _ramTotal > 0 ? $"{_ramUsed}/{_ramTotal} MB" : "—";
+
     private int _pingMs = -1;
     public int PingMs
     {

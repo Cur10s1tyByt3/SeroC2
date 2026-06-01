@@ -1,20 +1,84 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Data;
-using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Newtonsoft.Json;
 using SeroServer.Net;
 using SeroServer.Protocol;
 
 namespace SeroServer.UI;
 
+public class ProcEntryVM : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void N([CallerMemberName] string? p = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+
+    public int    Pid      { get; set; }
+    public string Name     { get; set; } = "";
+    public long   Memory   { get; set; }
+    public float  CpuUsage { get; set; }
+    public string Title    { get; set; } = "";
+    public string ExePath  { get; set; } = "";
+
+    public string MemDisplay => Memory > 1024 * 1024
+        ? $"{Memory / 1024 / 1024:F1} GB"
+        : Memory > 1024
+            ? $"{Memory / 1024:N0} MB"
+            : $"{Memory:N0} KB";
+
+    public string CpuDisplay => CpuUsage > 0.05f ? $"{CpuUsage:F1}%" : "—";
+
+    private static readonly Color _cold  = Color.FromRgb(0x0C, 0x0D, 0x18);
+    private static readonly Color _warm1 = Color.FromRgb(0x10, 0x25, 0x4A);
+    private static readonly Color _warm2 = Color.FromRgb(0x1A, 0x3A, 0x28);
+    private static readonly Color _hot1  = Color.FromRgb(0x40, 0x28, 0x10);
+    private static readonly Color _hot2  = Color.FromRgb(0x60, 0x14, 0x14);
+
+    public Brush CpuHeatBrush => HeatBrush(CpuUsage);
+    public Brush MemHeatBrush => HeatBrush(Memory > 0 ? Math.Min(100f, Memory / 10240f * 100f) : 0f);
+    public Brush CpuTextBrush => CpuUsage > 60 ? Brushes.White : new SolidColorBrush(Color.FromRgb(0xAA, 0xB8, 0xD8));
+    public Brush MemTextBrush => Memory > 512 * 1024 ? Brushes.White : new SolidColorBrush(Color.FromRgb(0xAA, 0xB8, 0xD8));
+
+    private static Brush HeatBrush(float pct)
+    {
+        pct = Math.Max(0f, Math.Min(100f, pct));
+        Color c;
+        if (pct < 5f)        c = _cold;
+        else if (pct < 25f)  c = Lerp(_cold, _warm1, (pct - 5f) / 20f);
+        else if (pct < 50f)  c = Lerp(_warm1, _warm2, (pct - 25f) / 25f);
+        else if (pct < 75f)  c = Lerp(_warm2, _hot1, (pct - 50f) / 25f);
+        else                  c = Lerp(_hot1, _hot2, (pct - 75f) / 25f);
+        return new SolidColorBrush(c);
+    }
+
+    private static Color Lerp(Color a, Color b, float t) =>
+        Color.FromRgb(
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t));
+
+    private BitmapSource? _icon;
+    public BitmapSource? IconImage
+    {
+        get => _icon;
+        set { _icon = value; N(); }
+    }
+}
+
 public partial class ProcessManagerWindow : Window
 {
     private readonly TlsServer _server;
     private readonly string    _clientId;
-    private readonly ObservableCollection<ProcEntryVM> _procs = [];
-    private bool _maximized;
+    private readonly ObservableCollection<ProcEntryVM> _all  = [];
+    private          ObservableCollection<ProcEntryVM> _view = [];
+    private bool     _maximized;
+    private string   _filter = "";
+    private readonly DispatcherTimer _autoTimer;
 
     public ProcessManagerWindow(TlsServer server, string clientId, string label)
     {
@@ -22,63 +86,125 @@ public partial class ProcessManagerWindow : Window
         _server   = server;
         _clientId = clientId;
         TxtTitle.Text = label;
+        GridProcs.ItemsSource = _view;
 
-        var view = CollectionViewSource.GetDefaultView(_procs);
-        view.Filter = o => o is ProcEntryVM vm &&
-            (string.IsNullOrEmpty(TxtSearch.Text) ||
-             vm.Name.Contains(TxtSearch.Text, StringComparison.OrdinalIgnoreCase) ||
-             vm.Title.Contains(TxtSearch.Text, StringComparison.OrdinalIgnoreCase));
-        GridProcs.ItemsSource = view;
+        _autoTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _autoTimer.Tick += (_, _) => RequestRefresh();
 
         _server.RegisterHandler(clientId, PacketType.ProcListResult, OnProcList);
 
-        Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.ProcListResult);
-        Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Refresh(); };
+        Closed += (_, _) =>
+        {
+            _autoTimer.Stop();
+            _server.UnregisterHandler(clientId, PacketType.ProcListResult);
+        };
+
+        RequestRefresh();
     }
 
-    private async System.Threading.Tasks.Task Refresh()
+    private void RequestRefresh()
     {
-        TxtStatus.Text = "Loading…";
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcGetList });
+        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcGetList });
     }
 
     private void OnProcList(Packet pkt)
     {
-        var data = JsonConvert.DeserializeObject<ProcListResultData>(pkt.Data);
-        if (data == null) return;
-        // Build VMs on background thread (SHGetFileInfo with SHGFI_USEFILEATTRIBUTES is MTA-safe)
+        var d = JsonConvert.DeserializeObject<ProcListResultData>(pkt.Data);
+        if (d == null) return;
+
         _ = Task.Run(() =>
         {
-            var vms = data.Processes.Select(p => new ProcEntryVM(p)).ToList();
-            _ = Dispatcher.BeginInvoke(() =>
+            var vms = d.Processes.Select(p => new ProcEntryVM
             {
-                _procs.Clear();
-                foreach (var vm in vms) _procs.Add(vm);
-                TxtCount.Text = $"  {vms.Count} processes";
-                TxtStatus.Text = $"{vms.Count} processes loaded";
+                Pid      = p.Pid,
+                Name     = p.Name,
+                Memory   = p.Memory,
+                CpuUsage = p.CpuUsage,
+                Title    = p.Title,
+                ExePath  = p.ExePath,
+                IconImage = GetIcon(p.ExePath)
+            }).ToList();
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                _all.Clear();
+                foreach (var v in vms) _all.Add(v);
+                ApplyFilter();
+                TxtCount.Text = $"({vms.Count})";
+                TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {vms.Count} processes";
             });
         });
     }
 
-    private async void BtnRefresh_Click(object s, RoutedEventArgs e) => await Refresh();
-
-    private async void BtnKill_Click(object s, RoutedEventArgs e)
+    private void ApplyFilter()
     {
-        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
-        var r = MessageBox.Show($"Kill '{vm.Name}' (PID {vm.Pid})?", "Confirm",
-            MessageBoxButton.YesNo, MessageBoxImage.Warning);
-        if (r != MessageBoxResult.Yes) return;
-        await _server.SendToClient(_clientId, new Packet
-        {
-            Type = PacketType.ProcKill,
-            Data = Newtonsoft.Json.JsonConvert.SerializeObject(new ProcKillData { Pid = vm.Pid })
-        });
-        await System.Threading.Tasks.Task.Delay(500);
-        await Refresh();
+        var filtered = string.IsNullOrWhiteSpace(_filter)
+            ? _all
+            : new ObservableCollection<ProcEntryVM>(
+                _all.Where(p => p.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                             || p.Title.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                             || p.Pid.ToString().Contains(_filter)));
+        _view = filtered;
+        GridProcs.ItemsSource = _view;
     }
 
-    private void TxtSearch_TextChanged(object s, System.Windows.Controls.TextChangedEventArgs e)
-        => CollectionViewSource.GetDefaultView(_procs)?.Refresh();
+    private void TxtSearch_TextChanged(object s, TextChangedEventArgs e)
+    {
+        _filter = TxtSearch.Text.Trim();
+        ApplyFilter();
+    }
+
+    private static BitmapSource? GetIcon(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return null;
+        try
+        {
+            using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+            if (icon == null) return null;
+            return System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                icon.Handle, Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
+        }
+        catch { return null; }
+    }
+
+    private void BtnRefresh_Click(object s, RoutedEventArgs e) => RequestRefresh();
+
+    private void BtnKill_Click(object s, RoutedEventArgs e)
+    {
+        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.ProcKill,
+            Data = JsonConvert.SerializeObject(new ProcKillData { Pid = vm.Pid })
+        });
+        TxtStatus.Text = $"Kill → PID {vm.Pid} ({vm.Name})";
+    }
+
+    private void BtnSuspend_Click(object s, RoutedEventArgs e)
+    {
+        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.ProcSuspend,
+            Data = JsonConvert.SerializeObject(new ProcSuspendData2 { Pid = vm.Pid })
+        });
+        TxtStatus.Text = $"Suspend → PID {vm.Pid} ({vm.Name})";
+    }
+
+    private void BtnResume_Click(object s, RoutedEventArgs e)
+    {
+        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.ProcResume,
+            Data = JsonConvert.SerializeObject(new ProcResumeData2 { Pid = vm.Pid })
+        });
+        TxtStatus.Text = $"Resume → PID {vm.Pid} ({vm.Name})";
+    }
+
+    private void AutoRefresh_Checked(object s, RoutedEventArgs e)   => _autoTimer.Start();
+    private void AutoRefresh_Unchecked(object s, RoutedEventArgs e) => _autoTimer.Stop();
 
     private void BtnMaximize_Click(object s, RoutedEventArgs e)
     {
@@ -88,93 +214,17 @@ public partial class ProcessManagerWindow : Window
         BtnMaximize.Content = _maximized ? "❐" : "☐";
     }
 
-    private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
+    private void Window_MouseLeftButtonDown(object s, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed && WindowState != WindowState.Maximized)
+        if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && WindowState != WindowState.Maximized)
             DragMove();
     }
 
-    private void ResizeGrip_DragDelta(object s, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
     {
         Width  = Math.Max(MinWidth,  Width  + e.HorizontalChange);
         Height = Math.Max(MinHeight, Height + e.VerticalChange);
     }
 
     private void Close_Click(object s, RoutedEventArgs e) => Close();
-}
-
-public class ProcEntryVM
-{
-    public int    Pid        { get; }
-    public string Name       { get; }
-    public long   Memory     { get; }
-    public string MemDisplay { get; }
-    public string Title      { get; }
-    public string ExePath    { get; }
-    public ImageSource? IconImage { get; }
-
-    public ProcEntryVM(ProcEntry e)
-    {
-        Pid        = e.Pid;
-        Name       = e.Name;
-        Memory     = e.Memory;
-        MemDisplay = e.Memory < 1024 ? $"{e.Memory} KB" : $"{e.Memory / 1024.0:F1} MB";
-        Title      = e.Title;
-        ExePath    = e.ExePath;
-        // Use extension-based icon (exe paths are on the CLIENT, not this machine)
-        var ext    = string.IsNullOrEmpty(e.ExePath) ? ".exe"
-                     : (System.IO.Path.GetExtension(e.ExePath) is { } x && x.Length > 0 ? x : ".exe");
-        IconImage  = ShellIconByPath.Get("file" + ext);
-    }
-}
-
-internal static class ShellIconByPath
-{
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private struct SHFILEINFO
-    {
-        public nint hIcon; public int iIcon; public uint dwAttributes;
-        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
-        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 80)]  public string szTypeName;
-    }
-    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private static extern nint SHGetFileInfo(string path, uint attr, ref SHFILEINFO shfi, uint sz, uint flags);
-    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool DestroyIcon(nint h);
-
-    private const uint SHGFI_ICON = 0x100, SHGFI_SMALLICON = 0x001, SHGFI_USEFILEATTRIBUTES = 0x010;
-    private const uint FILE_ATTRIBUTE_NORMAL = 0x080;
-
-    private static readonly Dictionary<string, ImageSource?> _cache = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly object _lock = new();
-
-    public static ImageSource? Get(string exePath)
-    {
-        // Cache by filename only to avoid storing full paths
-        string key = System.IO.Path.GetFileName(exePath).ToLowerInvariant();
-        lock (_lock) { if (_cache.TryGetValue(key, out var c)) return c; }
-        var result = Extract(exePath);
-        lock (_lock) { _cache.TryAdd(key, result); }
-        return result;
-    }
-
-    private static ImageSource? Extract(string path)
-    {
-        try
-        {
-            var shfi = new SHFILEINFO();
-            uint flags = SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES;
-            if (SHGetFileInfo(path, FILE_ATTRIBUTE_NORMAL, ref shfi,
-                (uint)System.Runtime.InteropServices.Marshal.SizeOf<SHFILEINFO>(), flags) == 0
-                || shfi.hIcon == 0) return null;
-            try
-            {
-                var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                    shfi.hIcon, System.Windows.Int32Rect.Empty,
-                    System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
-                src.Freeze(); return src;
-            }
-            finally { DestroyIcon(shfi.hIcon); }
-        }
-        catch { return null; }
-    }
 }

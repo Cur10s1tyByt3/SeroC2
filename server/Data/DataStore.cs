@@ -67,8 +67,10 @@ public class DataStore
             record.LastIP = client.IP;
             record.LastCountry = client.Country;
             record.LastMachineName = client.MachineName;
-            record.LastOS = client.OS;
-            record.LastIsAdmin = client.IsAdmin;
+            record.LastOS        = client.OS;
+            record.LastPayload   = client.Payload;
+            record.LastAntivirus = client.Antivirus;
+            record.LastIsAdmin   = client.IsAdmin;
             record.LastSeen = DateTime.UtcNow;
             if (client.Port > 0) record.LastPort = client.Port;
             record.ActivityLog.Add(new ActivityEntry { Action = $"Connected from {client.IP} ({client.Username})" });

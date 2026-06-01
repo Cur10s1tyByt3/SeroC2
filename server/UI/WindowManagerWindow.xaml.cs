@@ -1,0 +1,79 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows;
+using System.Windows.Controls.Primitives;
+using Newtonsoft.Json;
+using SeroServer.Net;
+using SeroServer.Protocol;
+
+namespace SeroServer.UI;
+
+public class WindowEntryVM : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public long   Handle     { get; set; }
+    public string Title      { get; set; } = "";
+    public string ClassName  { get; set; } = "";
+    public int    Pid        { get; set; }
+    public bool   Visible    { get; set; }
+    public string HandleHex  => $"0x{Handle:X8}";
+    public string VisibleStr => Visible ? "Yes" : "No";
+}
+
+public partial class WindowManagerWindow : Window
+{
+    private readonly TlsServer _server;
+    private readonly string    _clientId;
+    private readonly ObservableCollection<WindowEntryVM> _windows = [];
+
+    public WindowManagerWindow(TlsServer server, string clientId, string label)
+    {
+        InitializeComponent();
+        _server   = server;
+        _clientId = clientId;
+        TxtTitle.Text = label;
+        GridWins.ItemsSource = _windows;
+        _server.RegisterHandler(clientId, PacketType.WinListResult, OnList);
+        Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.WinListResult);
+        Refresh();
+    }
+
+    private void Refresh() => _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.WinGetList });
+
+    private void OnList(Packet pkt)
+    {
+        var d = JsonConvert.DeserializeObject<WinListResultData>(pkt.Data);
+        if (d == null) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _windows.Clear();
+            foreach (var w in d.Windows)
+                _windows.Add(new WindowEntryVM { Handle = w.Handle, Title = w.Title, ClassName = w.ClassName, Pid = w.Pid, Visible = w.Visible });
+            TxtCount.Text = $"({d.Windows.Count})";
+            TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {d.Windows.Count} windows";
+        });
+    }
+
+    private void SendAction(string action)
+    {
+        if (GridWins.SelectedItem is not WindowEntryVM vm) return;
+        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.WinAction, Data = JsonConvert.SerializeObject(new WinActionData { Handle = vm.Handle, Action = action }) });
+        TxtStatus.Text = $"{action} → {vm.Title}";
+    }
+
+    private void BtnRefresh_Click(object s, RoutedEventArgs e) => Refresh();
+    private void BtnShow_Click    (object s, RoutedEventArgs e) => SendAction("show");
+    private void BtnHide_Click    (object s, RoutedEventArgs e) => SendAction("hide");
+    private void BtnFocus_Click   (object s, RoutedEventArgs e) => SendAction("focus");
+    private void BtnRestore_Click (object s, RoutedEventArgs e) => SendAction("restore");
+    private void BtnMinimize_Click(object s, RoutedEventArgs e) => SendAction("minimize");
+    private void BtnMaximize_Click2(object s, RoutedEventArgs e) => SendAction("maximize");
+    private void BtnClose_Click2  (object s, RoutedEventArgs e) => SendAction("close");
+    private void BtnKill_Click    (object s, RoutedEventArgs e) => SendAction("kill");
+
+    private void Window_MouseLeftButtonDown(object s, System.Windows.Input.MouseButtonEventArgs e)
+    { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed) DragMove(); }
+    private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)
+    { Width = Math.Max(MinWidth, Width + e.HorizontalChange); Height = Math.Max(MinHeight, Height + e.VerticalChange); }
+    private void Close_Click(object s, RoutedEventArgs e) => Close();
+}

@@ -114,6 +114,95 @@ internal static class TcpManagerFeature
         if (!int.TryParse(ep[(idx + 1)..], out port)) return false;
         return true;
     }
+
+    // ── Firewall blocking via netsh advfirewall ──────────────────────────────
+
+    internal static string BlockProcess(string processName, int port, string direction)
+    {
+        try
+        {
+            var rules = new List<string>();
+            var ruleName = $"SeroBlock_{System.IO.Path.GetFileNameWithoutExtension(processName)}_{port}";
+
+            if (!string.IsNullOrEmpty(processName) && processName != "*")
+            {
+                var dir = direction == "in" ? "in" : direction == "out" ? "out" : "";
+                if (dir == "" || dir == "in")
+                    RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_IN\" dir=in action=block program=\"{processName}\" enable=yes");
+                if (dir == "" || dir == "out")
+                    RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_OUT\" dir=out action=block program=\"{processName}\" enable=yes");
+                rules.Add(ruleName + "_IN");
+                rules.Add(ruleName + "_OUT");
+            }
+
+            if (port > 0)
+            {
+                var pRuleName = $"SeroBlock_Port{port}";
+                var dir = direction == "in" ? "in" : direction == "out" ? "out" : "";
+                if (dir == "" || dir == "in")
+                    RunNetsh($"advfirewall firewall add rule name=\"{pRuleName}_IN\" dir=in action=block protocol=TCP localport={port} enable=yes");
+                if (dir == "" || dir == "out")
+                    RunNetsh($"advfirewall firewall add rule name=\"{pRuleName}_OUT\" dir=out action=block protocol=TCP remoteport={port} enable=yes");
+                rules.Add(pRuleName + "_IN");
+                rules.Add(pRuleName + "_OUT");
+            }
+
+            var result = new TcpFirewallRulesResultStub { Rules = rules.Select(r => new TcpFirewallRuleStub { RuleName = r, ProcessName = processName, Port = port, Direction = direction }).ToList() };
+            return System.Text.Json.JsonSerializer.Serialize(result, SeroJson.Default.TcpFirewallRulesResultStub);
+        }
+        catch (Exception ex)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new TcpFirewallRulesResultStub(), SeroJson.Default.TcpFirewallRulesResultStub);
+        }
+    }
+
+    internal static void UnblockRule(string ruleName)
+    {
+        try { RunNetsh($"advfirewall firewall delete rule name=\"{ruleName}\""); }
+        catch { }
+    }
+
+    internal static string ListFirewallRules()
+    {
+        var rules = new List<TcpFirewallRuleStub>();
+        try
+        {
+            var output = RunNetshOutput("advfirewall firewall show rule name=all");
+            // Parse output to find SeroBlock_ rules
+            string? rName = null;
+            foreach (var line in output.Split('\n'))
+            {
+                var l = line.Trim();
+                if (l.StartsWith("Rule Name:", StringComparison.OrdinalIgnoreCase))
+                {
+                    rName = l[(l.IndexOf(':') + 1)..].Trim();
+                    if (!rName.StartsWith("SeroBlock_")) rName = null;
+                }
+                else if (rName != null && l.StartsWith("Direction:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dir = l[(l.IndexOf(':') + 1)..].Trim().ToLower();
+                    rules.Add(new TcpFirewallRuleStub { RuleName = rName, Direction = dir });
+                    rName = null;
+                }
+            }
+        }
+        catch { }
+        return System.Text.Json.JsonSerializer.Serialize(new TcpFirewallRulesResultStub { Rules = rules }, SeroJson.Default.TcpFirewallRulesResultStub);
+    }
+
+    private static void RunNetsh(string args)
+    {
+        using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("netsh", args)
+            { CreateNoWindow = true, UseShellExecute = false });
+        p?.WaitForExit(5000);
+    }
+
+    private static string RunNetshOutput(string args)
+    {
+        using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("netsh", args)
+            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true });
+        return p?.StandardOutput.ReadToEnd() ?? "";
+    }
 }
 
 internal class TcpEntryStub

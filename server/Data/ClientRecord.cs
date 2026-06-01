@@ -11,8 +11,10 @@ public class ClientRecord
     public string LastIP { get; set; } = string.Empty;
     public string LastCountry { get; set; } = string.Empty;
     public string LastMachineName { get; set; } = string.Empty;
-    public string LastOS { get; set; } = string.Empty;
-    public bool LastIsAdmin { get; set; }
+    public string LastOS        { get; set; } = string.Empty;
+    public string LastPayload   { get; set; } = string.Empty;
+    public string LastAntivirus { get; set; } = string.Empty;
+    public bool   LastIsAdmin   { get; set; }
     public int    LastPort { get; set; }
     public string Tag { get; set; } = string.Empty;
     public string AssignedId { get; set; } = string.Empty;

