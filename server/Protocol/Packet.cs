@@ -505,9 +505,11 @@ public class ClipperDetectedData
 // ── Hardware Stats ────────────────────────────────────
 public class HardwareStatsData
 {
-    public float  CpuUsage  { get; set; }   // 0-100 %
-    public long   RamUsed   { get; set; }   // MB
-    public long   RamTotal  { get; set; }   // MB
+    public float  CpuUsage  { get; set; }
+    public long   RamUsed   { get; set; }
+    public long   RamTotal  { get; set; }
+    public string CpuName   { get; set; } = string.Empty;
+    public string GpuName   { get; set; } = string.Empty;
 }
 
 public class PerfMonStartData { public int IntervalMs { get; set; } = 1000; }

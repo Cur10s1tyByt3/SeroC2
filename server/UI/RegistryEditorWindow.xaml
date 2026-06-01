@@ -1,64 +1,155 @@
-﻿<Window x:Class="SeroServer.UI.RegistryEditorWindow"
+<Window x:Class="SeroServer.UI.RegistryEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Registry Editor" Width="1000" Height="600" MinWidth="720" MinHeight="420"
+        Title="Registry Editor" Width="1020" Height="620" MinWidth="740" MinHeight="440"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize" WindowStyle="None"
         AllowsTransparency="True" Background="Transparent">
+
+    <Window.Resources>
+        <!-- TreeView dark style -->
+        <Style TargetType="TreeView">
+            <Setter Property="Background"   Value="#07080E"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground"   Value="#CDD0E8"/>
+            <Setter Property="Padding"      Value="4"/>
+        </Style>
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Foreground"   Value="#CDD0E8"/>
+            <Setter Property="Background"   Value="Transparent"/>
+            <Setter Property="Padding"      Value="2,3"/>
+            <Setter Property="FontSize"     Value="12"/>
+            <Setter Property="FontFamily"   Value="Consolas"/>
+            <Setter Property="IsExpanded"   Value="False"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#152040"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0D1020"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background"      Value="Transparent"/>
+            <Setter Property="Foreground"      Value="#CDD0E8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#0F1525"/></Trigger>
+                <Trigger Property="IsSelected"  Value="True"><Setter Property="Background" Value="#152040"/><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}" Padding="8,5"><ContentPresenter VerticalAlignment="Center"/></Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="Transparent"/></Trigger></Style.Triggers>
+        </Style>
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#0F1020"/><Setter Property="BorderBrush" Value="#1E2038"/>
+            <Setter Property="Template"><Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="#0F1020" BorderBrush="#1E2038" BorderThickness="1" CornerRadius="8" Padding="4">
+                        <Border.Effect><DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.7" Color="#000"/></Border.Effect>
+                        <ItemsPresenter/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value></Setter>
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#DDE0F0"/>
+            <Setter Property="FontSize" Value="12"/><Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
     <Border x:Name="RootBorder" CornerRadius="8" BorderThickness="1">
         <Border.Background><SolidColorBrush Color="#0C0D18"/></Border.Background>
         <Border.BorderBrush><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#2A2E50" Offset="0"/><GradientStop Color="#141628" Offset="1"/></LinearGradientBrush></Border.BorderBrush>
         <Border.Effect><DropShadowEffect Color="#000" BlurRadius="36" ShadowDepth="0" Opacity="0.80"/></Border.Effect>
         <DockPanel>
             <Rectangle DockPanel.Dock="Top" Height="2"><Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#4A85F5" Offset="0"/><GradientStop Color="#7C5CE8" Offset="1"/></LinearGradientBrush></Rectangle.Fill></Rectangle>
+
+            <!-- Title bar -->
             <Border DockPanel.Dock="Top" Height="42" Background="#111222" MouseLeftButtonDown="Window_MouseLeftButtonDown">
                 <Grid Margin="14,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#B0C0F0" Margin="0,0,12,0">Registry Editor</TextBlock>
-                        <TextBlock x:Name="TxtTitle" FontSize="11" Foreground="#4A5878" FontFamily="Consolas"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#4A85F5" Margin="0,0,12,0">Registry Editor</TextBlock>
+                        <TextBlock x:Name="TxtTitle" FontSize="11" Foreground="#8890B8" FontFamily="Consolas"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="&#x2715;" Width="30" Height="27" Style="{StaticResource SRedBtn}" FontSize="11" Padding="0" Click="Close_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
-            <!-- Path bar -->
+
+            <!-- Path / address bar -->
             <Border DockPanel.Dock="Top" Background="#0A0B14" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,6">
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBox x:Name="TxtPath" Grid.Column="0" Height="28" Style="{StaticResource STxt}" FontSize="11" FontFamily="Consolas" KeyDown="TxtPath_KeyDown"/>
-                    <Button Grid.Column="1" Content="Go" Height="28" Padding="16,0" Margin="6,0,0,0" Style="{StaticResource SBtn}" FontSize="11" Click="BtnGo_Click"/>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="&#x25B6;" Foreground="#3A4060" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="TxtPath" Grid.Column="1" Height="28" Style="{StaticResource STxt}"
+                             FontSize="11" FontFamily="Consolas" KeyDown="TxtPath_KeyDown"/>
+                    <Button Grid.Column="2" Content="Go" Height="28" Padding="14,0" Margin="6,0,0,0"
+                            Style="{StaticResource SBtn}" FontSize="11" Click="BtnGo_Click"/>
                 </Grid>
             </Border>
-            <!-- Action bar -->
-            <Border DockPanel.Dock="Top" Background="#090A12" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,4">
+
+            <!-- Action toolbar -->
+            <Border DockPanel.Dock="Top" Background="#090A12" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,5">
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="New Key" Height="26" Padding="10,0" Margin="0,0,4,0" Style="{StaticResource SBtn}" FontSize="11" Click="BtnNewKey_Click"/>
-                    <Button Content="New Value" Height="26" Padding="10,0" Margin="0,0,4,0" Style="{StaticResource SBtn}" FontSize="11" Click="BtnNewValue_Click"/>
-                    <Button Content="Delete Key" Height="26" Padding="10,0" Margin="0,0,4,0" Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnDeleteKey_Click"/>
-                    <Button Content="Delete Value" Height="26" Padding="10,0" Margin="0,0,0,0" Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnDeleteValue_Click"/>
+                    <Button Content="&#x2795; New Key"   Height="26" Padding="10,0" Margin="0,0,4,0" Style="{StaticResource SBtn}"    FontSize="11" Click="BtnNewKey_Click"/>
+                    <Button Content="&#x2795; New Value" Height="26" Padding="10,0" Margin="0,0,8,0" Style="{StaticResource SBtn}"    FontSize="11" Click="BtnNewValue_Click"/>
+                    <Rectangle Width="1" Height="16" Fill="#1E2038" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button Content="&#x2796; Delete Key"   Height="26" Padding="10,0" Margin="0,0,4,0" Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnDeleteKey_Click"/>
+                    <Button Content="&#x2796; Delete Value" Height="26" Padding="10,0" Margin="0,0,0,0" Style="{StaticResource SRedBtn}" FontSize="11" Click="BtnDeleteValue_Click"/>
                 </StackPanel>
             </Border>
+
+            <!-- Status bar -->
             <Border DockPanel.Dock="Bottom" Height="26" Background="#0C0D18" BorderBrush="#181A28" BorderThickness="0,1,0,0">
                 <Grid>
-                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#353858" FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="12,0"/>
-                    <Thumb Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" Cursor="SizeNWSE" DragDelta="ResizeGrip_DragDelta">
-                        <Thumb.Template><ControlTemplate TargetType="Thumb"><Path Data="M2,12 L12,2 M5,12 L12,5 M9,12 L12,9" Stroke="#4A85F5" StrokeThickness="1.2" Opacity="0.5"/></ControlTemplate></Thumb.Template>
+                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#353858"
+                               FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="12,0"/>
+                    <Thumb Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,4,0" Cursor="SizeNWSE" DragDelta="ResizeGrip_DragDelta">
+                        <Thumb.Template><ControlTemplate TargetType="Thumb">
+                            <Path Data="M2,12 L12,2 M5,12 L12,5 M9,12 L12,9" Stroke="#4A85F5" StrokeThickness="1.2" Opacity="0.5"/>
+                        </ControlTemplate></Thumb.Template>
                     </Thumb>
                 </Grid>
             </Border>
+
+            <!-- Main content: TreeView | splitter | DataGrid -->
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260" MinWidth="160"/>
+                    <ColumnDefinition Width="280" MinWidth="160"/>
                     <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <!-- Sub-keys tree -->
-                <ListBox x:Name="ListSubKeys" Grid.Column="0"
-                         Background="#0A0B14" Foreground="#CDD0E8" BorderThickness="0"
-                         FontFamily="Consolas" FontSize="12"
-                         SelectionChanged="SubKey_SelectionChanged"/>
-                <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" Background="#181A28" Cursor="SizeWE"/>
-                <!-- Values -->
+
+                <!-- Registry key tree -->
+                <TreeView x:Name="RegTree" Grid.Column="0"
+                          Background="#07080E" BorderThickness="0"
+                          SelectedItemChanged="RegTree_SelectedItemChanged">
+                    <TreeView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="&#x2795; New Key"   Click="BtnNewKey_Click"/>
+                            <MenuItem Header="&#x2796; Delete Key" Click="BtnDeleteKey_Click"/>
+                            <Separator/>
+                            <MenuItem Header="&#x27F3; Refresh"   Click="TreeRefresh_Click"/>
+                        </ContextMenu>
+                    </TreeView.ContextMenu>
+                </TreeView>
+
+                <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch"
+                              Background="#181A28" Cursor="SizeWE"/>
+
+                <!-- Registry values -->
                 <DataGrid x:Name="GridValues" Grid.Column="2"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           Background="#0C0D18" Foreground="#CDD0E8" BorderThickness="0"
@@ -66,12 +157,31 @@
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#0C0E1A"
                           HeadersVisibility="Column" FontFamily="Consolas" FontSize="11"
                           SelectionMode="Single" CanUserAddRows="False"
+                          VirtualizingStackPanel.IsVirtualizing="True"
                           ColumnHeaderStyle="{StaticResource SColHeader}"
                           MouseDoubleClick="GridValues_DoubleClick">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="&#x270E; Edit Value"   Click="EditValue_Click"/>
+                            <MenuItem Header="&#x2796; Delete Value" Click="BtnDeleteValue_Click"/>
+                            <Separator/>
+                            <MenuItem Header="&#x2795; New Value"    Click="BtnNewValue_Click"/>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="180"/>
-                        <DataGridTextColumn Header="TYPE" Binding="{Binding ValueType}" Width="90"/>
-                        <DataGridTextColumn Header="DATA" Binding="{Binding Data}" Width="*"/>
+                        <DataGridTemplateColumn Header="NAME" Width="180" SortMemberPath="Name">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="ValIcon" Text="&#x25A1;" FontSize="10"
+                                                   Foreground="#4A85F5" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="TYPE" Binding="{Binding ValueType}" Width="90"  Foreground="#806040"/>
+                        <DataGridTextColumn Header="DATA" Binding="{Binding Data}"      Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

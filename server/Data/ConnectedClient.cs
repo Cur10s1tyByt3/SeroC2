@@ -62,10 +62,17 @@ public class ConnectedClient : INotifyPropertyChanged
     public float CpuUsage
     {
         get => _cpuUsage;
-        set { if (_cpuUsage != value) { _cpuUsage = value; Notify(); Notify(nameof(CpuDisplay)); Notify(nameof(CpuBrush)); } }
+        set { if (_cpuUsage != value) { _cpuUsage = value; Notify(); Notify(nameof(CpuBrush)); } }
     }
-    public string CpuDisplay => _cpuUsage > 0 ? $"{_cpuUsage:F0}%" : "—";
     public Brush CpuBrush => _cpuUsage < 40 ? _brushGreen : _cpuUsage < 75 ? _brushYellow : _brushRed;
+
+    private string _cpuName = string.Empty;
+    public string CpuName { get => _cpuName; set { if (_cpuName != value) { _cpuName = value; Notify(); Notify(nameof(CpuDisplay)); } } }
+    public string CpuDisplay => string.IsNullOrEmpty(_cpuName) ? "—" : _cpuName;
+
+    private string _gpuName = string.Empty;
+    public string GpuName { get => _gpuName; set { if (_gpuName != value) { _gpuName = value; Notify(); } } }
+    public string GpuDisplay => string.IsNullOrEmpty(_gpuName) ? "—" : _gpuName;
 
     private long _ramUsed;
     private long _ramTotal;

@@ -126,10 +126,14 @@
                             </TextBlock>
                         </StackPanel>
                     </StackPanel>
-                    <Button x:Name="BtnMaxFun" Content="☐" Width="28" Height="26" FontSize="13" Click="BtnMax_Click" HorizontalAlignment="Right" Margin="0,0,4,0">
-                            <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#606880"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="4,2"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter></Style></Button.Style>
-                    </Button>
-                    <Button Content="✕" Width="28" Height="26" FontSize="10" Click="Close_Click" HorizontalAlignment="Right">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="BtnMaxFun" Content="&#x2610;" Width="28" Height="26" FontSize="12"
+                            Click="BtnMax_Click" Style="{StaticResource SBtn}" Padding="0" Margin="0,0,2,0"/>
+                    <Button Content="&#x2715;" Width="28" Height="26" FontSize="11"
+                            Click="Close_Click" Style="{StaticResource SRedBtn}" Padding="0"/>
+                    </StackPanel>
+                    <!-- legacy placeholder for old close button that now lives in the StackPanel above -->
+                    <Button Visibility="Collapsed" Content="✕" Width="0" Height="0" FontSize="10" Click="Close_Click" HorizontalAlignment="Right">
                         <Button.Style><Style TargetType="Button">
                             <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#f38ba8"/>
                             <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>

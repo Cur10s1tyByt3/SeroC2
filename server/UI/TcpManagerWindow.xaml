@@ -1,4 +1,4 @@
-<Window x:Class="SeroServer.UI.TcpManagerWindow"
+﻿<Window x:Class="SeroServer.UI.TcpManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TCP Connections"
@@ -109,8 +109,8 @@
                     MouseLeftButtonDown="Window_MouseLeftButtonDown">
                 <Grid Margin="14,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#B0C0F0" Margin="0,0,12,0">TCP Connections</TextBlock>
-                        <TextBlock x:Name="TxtTitle" FontSize="11" Foreground="#4A5878" FontFamily="Consolas"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#4A85F5" Margin="0,0,12,0">TCP Connections</TextBlock>
+                        <TextBlock x:Name="TxtTitle" FontSize="11" Foreground="#8890B8" FontFamily="Consolas"/>
                         <TextBlock x:Name="TxtCount" FontSize="11" Foreground="#3A4860" FontFamily="Consolas" Margin="8,0,0,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -193,9 +193,6 @@
                     <ContextMenu>
                         <MenuItem Header="Close Connection" Click="CloseConn_Click"/>
                         <MenuItem Header="Kill Process"     Click="KillProc_Click"/>
-                        <Separator/>
-                        <MenuItem Header="Block Process"    Click="BlockProcess_Click"/>
-                        <MenuItem Header="Block Port"       Click="BlockPort_Click"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
                 <DataGrid.Columns>

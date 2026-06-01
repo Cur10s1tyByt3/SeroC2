@@ -889,6 +889,7 @@ public partial class ServerWindow : Window
     }
 
     // ── Miscellaneous quick-send to selected clients ────────────────────────
+    #pragma warning disable CS4014
     private void QuickExcludeCDrive_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
@@ -961,6 +962,7 @@ public partial class ServerWindow : Window
             Dispatcher.BeginInvoke(() => Log($"[+] Block WSReset sent to {clients.Count} client(s)."));
         });
     }
+    #pragma warning restore CS4014
 
     private TikTokWindow? _tikTokWindow;
     private void TikTok_Click(object sender, RoutedEventArgs e)

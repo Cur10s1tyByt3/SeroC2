@@ -159,14 +159,25 @@ public partial class ProcessManagerWindow : Window
 
     private static BitmapSource? GetIcon(string path)
     {
-        if (string.IsNullOrEmpty(path)) return null;
+        // ExePath is the client machine's path — skip if it doesn't exist on the server.
+        // CreateBitmapSourceFromHIcon must run on the UI thread (STA COM requirement).
+        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return null;
         try
         {
-            using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-            if (icon == null) return null;
-            return System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                icon.Handle, Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
+            BitmapSource? result = null;
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                    if (icon == null) return;
+                    result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                        icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    result?.Freeze();
+                }
+                catch { }
+            });
+            return result;
         }
         catch { return null; }
     }

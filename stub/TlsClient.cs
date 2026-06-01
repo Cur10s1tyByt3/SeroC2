@@ -767,7 +767,43 @@ internal class TlsClient : IDisposable
             }
         }
         catch { }
-        return new HardwareStatsStub { CpuUsage = cpu, RamUsed = ramUsed, RamTotal = ramTotal };
+        var cpuName = _cpuName ??= GetCpuName();
+        var gpuName = _gpuName ??= GetGpuName();
+        return new HardwareStatsStub { CpuUsage = cpu, RamUsed = ramUsed, RamTotal = ramTotal, CpuName = cpuName, GpuName = gpuName };
+    }
+
+    private static string? _cpuName;
+    private static string? _gpuName;
+
+    private static string GetCpuName()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                @"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+            var name = key?.GetValue("ProcessorNameString")?.ToString() ?? "";
+            return name.Trim().Replace("  ", " ");
+        }
+        catch { return ""; }
+    }
+
+    private static string GetGpuName()
+    {
+        try
+        {
+            var classKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}");
+            if (classKey == null) return "";
+            foreach (var sub in classKey.GetSubKeyNames())
+            {
+                using var dev = classKey.OpenSubKey(sub);
+                var desc = dev?.GetValue("DriverDesc")?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(desc) && !desc.Contains("Microsoft", StringComparison.OrdinalIgnoreCase))
+                    return desc.Trim();
+            }
+            return "";
+        }
+        catch { return ""; }
     }
 
     // ── Network sampling (GetIfTable) ───────────────────────────────────────
@@ -1914,7 +1950,7 @@ internal class CdpSignupStatusStub { public string Step { get; set; } = ""; publ
 internal class CdpSignupResultStub  { public bool Success { get; set; } public string Account { get; set; } = ""; public string Cookie { get; set; } = ""; public string Error { get; set; } = ""; }
 
 // ── Hardware Stats + PerfMon ─────────────────────────
-internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } }
+internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; }
 internal class PerfMonStartStub  { public int IntervalMs { get; set; } = 1000; }
 internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } }
 

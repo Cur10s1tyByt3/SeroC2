@@ -273,19 +273,24 @@
 
                     <!-- Left: input toggles + app launcher -->
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                        <CheckBox x:Name="ChkMouse"    Content="MOUSE"    IsChecked="True"
-                                  Style="{StaticResource PillToggle}" Margin="0,0,5,0"/>
-                        <CheckBox x:Name="ChkKeyboard" Content="KEYBOARD" IsChecked="True"
-                                  Style="{StaticResource PillToggle}" Margin="0,0,8,0"/>
-                        <!-- Clipboard: paste server clipboard → client hidden desktop -->
-                        <Button x:Name="BtnClipboard" Height="26" Padding="9,0"
-                                Style="{StaticResource IconBtn}" FontSize="10" FontWeight="SemiBold"
-                                Click="BtnClipboard_Click" Margin="0,0,14,0"
-                                ToolTip="Paste server clipboard to remote desktop (Ctrl+V)">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#x2398;" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="PASTE" FontSize="10" VerticalAlignment="Center"/>
-                            </StackPanel>
+                        <!-- Mouse toggle — icon only -->
+                        <CheckBox x:Name="ChkMouse" IsChecked="True"
+                                  Style="{StaticResource PillToggle}" Margin="0,0,4,0"
+                                  ToolTip="Mouse input">
+                            <TextBlock Text="&#x1F5B1;" FontSize="13"/>
+                        </CheckBox>
+                        <!-- Keyboard toggle — icon only -->
+                        <CheckBox x:Name="ChkKeyboard" IsChecked="True"
+                                  Style="{StaticResource PillToggle}" Margin="0,0,8,0"
+                                  ToolTip="Keyboard input">
+                            <TextBlock Text="&#x2395;" FontSize="12"/>
+                        </CheckBox>
+                        <!-- Clipboard: push server clipboard text to hidden desktop clipboard -->
+                        <Button x:Name="BtnClipboard" Height="26" Width="28" Padding="0"
+                                Style="{StaticResource IconBtn}" FontSize="14"
+                                Click="BtnClipboard_Click" Margin="0,0,8,0"
+                                ToolTip="Clipboard — push server clipboard to remote desktop">
+                            <TextBlock Text="&#x2398;" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Button>
                         <Rectangle Width="1" Height="16" Margin="0,0,14,0">
                             <Rectangle.Fill><SolidColorBrush Color="#1E2038"/></Rectangle.Fill>
