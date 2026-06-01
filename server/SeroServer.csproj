@@ -18,6 +18,15 @@
     <Resource Include="photo.png" />
     <Resource Include="telegram.png" />
     <Resource Include="serofondtransparent.png" />
+    <Resource Include="Resources\crypto\btc.png" />
+    <Resource Include="Resources\crypto\eth.png" />
+    <Resource Include="Resources\crypto\ltc.png" />
+    <Resource Include="Resources\crypto\trx.png" />
+    <Resource Include="Resources\crypto\sol.png" />
+    <Resource Include="Resources\crypto\xmr.png" />
+    <Resource Include="Resources\crypto\xrp.png" />
+    <Resource Include="Resources\crypto\dash.png" />
+    <Resource Include="Resources\crypto\bch.png" />
   </ItemGroup>
 
   <ItemGroup>

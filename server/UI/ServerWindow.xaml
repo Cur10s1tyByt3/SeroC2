@@ -1591,7 +1591,9 @@
                 <TabItem>
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#x20BF;" Foreground="#F7931A" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <Image Source="/Resources/crypto/btc.png" Width="14" Height="14"
+                                   Margin="0,0,5,0" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
                             <TextBlock Text="Clipper"/>
                         </StackPanel>
                     </TabItem.Header>
@@ -1628,13 +1630,9 @@
                                     </Border.BorderBrush>
                                     <Grid>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <!-- Bitcoin logo-style circle -->
-                                            <Border Width="28" Height="28" CornerRadius="14" Margin="0,0,10,0"
-                                                    Background="#1A1408" BorderBrush="#F7931A" BorderThickness="1.5">
-                                                <TextBlock Text="₿" FontSize="13" FontWeight="Bold"
-                                                           Foreground="#F7931A" HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                            </Border>
+                                            <!-- Bitcoin logo -->
+                                            <Image Source="/Resources/crypto/btc.png" Width="28" Height="28"
+                                                   Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                             <StackPanel VerticalAlignment="Center">
                                                 <TextBlock Text="CRYPTO CLIPPER" FontSize="10" FontWeight="Bold"
                                                            FontFamily="Consolas" Foreground="#C8A060"/>
@@ -1709,35 +1707,35 @@
                                             <!-- BTC - orange/gold -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="₿" Foreground="#F7931A" FontSize="11" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/btc.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="BTC" Foreground="#F7931A" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperBTC" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Bitcoin — P2PKH/P2SH/Bech32"/></Grid>
                                             <!-- ETH - blue/purple -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="Ξ" Foreground="#627EEA" FontSize="12" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/eth.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="ETH" Foreground="#627EEA" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperETH" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Ethereum / BNB (0x...)"/></Grid>
                                             <!-- LTC - silver/green -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="Ł" Foreground="#A0A0B8" FontSize="11" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/ltc.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="LTC" Foreground="#A0A0B8" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperLTC" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Litecoin (L... / M...)"/></Grid>
                                             <!-- TRX - red -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="◈" Foreground="#EF0027" FontSize="10" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/trx.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="TRX" Foreground="#EF0027" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperTRX" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="TRON (T...)"/></Grid>
                                             <!-- SOL - purple gradient -->
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="◎" Foreground="#9945FF" FontSize="10" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/sol.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="SOL" Foreground="#9945FF" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperSOL" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Solana (base58, 32-44 chars)"/></Grid>
@@ -1748,28 +1746,28 @@
                                             <!-- XMR - orange-red -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="ɱ" Foreground="#FF6600" FontSize="12" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/xmr.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="XMR" Foreground="#FF6600" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperXMR" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Monero (4...)"/></Grid>
                                             <!-- XRP - cyan -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="✕" Foreground="#00AAE4" FontSize="10" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/xrp.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="XRP" Foreground="#00AAE4" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperXRP" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Ripple (r...)"/></Grid>
                                             <!-- DASH - teal -->
                                             <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="D" Foreground="#008CE7" FontSize="11" FontWeight="Bold" FontFamily="Consolas" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/dash.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="DASH" Foreground="#008CE7" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperDASH" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Dash (X...)"/></Grid>
                                             <!-- BCH - green -->
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="₿" Foreground="#4CC947" FontSize="11" FontWeight="Bold" Margin="0,0,4,0"/>
+                                                    <Image Source="/Resources/crypto/bch.png" Width="22" Height="22" Margin="0,0,5,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="BCH" Foreground="#4CC947" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                                 <TextBox x:Name="ClipperBCH" Grid.Column="1" Style="{StaticResource STxt}" Height="24" FontSize="10" ToolTip="Bitcoin Cash"/></Grid>
