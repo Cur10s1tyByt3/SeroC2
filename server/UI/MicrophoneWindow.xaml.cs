@@ -317,9 +317,19 @@ public partial class MicrophoneWindow : Window
         }
     }
 
+    private bool _maximized;
+    private void BtnMax_Click(object s, RoutedEventArgs e)
+    {
+        _maximized = !_maximized;
+        WindowState = _maximized ? WindowState.Maximized : WindowState.Normal;
+        RootBorder.CornerRadius = _maximized ? new CornerRadius(0) : new CornerRadius(8);
+        BtnMax.Content = _maximized ? "❐" : "☐";
+    }
+
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        if (e.LeftButton == MouseButtonState.Pressed && WindowState != WindowState.Maximized)
+            DragMove();
     }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }

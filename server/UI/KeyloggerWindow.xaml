@@ -9,7 +9,7 @@
         AllowsTransparency="True"
         Background="Transparent">
 
-    <Border CornerRadius="8" BorderThickness="1" ClipToBounds="True">
+    <Border x:Name="RootBorder" CornerRadius="8" BorderThickness="1" ClipToBounds="True">
         <Border.Background><SolidColorBrush Color="#0C0D18"/></Border.Background>
         <Border.BorderBrush>
             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -55,14 +55,12 @@
                         </Border>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button x:Name="BtnStart"  Content="Start"   Height="28" Padding="14,0" Margin="0,0,4,0"
-                                Style="{StaticResource SGreenBtn}" FontSize="11" Click="BtnStart_Click"/>
-                        <Button x:Name="BtnStop"   Content="Stop"    Height="28" Padding="14,0" Margin="0,0,4,0"
-                                Style="{StaticResource SRedBtn}"   FontSize="11" Click="BtnStop_Click" IsEnabled="False"/>
-                        <Button Content="Refresh"   Height="28" Padding="10,0" Margin="0,0,4,0"
-                                Style="{StaticResource SBtn}"      FontSize="11" Click="BtnRefresh_Click"/>
-                        <Button Content="✕"         Width="30"  Height="28" FontSize="11"
-                                Style="{StaticResource SRedBtn}"   Click="Close_Click" Padding="0"/>
+                        <Button Content="⟳ Refresh" Height="28" Padding="10,0" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="11" Click="BtnRefresh_Click"/>
+                        <Button x:Name="BtnMax" Content="☐" Width="30" Height="28" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="13" Padding="0" Click="BtnMax_Click"/>
+                        <Button Content="✕" Width="30" Height="28" FontSize="11"
+                                Style="{StaticResource SRedBtn}" Click="Close_Click" Padding="0"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -70,7 +68,7 @@
             <!-- Status bar -->
             <Border DockPanel.Dock="Bottom" Height="28" Background="#111222"
                     BorderBrush="#1A1C2E" BorderThickness="0,1,0,0">
-                <TextBlock x:Name="TxtStatus" Text="Click Start to begin capturing"
+                <TextBlock x:Name="TxtStatus" Text="Capturing — logs saved on client"
                            Foreground="#404868" FontSize="11" FontFamily="Consolas"
                            VerticalAlignment="Center" Margin="14,0"/>
             </Border>

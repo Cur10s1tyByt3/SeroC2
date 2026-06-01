@@ -88,24 +88,16 @@
 
                         <Border DockPanel.Dock="Top" Background="#111222" BorderBrush="#1A1C2E"
                                 BorderThickness="0,0,0,1" Padding="10,6">
-                            <Grid>
-                                <TextBlock Text="CLIENTS" FontSize="9" FontWeight="Bold"
-                                           Foreground="#C0f38ba8" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="All"  Height="20" Padding="8,0" Margin="0,0,4,0"
-                                            Style="{StaticResource SBtn}" FontSize="9" Click="BtnSelectAll_Click"/>
-                                    <Button Content="None" Height="20" Padding="8,0"
-                                            Style="{StaticResource SBtn}" FontSize="9" Click="BtnSelectNone_Click"/>
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock Text="CLIENTS" FontSize="9" FontWeight="Bold"
+                                       Foreground="#C0f38ba8" FontFamily="Consolas" VerticalAlignment="Center"/>
                         </Border>
 
                         <ListBox x:Name="ClientList" Background="Transparent" BorderThickness="0"
                                  Foreground="#C0CCDD" FontFamily="Segoe UI" FontSize="12">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
-                                    <Setter Property="Background"   Value="Transparent"/>
-                                    <Setter Property="Padding"      Value="8,5"/>
+                                    <Setter Property="Background"      Value="Transparent"/>
+                                    <Setter Property="Padding"         Value="10,5"/>
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="Template">
                                         <Setter.Value>
@@ -126,19 +118,10 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
-                                        <CheckBox IsChecked="{Binding Selected, Mode=TwoWay}"
-                                                  Content="{Binding Label}"
-                                                  Foreground="#C0CCDD" FontSize="11"
-                                                  Checked="Client_SelectChanged"
-                                                  Unchecked="Client_SelectChanged">
-                                            <CheckBox.Style>
-                                                <Style TargetType="CheckBox">
-                                                    <Setter Property="Cursor" Value="Hand"/>
-                                                </Style>
-                                            </CheckBox.Style>
-                                        </CheckBox>
+                                        <TextBlock Text="{Binding Label}" Foreground="#C0CCDD"
+                                                   FontSize="11" FontFamily="Segoe UI"/>
                                         <TextBlock Text="{Binding Status}" Foreground="#505878"
-                                                   FontSize="9" FontFamily="Consolas" Margin="18,0,0,2"/>
+                                                   FontSize="9" FontFamily="Consolas" Margin="0,1,0,2"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

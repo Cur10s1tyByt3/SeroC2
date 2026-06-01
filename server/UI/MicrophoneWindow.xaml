@@ -9,7 +9,7 @@
         AllowsTransparency="True"
         Background="Transparent">
 
-    <Border CornerRadius="8" BorderThickness="1" ClipToBounds="True">
+    <Border x:Name="RootBorder" CornerRadius="8" BorderThickness="1" ClipToBounds="True">
         <Border.Background><SolidColorBrush Color="#0C0D18"/></Border.Background>
         <Border.BorderBrush>
             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -39,17 +39,12 @@
                         <TextBlock Text="Microphone" FontSize="12" FontWeight="SemiBold" Foreground="#C0CCDD" VerticalAlignment="Center" FontFamily="Segoe UI"/>
                         <TextBlock x:Name="TxtTitle" FontSize="11" Foreground="#5A6880" VerticalAlignment="Center" FontFamily="Segoe UI Mono"/>
                     </StackPanel>
-                    <Button Content="✕" Width="28" Height="26" FontSize="10" Click="Close_Click" HorizontalAlignment="Right">
-                        <Button.Style><Style TargetType="Button">
-                            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#f38ba8"/>
-                            <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
-                            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="4,2">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate></Setter.Value></Setter>
-                        </Style></Button.Style>
-                    </Button>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="BtnMax" Content="☐" Width="30" Height="26" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="13" Padding="0" Click="BtnMax_Click"/>
+                        <Button Content="✕" Width="28" Height="26" FontSize="10"
+                                Style="{StaticResource SRedBtn}" Click="Close_Click" Padding="0"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 

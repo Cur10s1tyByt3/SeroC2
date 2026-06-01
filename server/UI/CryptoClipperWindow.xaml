@@ -31,7 +31,7 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="8" BorderThickness="1" ClipToBounds="True">
+    <Border x:Name="RootBorder" CornerRadius="8" BorderThickness="1" ClipToBounds="True">
         <Border.Background><SolidColorBrush Color="#0C0D18"/></Border.Background>
         <Border.BorderBrush>
             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -80,6 +80,8 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="↻ Stats" Width="60" Height="26" Margin="0,0,4,0"
                                 Style="{StaticResource SBtn}" FontSize="10" Click="BtnStats_Click"/>
+                        <Button x:Name="BtnMax" Content="☐" Width="28" Height="26" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="13" Padding="0" Click="BtnMax_Click"/>
                         <Button Content="✕" Width="28" Height="26" FontSize="10"
                                 Style="{StaticResource SRedBtn}" Click="Close_Click" Padding="0"/>
                     </StackPanel>

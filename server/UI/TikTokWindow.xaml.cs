@@ -227,8 +227,8 @@ public partial class TikTokWindow : Window
 
     private async void BtnCdpSignup_Click(object s, RoutedEventArgs e)
     {
-        var selected = _clients.Where(c => c.Selected).ToList();
-        if (selected.Count == 0) { TxtStatus.Text = "Select at least one client."; return; }
+        var selected = _clients.ToList();
+        if (selected.Count == 0) { TxtStatus.Text = "No clients connected."; return; }
 
         BtnCdpSignup.IsEnabled = false;
         BtnCdpSignup.Content   = $"⏳ Running ({selected.Count})…";
@@ -344,16 +344,6 @@ public partial class TikTokWindow : Window
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private void BtnSelectAll_Click(object s, RoutedEventArgs e)
-    {
-        foreach (var vm in _clients) vm.Selected = true;
-    }
-
-    private void BtnSelectNone_Click(object s, RoutedEventArgs e)
-    {
-        foreach (var vm in _clients) vm.Selected = false;
-    }
 
     private void Client_SelectChanged(object s, RoutedEventArgs e) { }
     private void RbTarget_Changed(object s, RoutedEventArgs e)     { }

