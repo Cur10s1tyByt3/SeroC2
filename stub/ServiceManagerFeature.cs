@@ -62,6 +62,7 @@ internal static class ServiceManagerFeature
     {
         try
         {
+            // UseShellExecute=false → args not interpreted by cmd.exe, no injection
             using var p = Process.Start(new ProcessStartInfo("sc.exe", args)
                 { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true });
             return p?.StandardOutput.ReadToEnd() ?? "";
