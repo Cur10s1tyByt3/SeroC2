@@ -123,27 +123,6 @@
                 </Grid>
             </Border>
 
-            <!-- Transfer strip (visible only when operation in progress) -->
-            <Border x:Name="TransferStrip" DockPanel.Dock="Bottom"
-                    Height="32" Background="#0A0C1A" BorderBrush="#1A2040"
-                    BorderThickness="0,1,0,0" Visibility="Collapsed" Padding="12,0">
-                <Grid>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="⇅" Foreground="#89b4fa" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBlock x:Name="TxtTransferName" Text="" Foreground="#C0CCDD"
-                                   FontSize="11" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                        <Border Background="#0F1428" CornerRadius="3" Width="200" Height="8" VerticalAlignment="Center">
-                            <Border x:Name="TransferBar" Background="#4A85F5" CornerRadius="3" HorizontalAlignment="Left" Width="0"/>
-                        </Border>
-                        <TextBlock x:Name="TxtTransferPct" Text="" Foreground="#404868"
-                                   FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                    </StackPanel>
-                    <TextBlock x:Name="TxtTransferStatus" Text="" Foreground="#404868"
-                               FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"
-                               HorizontalAlignment="Right"/>
-                </Grid>
-            </Border>
-
             <!-- Status bar -->
             <Border DockPanel.Dock="Bottom" Height="26" Background="#111222"
                     BorderBrush="#1A1C2E" BorderThickness="0,1,0,0">
@@ -289,9 +268,30 @@
                 <GridSplitter Grid.Column="1" Width="4" Background="#0F1020"
                               HorizontalAlignment="Stretch" Cursor="SizeWE"/>
 
-                <!-- ── File list ──────────────────────────────────── -->
+                <!-- ── Center: file list + status + preview ──────────── -->
+                <DockPanel Grid.Column="2" LastChildFill="True">
 
-            <DataGrid x:Name="GridFiles" Grid.Column="2"
+                <!-- Transfer/status strip at bottom of file list -->
+                <Border DockPanel.Dock="Bottom" Height="24" Background="#0F1020"
+                        BorderBrush="#1A1C2E" BorderThickness="0,1,0,0" Padding="12,0">
+                    <Grid>
+                        <TextBlock x:Name="TxtFileCount" Text="" Foreground="#505878"
+                                   FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                        <StackPanel x:Name="TransferStrip" Orientation="Horizontal" Visibility="Collapsed"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="⇅ " Foreground="#89b4fa" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtTransferName" Text="" Foreground="#C0CCDD"
+                                       FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtTransferStatus" Text="" Foreground="#404868"
+                                       FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            <TextBlock x:Name="TxtTransferPct" Text="" Foreground="#606880"
+                                       FontSize="10" FontFamily="Consolas" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- File list -->
+                <DataGrid x:Name="GridFiles"
                       AutoGenerateColumns="False" IsReadOnly="True"
                       Background="#0C0D18" Foreground="#DDE0F0"
                       BorderThickness="0" RowBackground="Transparent"
@@ -358,31 +358,18 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <GridSplitter Grid.Column="3" Width="4" Background="#0F1020"
-                          HorizontalAlignment="Stretch" Cursor="SizeWE"/>
+                </DockPanel>
 
-            <!-- Preview pane -->
-            <Border Grid.Column="4" Background="#07080F" BorderBrush="#1A1C2E" BorderThickness="1,0,0,0">
-                <DockPanel LastChildFill="True">
-                    <Border DockPanel.Dock="Top" Height="30" Background="#0F1020"
-                            BorderBrush="#1A1C2E" BorderThickness="0,0,0,1" Padding="10,0">
-                        <Grid>
-                            <TextBlock x:Name="TxtPreviewName" Text="No file selected"
-                                       Foreground="#404868" FontSize="10" FontFamily="Consolas"
-                                       VerticalAlignment="Center"/>
-                            <Button x:Name="BtnPreview" Content="Preview" Height="20" Padding="8,0"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Style="{StaticResource SBtn}" FontSize="9"
-                                    Click="BtnPreview_Click" IsEnabled="False"/>
-                        </Grid>
-                    </Border>
+                <GridSplitter Grid.Column="3" Width="4" Background="#0F1020"
+                              HorizontalAlignment="Stretch" Cursor="SizeWE"/>
+
+                <!-- ── Preview pane (right) ──────────────────────── -->
+                <Border Grid.Column="4" Background="#07080F" BorderBrush="#1A1C2E" BorderThickness="1,0,0,0">
                     <Grid>
-                        <ScrollViewer x:Name="ImgScroll" Visibility="Collapsed"
-                                      HorizontalScrollBarVisibility="Auto"
-                                      VerticalScrollBarVisibility="Auto">
-                            <Image x:Name="PreviewImage" Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                        </ScrollViewer>
+                        <Image x:Name="PreviewImage" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               Visibility="Collapsed"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <MediaElement x:Name="PreviewVideo" Visibility="Collapsed"
                                       LoadedBehavior="Manual" Stretch="Uniform"
                                       MouseLeftButtonUp="PreviewVideo_Click"/>
@@ -396,16 +383,23 @@
                         </ScrollViewer>
                         <StackPanel x:Name="PreviewEmpty" VerticalAlignment="Center"
                                     HorizontalAlignment="Center">
-                            <TextBlock Text="📄" FontSize="40" Opacity="0.12"
-                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="📄" FontSize="36" Opacity="0.10" HorizontalAlignment="Center"/>
                             <TextBlock x:Name="TxtPreviewInfo" Text="Select a file"
                                        Foreground="#2A3050" FontSize="10" FontFamily="Consolas"
-                                       HorizontalAlignment="Center" Margin="0,8,0,0" TextWrapping="Wrap"
-                                       MaxWidth="200"/>
+                                       HorizontalAlignment="Center" Margin="0,8,0,0"
+                                       TextWrapping="Wrap" MaxWidth="200"/>
                         </StackPanel>
+                        <!-- Filename overlay -->
+                        <Border VerticalAlignment="Bottom" Background="#0D0F1A" Padding="8,4">
+                            <TextBlock x:Name="TxtPreviewName" Text=""
+                                       Foreground="#505878" FontSize="9" FontFamily="Consolas"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
+                        <!-- Preview button (invisible anchor for auto-trigger) -->
+                        <Button x:Name="BtnPreview" Visibility="Collapsed"
+                                Click="BtnPreview_Click" IsEnabled="False"/>
                     </Grid>
-                </DockPanel>
-            </Border>
+                </Border>
 
             </Grid>
         </DockPanel>

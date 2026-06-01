@@ -1683,19 +1683,9 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" x:Name="TxtStatusLeft" Text="SɆⱤØ RAT" Foreground="#2E3048"
                                FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <TextBlock x:Name="TxtStatusBar" Text="Ready"
-                                   Foreground="#606880" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <Thumb Width="14" Height="14" VerticalAlignment="Center"
-                               Cursor="SizeNWSE" DragDelta="ResizeGrip_DragDelta">
-                            <Thumb.Template>
-                                <ControlTemplate TargetType="Thumb">
-                                    <Path Data="M2,12 L12,2 M5,12 L12,5 M9,12 L12,9"
-                                          Stroke="#3A3E60" StrokeThickness="1.2" Opacity="0.5"/>
-                                </ControlTemplate>
-                            </Thumb.Template>
-                        </Thumb>
-                    </StackPanel>
+                    <TextBlock x:Name="TxtStatusBar" Grid.Column="1" Text="Ready"
+                               Foreground="#606880" FontSize="11" VerticalAlignment="Center"
+                               HorizontalAlignment="Right"/>
                 </Grid>
             </Border>
         </Grid>

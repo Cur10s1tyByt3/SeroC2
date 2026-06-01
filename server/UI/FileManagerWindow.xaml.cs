@@ -45,46 +45,25 @@ public partial class FileManagerWindow : Window
         Loaded += async (_, _) =>
         {
             await Task.Delay(Random.Shared.Next(0, 250));
-            // Populate drives (navigate to root = drive list on Windows)
-            _ = LoadDrivesAsync();
-            await Navigate("");
+            await Navigate("");  // root = drives on Windows; populates DrivesList too
         };
     }
 
     // ── Drives ────────────────────────────────────────
 
-    private async Task LoadDrivesAsync()
+    // Drives are populated from Navigate("") — stub returns drive list for empty path.
+    // Called by Navigate() after populating _entries.
+    private void UpdateDrivesFromEntries(IEnumerable<FileEntryVM> entries)
     {
-        try
+        var drives = entries
+            .Where(e => e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
+            .Select(e => e.Name.TrimEnd('\\', '/') + "\\")
+            .ToList();
+        if (drives.Count > 0)
         {
-            var tcs = new TaskCompletionSource<string>();
-            _server.RegisterHandler(_clientId, PacketType.FmListResult + 100, _ => { }); // no-op guard
-            // Request drives via empty path
-            var savedPending = _pendingList;
-            _pendingList = new TaskCompletionSource<string>();
-            await _server.SendToClient(_clientId, new Packet
-            {
-                Type = PacketType.FmList,
-                Data = Newtonsoft.Json.JsonConvert.SerializeObject(new FmListData { Path = "" })
-            });
-            var json   = await _pendingList.Task.WaitAsync(TimeSpan.FromSeconds(10));
-            _pendingList = savedPending;
-            var result = Newtonsoft.Json.JsonConvert.DeserializeObject<FmListResultData>(json);
-            if (result?.Entries == null) return;
-            var drives = result.Entries
-                .Where(e => e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
-                .Select(e => e.Name.TrimEnd('\\') + "\\")
-                .ToList();
-            if (drives.Count == 0)
-                drives = result.Entries.Where(e => e.IsDir).Select(e => e.Name).ToList();
-            _ = Dispatcher.BeginInvoke(() =>
-            {
-                DrivesList.Items.Clear();
-                foreach (var d in drives) DrivesList.Items.Add(d);
-            });
+            DrivesList.Items.Clear();
+            foreach (var d in drives) DrivesList.Items.Add(d);
         }
-        catch { }
-        finally { _pendingList = null; }
     }
 
     // ── Transfer strip ────────────────────────────────
@@ -127,7 +106,16 @@ public partial class FileManagerWindow : Window
             _entries.Clear();
             foreach (var e in result.Entries.OrderByDescending(x => x.IsDir).ThenBy(x => x.Name))
                 _entries.Add(new FileEntryVM(e));
-            TxtStatus.Text = $"{result.Path}  —  {result.Entries.Count} item(s)";
+
+            // If root navigation, populate drives from the result
+            if (string.IsNullOrEmpty(path) || path == "\\")
+                UpdateDrivesFromEntries(_entries);
+
+            var dirs  = result.Entries.Count(x => x.IsDir);
+            var files = result.Entries.Count - dirs;
+            TxtStatus.Text = $"{result.Path}  —  {files} file(s), {dirs} folder(s)";
+            if (TxtFileCount != null)
+                TxtFileCount.Text = $"{files} files — {dirs} directories";
         }
         catch (TimeoutException) { TxtStatus.Text = "Timeout."; }
         catch (Exception ex)    { TxtStatus.Text = ex.Message; }
@@ -541,7 +529,7 @@ public partial class FileManagerWindow : Window
 
     private void ShowPreviewPanel(string which)
     {
-        ImgScroll.Visibility    = which == "image" ? Visibility.Visible : Visibility.Collapsed;
+        PreviewImage.Visibility = which == "image" ? Visibility.Visible : Visibility.Collapsed;
         PreviewVideo.Visibility = which == "video" ? Visibility.Visible : Visibility.Collapsed;
         TextScroll.Visibility   = which == "text"  ? Visibility.Visible : Visibility.Collapsed;
         PreviewEmpty.Visibility = which == "empty" ? Visibility.Visible : Visibility.Collapsed;

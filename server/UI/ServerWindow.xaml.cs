@@ -3276,11 +3276,44 @@ Read-Host 'Press Enter to close'
         }
     }
 
-    private void ResizeGrip_DragDelta(object s, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    // ── Native edge/corner resize via WM_NCHITTEST ──────────────────────────
+    // Lets the OS handle resize — no visible grip needed.
+
+    protected override void OnSourceInitialized(EventArgs e)
     {
-        if (_isFullscreen || WindowState == WindowState.Maximized) return;
-        Width  = Math.Max(900, Width  + e.HorizontalChange);
-        Height = Math.Max(540, Height + e.VerticalChange);
+        base.OnSourceInitialized(e);
+        var src = System.Windows.Interop.HwndSource.FromHwnd(
+            new System.Windows.Interop.WindowInteropHelper(this).Handle);
+        src?.AddHook(NcHitTest);
+    }
+
+    private nint NcHitTest(nint hwnd, int msg, nint wParam, nint lParam, ref bool handled)
+    {
+        const int WM_NCHITTEST = 0x0084;
+        if (msg != WM_NCHITTEST || _isFullscreen || WindowState == WindowState.Maximized)
+            return nint.Zero;
+
+        int x = unchecked((short)(lParam.ToInt64() & 0xFFFF));
+        int y = unchecked((short)((lParam.ToInt64() >> 16) & 0xFFFF));
+
+        var dpi  = VisualTreeHelper.GetDpi(this);
+        double l = Left   * dpi.DpiScaleX;
+        double t = Top    * dpi.DpiScaleY;
+        double r = (Left + Width)  * dpi.DpiScaleX;
+        double b = (Top  + Height) * dpi.DpiScaleY;
+        const double g = 8; // grip thickness in physical pixels
+
+        bool atL = x < l + g, atR = x > r - g, atT = y < t + g, atB = y > b - g;
+
+        if (atB && atR) { handled = true; return (nint)17; } // HTBOTTOMRIGHT
+        if (atB && atL) { handled = true; return (nint)16; } // HTBOTTOMLEFT
+        if (atT && atR) { handled = true; return (nint)14; } // HTTOPRIGHT
+        if (atT && atL) { handled = true; return (nint)13; } // HTTOPLEFT
+        if (atB)        { handled = true; return (nint)15; } // HTBOTTOM
+        if (atR)        { handled = true; return (nint)11; } // HTRIGHT
+        if (atL)        { handled = true; return (nint)10; } // HTLEFT
+        if (atT)        { handled = true; return (nint)12; } // HTTOP
+        return nint.Zero;
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
