@@ -106,6 +106,9 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0">
                         <Button Content="&#x27F3;" Height="27" Width="30" Margin="0,0,4,0"
                                 Style="{StaticResource SBtn}" FontSize="14" Padding="0" Click="BtnRefresh_Click"/>
+                        <Button x:Name="BtnTree" Content="&#x229E; Tree" Height="27" Padding="8,0" Margin="0,0,4,0"
+                                Style="{StaticResource SBtn}" FontSize="11" Click="BtnTree_Click"
+                                ToolTip="Toggle process tree view (shows parent-child relationships)"/>
                         <Button x:Name="BtnMaximize" Content="&#x2610;" Width="30" Height="27" Margin="0,0,4,0"
                                 Style="{StaticResource SBtn}" FontSize="12" Padding="0" Click="BtnMaximize_Click"/>
                         <Button Content="&#x2715;" Width="30" Height="27"
@@ -169,7 +172,11 @@
                     <DataGridTemplateColumn Header="NAME" Width="*" SortMemberPath="Name" MinWidth="150">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                            Margin="{Binding TreeIndent}">
+                                    <TextBlock Text="{Binding TreePrefix}" Foreground="#506070"
+                                               FontFamily="Consolas" FontSize="10"
+                                               VerticalAlignment="Center" Margin="0,0,2,0"/>
                                     <Image Source="{Binding IconImage}" Width="15" Height="15"
                                            VerticalAlignment="Center" Margin="2,0,7,0"
                                            RenderOptions.BitmapScalingMode="NearestNeighbor"

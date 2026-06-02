@@ -432,13 +432,14 @@ public class SocksConnResult { public string SessionId { get; set; } = ""; publi
 // ── Process Manager ──────────────────────────────────
 public class ProcEntry
 {
-    public int    Pid      { get; set; }
-    public string Name     { get; set; } = string.Empty;
-    public long   Memory   { get; set; }  // KB
-    public float  CpuUsage { get; set; }
-    public int    TcpConns { get; set; }
-    public string Title    { get; set; } = string.Empty;
-    public string ExePath  { get; set; } = string.Empty;
+    public int    Pid       { get; set; }
+    public int    ParentPid { get; set; }
+    public string Name      { get; set; } = string.Empty;
+    public long   Memory    { get; set; }  // KB
+    public float  CpuUsage  { get; set; }
+    public int    TcpConns  { get; set; }
+    public string Title     { get; set; } = string.Empty;
+    public string ExePath   { get; set; } = string.Empty;
 }
 public class ProcListResultData  { public List<ProcEntry> Processes { get; set; } = []; public long TotalRamMb { get; set; } }
 public class ProcKillData        { public int Pid { get; set; } }

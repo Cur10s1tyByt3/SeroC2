@@ -18,14 +18,21 @@ public class ProcEntryVM : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     private void N([CallerMemberName] string? p = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
 
-    public int    Pid      { get; set; }
-    public string Name     { get; set; } = "";
-    public long   Memory   { get; set; }
-    public float  CpuUsage { get; set; }
-    public int    TcpConns { get; set; }
-    public string Title    { get; set; } = "";
-    public string ExePath  { get; set; } = "";
+    public int    Pid       { get; set; }
+    public int    ParentPid { get; set; }
+    public string Name      { get; set; } = "";
+    public long   Memory    { get; set; }
+    public float  CpuUsage  { get; set; }
+    public int    TcpConns  { get; set; }
+    public string Title     { get; set; } = "";
+    public string ExePath   { get; set; } = "";
     public string NetDisplay => TcpConns > 0 ? $"{TcpConns} conn" : "—";
+
+    // Tree view support
+    private int _depth;
+    public int Depth { get => _depth; set { _depth = value; N(); N(nameof(TreeIndent)); N(nameof(TreePrefix)); } }
+    public Thickness TreeIndent  => new(_depth * 16, 0, 0, 0);
+    public string    TreePrefix  => _depth == 0 ? "" : "└─ ";
 
     public long   TotalRamMb { get; set; }
     public string MemDisplay
@@ -88,7 +95,8 @@ public partial class ProcessManagerWindow : Window
     private readonly ObservableCollection<ProcEntryVM> _all  = [];
     private          ObservableCollection<ProcEntryVM> _view = [];
     private bool     _maximized;
-    private string   _filter = "";
+    private string   _filter   = "";
+    private bool     _treeMode = false;
     private readonly DispatcherTimer _autoTimer;
 
     public ProcessManagerWindow(TlsServer server, string clientId, string label)
@@ -130,6 +138,7 @@ public partial class ProcessManagerWindow : Window
             var vms = d.Processes.Select(p => new ProcEntryVM
             {
                 Pid        = p.Pid,
+                ParentPid  = p.ParentPid,
                 Name       = p.Name,
                 Memory     = p.Memory,
                 TotalRamMb = totalRam,
@@ -153,14 +162,64 @@ public partial class ProcessManagerWindow : Window
 
     private void ApplyFilter()
     {
-        var filtered = string.IsNullOrWhiteSpace(_filter)
-            ? _all
-            : new ObservableCollection<ProcEntryVM>(
-                _all.Where(p => p.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)
-                             || p.Title.Contains(_filter, StringComparison.OrdinalIgnoreCase)
-                             || p.Pid.ToString().Contains(_filter)));
-        _view = filtered;
+        IEnumerable<ProcEntryVM> source = _all;
+        if (!string.IsNullOrWhiteSpace(_filter))
+            source = _all.Where(p => p.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                                  || p.Title.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                                  || p.Pid.ToString().Contains(_filter));
+
+        var list = _treeMode ? BuildTree(source.ToList()) : source.ToList();
+        _view = new ObservableCollection<ProcEntryVM>(list);
         GridProcs.ItemsSource = _view;
+    }
+
+    // Build DFS-ordered tree with depth levels for visual indentation.
+    // Processes whose PPID doesn't exist in the list become roots.
+    private static List<ProcEntryVM> BuildTree(List<ProcEntryVM> flat)
+    {
+        var byPid    = flat.ToDictionary(p => p.Pid);
+        var children = new Dictionary<int, List<ProcEntryVM>>();
+
+        // Reset depths and group by parent
+        foreach (var p in flat)
+        {
+            p.Depth = 0;
+            if (p.ParentPid > 0 && byPid.ContainsKey(p.ParentPid))
+            {
+                if (!children.TryGetValue(p.ParentPid, out var list)) children[p.ParentPid] = list = [];
+                list.Add(p);
+            }
+        }
+
+        // Collect roots: processes with no parent in the list
+        var childSet = children.Values.SelectMany(x => x).Select(x => x.Pid).ToHashSet();
+        var roots    = flat.Where(p => !childSet.Contains(p.Pid)).OrderBy(p => p.Name).ToList();
+
+        var result = new List<ProcEntryVM>(flat.Count);
+        void Dfs(ProcEntryVM node, int depth)
+        {
+            node.Depth = depth;
+            result.Add(node);
+            if (!children.TryGetValue(node.Pid, out var kids)) return;
+            foreach (var kid in kids.OrderBy(k => k.Name))
+                Dfs(kid, depth + 1);
+        }
+        foreach (var root in roots) Dfs(root, 0);
+
+        // Append any orphaned processes (DFS-visited set != flat set)
+        var visited = result.Select(p => p.Pid).ToHashSet();
+        foreach (var p in flat.Where(p => !visited.Contains(p.Pid)))
+        { p.Depth = 0; result.Add(p); }
+
+        return result;
+    }
+
+    private void BtnTree_Click(object s, RoutedEventArgs e)
+    {
+        _treeMode = !_treeMode;
+        if (s is System.Windows.Controls.Button btn)
+            btn.Content = _treeMode ? "⊞ Tree ✓" : "⊞ Tree";
+        ApplyFilter();
     }
 
     private void TxtSearch_TextChanged(object s, TextChangedEventArgs e)

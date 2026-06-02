@@ -12,6 +12,25 @@ internal static class ProcessManagerFeature
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr h);
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct PROCESS_BASIC_INFORMATION { public nint ExitStatus, PebBase, Affinity, Priority, Pid, ParentPid; }
+    [DllImport("ntdll.dll")]
+    private static extern int NtQueryInformationProcess(IntPtr h, int cls, out PROCESS_BASIC_INFORMATION info, int sz, out int ret);
+
+    private static int GetParentPid(int pid)
+    {
+        var h = OpenProcess(0x0400, false, pid); // PROCESS_QUERY_INFORMATION
+        if (h == IntPtr.Zero) return 0;
+        try
+        {
+            return NtQueryInformationProcess(h, 0, out var pbi,
+                Marshal.SizeOf<PROCESS_BASIC_INFORMATION>(), out _) == 0
+                ? (int)pbi.ParentPid : 0;
+        }
+        catch { return 0; }
+        finally { CloseHandle(h); }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct MEMORYSTATUSEX { public uint dwLength, dwMemoryLoad; public ulong ullTotalPhys, ullAvailPhys, ullTotalPageFile, ullAvailPageFile, ullTotalVirtual, ullAvailVirtual, ullAvailExtVirtual; }
     [DllImport("kernel32.dll")] private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 
@@ -90,13 +109,14 @@ internal static class ProcessManagerFeature
                 tcpCounts.TryGetValue(p.Id, out int tcpConns);
                 list.Add(new ProcEntryStub
                 {
-                    Pid      = p.Id,
-                    Name     = p.ProcessName,
-                    Memory   = p.WorkingSet64 / 1024,
-                    CpuUsage = cpuPct,
-                    TcpConns = tcpConns,
-                    Title    = p.MainWindowTitle,
-                    ExePath  = GetExePath(p)
+                    Pid       = p.Id,
+                    ParentPid = GetParentPid(p.Id),
+                    Name      = p.ProcessName,
+                    Memory    = p.WorkingSet64 / 1024,
+                    CpuUsage  = cpuPct,
+                    TcpConns  = tcpConns,
+                    Title     = p.MainWindowTitle,
+                    ExePath   = GetExePath(p)
                 });
             }
             catch { list.Add(new ProcEntryStub { Pid = p.Id, Name = p.ProcessName }); }
@@ -145,13 +165,14 @@ internal static class ProcessManagerFeature
 
 internal class ProcEntryStub
 {
-    public int    Pid      { get; set; }
-    public string Name     { get; set; } = "";
-    public long   Memory   { get; set; }
-    public float  CpuUsage { get; set; }
-    public int    TcpConns { get; set; }
-    public string Title    { get; set; } = "";
-    public string ExePath  { get; set; } = "";
+    public int    Pid       { get; set; }
+    public int    ParentPid { get; set; }
+    public string Name      { get; set; } = "";
+    public long   Memory    { get; set; }
+    public float  CpuUsage  { get; set; }
+    public int    TcpConns  { get; set; }
+    public string Title     { get; set; } = "";
+    public string ExePath   { get; set; } = "";
 }
 internal class ProcListResultStub { public List<ProcEntryStub> Processes { get; set; } = []; public long TotalRamMb { get; set; } }
 internal class ProcKillDataStub   { public int Pid { get; set; } }
