@@ -10,8 +10,7 @@
         WindowStyle="None"
         UseLayoutRounding="True"
         RenderOptions.ClearTypeHint="Enabled"
-        AllowsTransparency="True"
-        Background="Transparent"
+        Background="#0C0D18"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Window.Resources>
@@ -160,7 +159,7 @@
     </Window.Resources>
 
     <!-- ── Window chrome ──────────────────────────────────────────── -->
-    <Border x:Name="RootBorder" Background="#0C0D18" CornerRadius="8" BorderThickness="1"
+    <Border x:Name="RootBorder" Background="#0C0D18" CornerRadius="0" BorderThickness="0"
             BorderBrush="#1C1E30">
 
         <Grid>
@@ -186,11 +185,7 @@
                        Opacity="0.52"
                        Stretch="Uniform"
                        RenderOptions.BitmapScalingMode="LowQuality"
-                       RenderOptions.CachingHint="Cache">
-                    <Image.Effect>
-                        <BlurEffect x:Name="BgLogoBlur" Radius="2"/>
-                    </Image.Effect>
-                </Image>
+                       RenderOptions.CachingHint="Cache"/>
 
             </Grid>
 

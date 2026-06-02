@@ -3545,14 +3545,12 @@ Read-Host 'Press Enter to close'
             _resizing = true;
             _savedShadow = RootBorder.Effect as System.Windows.Media.Effects.DropShadowEffect;
             RootBorder.Effect = null;
-            if (BgLogoBlur != null) BgLogoBlur.Radius = 0;
             handled = false; return nint.Zero;
         }
         if (msg == WM_EXITSIZEMOVE && _resizing)
         {
             _resizing = false;
             RootBorder.Effect = _savedShadow;
-            if (BgLogoBlur != null) BgLogoBlur.Radius = 2;
             handled = false; return nint.Zero;
         }
 
