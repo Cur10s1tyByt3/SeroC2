@@ -298,16 +298,12 @@
                             </Border>
                             <!-- dropdown popup -->
                             <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   Placement="Bottom" AllowsTransparency="True"
+                                   Placement="Bottom"
                                    Focusable="False" PopupAnimation="None">
                                 <Border Background="#0D0E1A" BorderBrush="#1E2038" BorderThickness="1"
-                                        CornerRadius="4" Margin="0,2,0,0"
+                                        Margin="0,2,0,0"
                                         MinWidth="{Binding ActualWidth,
                                             RelativeSource={RelativeSource TemplatedParent}}">
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="#000" BlurRadius="10"
-                                                          ShadowDepth="2" Opacity="0.5"/>
-                                    </Border.Effect>
                                     <ScrollViewer MaxHeight="200" CanContentScroll="True">
                                         <ItemsPresenter/>
                                     </ScrollViewer>

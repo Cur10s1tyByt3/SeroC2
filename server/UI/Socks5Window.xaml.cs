@@ -107,6 +107,18 @@ public partial class Socks5Window : Window
         }
     }
 
+    // Read exactly 'count' bytes from stream into buf starting at offset
+    private static async Task ReadExact(NetworkStream stream, byte[] buf, int offset, int count)
+    {
+        int got = 0;
+        while (got < count)
+        {
+            int r = await stream.ReadAsync(buf.AsMemory(offset + got, count - got));
+            if (r == 0) throw new Exception("Connection closed");
+            got += r;
+        }
+    }
+
     private async Task HandleLocalClient(TcpClient client)
     {
         string sessionId = Guid.NewGuid().ToString("N")[..8];
@@ -115,12 +127,35 @@ public partial class Socks5Window : Window
             var stream = client.GetStream();
             var buf = new byte[512];
 
-            // SOCKS5 greeting
-            int n = await stream.ReadAsync(buf);
+            // SOCKS5 greeting: VER(1) + NMETHODS(1) + METHODS(n)
+            await ReadExact(stream, buf, 0, 2);
+            int nMethods = buf[1];
+            if (nMethods > 0) await ReadExact(stream, buf, 2, nMethods);
             await stream.WriteAsync(new byte[] { 5, 0 }); // NO AUTH
 
-            // SOCKS5 connect request
-            n = await stream.ReadAsync(buf);
+            // SOCKS5 connect request: VER(1) CMD(1) RSV(1) ATYP(1) + addr + port
+            await ReadExact(stream, buf, 0, 4);
+            int addrBytes = buf[3] switch
+            {
+                1 => 4,          // IPv4
+                4 => 16,         // IPv6
+                3 => buf[4] + 1, // domain: 1 len byte + domain bytes
+                _ => throw new Exception("Unknown ATYP")
+            };
+            // For domain, we already read 4 bytes; buf[4] will have length after next read
+            int totalAddrPort = (buf[3] == 3 ? 1 : 0) + addrBytes + 2; // +1 for domain len byte, +2 for port
+            if (buf[3] == 3)
+            {
+                await ReadExact(stream, buf, 4, 1); // domain length byte
+                addrBytes = buf[4];
+                await ReadExact(stream, buf, 5, addrBytes + 2); // domain + port
+                totalAddrPort = 1 + addrBytes + 2;
+            }
+            else
+            {
+                await ReadExact(stream, buf, 4, addrBytes + 2); // addr + port
+            }
+            int connectLen = 4 + (buf[3] == 3 ? 1 + addrBytes + 2 : addrBytes + 2);
             _pending[sessionId] = client;
 
             // Forward to stub
@@ -130,7 +165,7 @@ public partial class Socks5Window : Window
                 Data = JsonConvert.SerializeObject(new SocksDataPacket
                 {
                     SessionId = sessionId,
-                    Data = Convert.ToBase64String(buf, 0, n)
+                    Data = Convert.ToBase64String(buf, 0, connectLen)
                 })
             });
 
