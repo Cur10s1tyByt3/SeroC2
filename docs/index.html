@@ -25,15 +25,7 @@
 </head>
 <body>
 
-<!-- Music player -->
-<div id="player">
-  <button id="player-btn" aria-label="Play/pause background music">
-    <svg id="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-    <svg id="icon-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-  </button>
-  <span class="player-track">background music</span>
-  <div class="player-bar"><div id="player-progress"></div></div>
-</div>
+<canvas id="bg-canvas"></canvas>
 
 <!-- Nav -->
 <nav id="nav">
@@ -95,6 +87,34 @@
     </div>
   </div>
 </div>
+
+<!-- Deep-dive: HVNC + Process Hollowing -->
+<section class="deepdive-section">
+  <div class="container deepdive-grid">
+    <div class="deepdive-card reveal">
+      <div class="dd-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>
+      </div>
+      <h3>Hidden Virtual Network Computing</h3>
+      <p>HVNC creates a completely isolated Windows desktop session — invisible to the target. Chrome, Firefox, Edge, Brave, Opera launch directly into the shadow session. The victim sees nothing. You see everything.</p>
+      <p>Each browser gets <code>--start-maximized</code> and fills the HVNC frame. Mouse and keyboard are forwarded with sub-pixel accuracy. The clipboard syncs on a 400ms toggle you control.</p>
+      <div class="dd-tags">
+        <span>isolated desktop</span><span>9 browsers</span><span>clipboard sync</span><span>real-time input</span>
+      </div>
+    </div>
+    <div class="deepdive-card reveal">
+      <div class="dd-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c5ce8" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <h3>Process Hollowing — RunPE</h3>
+      <p>The injected binary never touches disk. A legitimate host process (svchost, dllhost) is created suspended, its memory unmapped, and your payload written in its place — then resumed.</p>
+      <p>PPID spoofing via <code>UpdateProcThreadAttribute</code> makes the injected process appear as a child of explorer.exe or winlogon.exe. Task Manager, Process Explorer — they see nothing suspicious.</p>
+      <div class="dd-tags">
+        <span>no disk write</span><span>PPID spoof</span><span>suspended create</span><span>memory remap</span>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- Open source disclaimer -->
 <section class="oss-section">
@@ -299,6 +319,7 @@ DxgiCapture.TryInit(monitorIndex);
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
