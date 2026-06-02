@@ -6,7 +6,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         WindowStyle="None"
-        Background="#0C0D18">
+        AllowsTransparency="True"
+        Background="Transparent">
 
     <Window.Resources>
         <Style x:Key="FBtn" TargetType="Button">
@@ -82,7 +83,9 @@
                 <GradientStop Color="#141628" Offset="1"/>
             </LinearGradientBrush>
         </Border.BorderBrush>
-        
+        <Border.Effect>
+            <DropShadowEffect Color="#000" BlurRadius="36" ShadowDepth="0" Opacity="0.80"/>
+        </Border.Effect>
 
         <DockPanel LastChildFill="True">
             <!-- Gradient accent bar -->

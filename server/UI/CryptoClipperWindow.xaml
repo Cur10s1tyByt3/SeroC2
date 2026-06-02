@@ -6,7 +6,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         WindowStyle="None"
-        Background="#0C0D18">
+        AllowsTransparency="True"
+        Background="Transparent">
 
     <Window.Resources>
         <Style x:Key="AddrBox" TargetType="TextBox">
@@ -38,7 +39,9 @@
                 <GradientStop Color="#141628" Offset="1"/>
             </LinearGradientBrush>
         </Border.BorderBrush>
-        
+        <Border.Effect>
+            <DropShadowEffect Color="#000" BlurRadius="36" ShadowDepth="0" Opacity="0.80"/>
+        </Border.Effect>
 
         <DockPanel LastChildFill="True">
 
@@ -83,6 +86,7 @@
                                 Padding="6,2" Visibility="Collapsed" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="5" Height="5" Fill="#22C55E" VerticalAlignment="Center" Margin="0,0,5,0">
+                                    <Ellipse.Effect><DropShadowEffect Color="#22C55E" BlurRadius="4" ShadowDepth="0" Opacity="0.9"/></Ellipse.Effect>
                                 </Ellipse>
                                 <TextBlock Text="ACTIVE" Foreground="#22C55E" FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
                             </StackPanel>
@@ -218,7 +222,8 @@
                             </Grid>
                             <Border Background="#07080F" CornerRadius="4" Height="120">
                                 <ScrollViewer x:Name="LogScroll" VerticalScrollBarVisibility="Auto">
-                                    <TextBox x:Name="TxtLog" Background="#0C0D18" Foreground="#C8D0E8"
+                                    <TextBox x:Name="TxtLog"
+                                             Background="Transparent" Foreground="#C8D0E8"
                                              FontFamily="Consolas" FontSize="10"
                                              BorderThickness="0" Padding="8,6"
                                              IsReadOnly="True" TextWrapping="Wrap"

@@ -4,7 +4,8 @@
         Title="Performance Monitor"
         Width="680" Height="460" MinWidth="520" MinHeight="360"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="CanResize" WindowStyle="None" Background="#0C0D18">
+        ResizeMode="CanResize" WindowStyle="None"
+        AllowsTransparency="True" Background="Transparent">
 
     <Border x:Name="RootBorder" CornerRadius="8" BorderThickness="1" ClipToBounds="True">
         <Border.Background><SolidColorBrush Color="#0C0D18"/></Border.Background>
@@ -14,7 +15,9 @@
                 <GradientStop Color="#141628" Offset="1"/>
             </LinearGradientBrush>
         </Border.BorderBrush>
-        
+        <Border.Effect>
+            <DropShadowEffect Color="#000" BlurRadius="36" ShadowDepth="0" Opacity="0.80"/>
+        </Border.Effect>
 
         <DockPanel>
             <!-- Accent -->

