@@ -61,8 +61,16 @@
   window.addEventListener('resize', resize, { passive: true });
   resize();
 
+  // Pause rendering when tab is hidden — saves battery/GPU
+  let paused = false;
+  document.addEventListener('visibilitychange', () => {
+    paused = document.hidden;
+    if (!paused) tick();
+  });
+
   let t = 0;
-  (function tick() {
+  function tick() {
+    if (paused) return;
     requestAnimationFrame(tick);
     t += 0.002;
 
@@ -80,7 +88,8 @@
     camera.lookAt(0, 0, -5);
 
     renderer.render(scene, camera);
-  })();
+  }
+  tick();
 })();
 
 /* ── Background music — no UI, starts on first interaction ── */
