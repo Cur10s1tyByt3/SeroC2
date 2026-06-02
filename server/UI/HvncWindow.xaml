@@ -285,13 +285,13 @@
                                   ToolTip="Keyboard input">
                             <TextBlock Text="&#x2395;" FontSize="12"/>
                         </CheckBox>
-                        <!-- Clipboard: push server clipboard text to hidden desktop clipboard -->
-                        <Button x:Name="BtnClipboard" Height="26" Width="28" Padding="0"
-                                Style="{StaticResource IconBtn}" FontSize="14"
-                                Click="BtnClipboard_Click" Margin="0,0,8,0"
-                                ToolTip="Clipboard — push server clipboard to remote desktop">
-                            <TextBlock Text="&#x2398;" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        </Button>
+                        <!-- Clipboard sync toggle — same pill LED as mouse/keyboard -->
+                        <CheckBox x:Name="ChkClipboard" IsChecked="False"
+                                  Style="{StaticResource PillToggle}" Margin="0,0,8,0"
+                                  ToolTip="Clipboard sync — when active, auto-pushes server clipboard to remote desktop"
+                                  Checked="ChkClipboard_Checked" Unchecked="ChkClipboard_Unchecked">
+                            <TextBlock Text="&#x2398;" FontSize="13"/>
+                        </CheckBox>
                         <Rectangle Width="1" Height="16" Margin="0,0,14,0">
                             <Rectangle.Fill><SolidColorBrush Color="#1E2038"/></Rectangle.Fill>
                         </Rectangle>

