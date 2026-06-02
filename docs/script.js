@@ -1,40 +1,56 @@
-/* ── Three.js — perspective wave grid ── */
+/* ── Three.js — dual wave grid ── */
 (function () {
   const canvas = document.getElementById('bg-canvas');
   if (!canvas || typeof THREE === 'undefined') return;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  const mobile = window.innerWidth < 640;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: false });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-  renderer.setClearColor(0x000000, 0);
+  renderer.setClearColor(0x07080f, 1);
 
   const scene = new THREE.Scene();
-  // Fog matching background — makes the grid dissolve at horizon
-  scene.fog = new THREE.FogExp2(0x07080f, 0.055);
+  // Linear fog — no circular halo (FogExp2 causes that artifact)
+  scene.fog = new THREE.Fog(0x07080f, 18, 55);
 
-  const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 80);
-  camera.position.set(0, 5, 8);
-  camera.lookAt(0, 0, -6);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 80);
+  camera.position.set(0, 4, 7);
+  camera.lookAt(0, 0, -5);
 
-  // Fewer segments on mobile to save GPU
-  const SEGS = window.innerWidth < 640 ? 32 : 60;
-  const geo = new THREE.PlaneGeometry(60, 70, SEGS, SEGS);
-  geo.rotateX(-Math.PI / 2);
+  // Layer 1: dense front grid
+  const S1 = mobile ? 28 : 52;
+  const geo1 = new THREE.PlaneGeometry(50, 65, S1, S1);
+  geo1.rotateX(-Math.PI / 2);
+  const mesh1 = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({
+    color: 0x162e52, wireframe: true, transparent: true, opacity: 0.21,
+  }));
+  mesh1.position.set(0, -1.5, -7);
+  scene.add(mesh1);
 
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0x1a3560,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.22,
-  });
+  // Layer 2: sparse background grid — adds depth via parallax
+  const S2 = mobile ? 14 : 22;
+  const geo2 = new THREE.PlaneGeometry(70, 80, S2, S2);
+  geo2.rotateX(-Math.PI / 2);
+  const mesh2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
+    color: 0x0d1e38, wireframe: true, transparent: true, opacity: 0.10,
+  }));
+  mesh2.position.set(0, -3, -16);
+  scene.add(mesh2);
 
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(0, -1, -8);
-  scene.add(mesh);
+  const pos1 = geo1.attributes.position;
+  const pos2 = geo2.attributes.position;
+  const base1 = new Float32Array(pos1.count);
+  const base2 = new Float32Array(pos2.count);
+  for (let i = 0; i < pos1.count; i++) base1[i] = pos1.getY(i);
+  for (let i = 0; i < pos2.count; i++) base2[i] = pos2.getY(i);
 
-  // Cache original Y positions (all 0 for a flat plane after rotateX)
-  const pos = geo.attributes.position;
-  const baseY = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) baseY[i] = pos.getY(i);
+  // 4-frequency wave — looks organic, avoids obvious sine repetition
+  function wave(x, z, t) {
+    return Math.sin(x * 0.32 + t * 0.8)  * 0.32
+         + Math.sin(z * 0.20 + t * 0.55) * 0.26
+         + Math.sin((x - z) * 0.14 + t * 0.38) * 0.16
+         + Math.sin((x + z) * 0.07 + t * 0.22) * 0.10;
+  }
 
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -48,23 +64,20 @@
   let t = 0;
   (function tick() {
     requestAnimationFrame(tick);
-    t += 0.0025;
+    t += 0.002;
 
-    // Displace vertices: two overlapping sine waves at different frequencies
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = pos.getZ(i);
-      const y = baseY[i]
-        + Math.sin(x * 0.28 + t) * 0.38
-        + Math.sin(z * 0.18 + t * 0.65) * 0.28
-        + Math.sin((x + z) * 0.12 + t * 0.4) * 0.18;
-      pos.setY(i, y);
-    }
-    pos.needsUpdate = true;
+    for (let i = 0; i < pos1.count; i++)
+      pos1.setY(i, base1[i] + wave(pos1.getX(i), pos1.getZ(i), t));
+    pos1.needsUpdate = true;
 
-    // Very gentle camera sway — not noticed consciously, just adds life
-    camera.position.x = Math.sin(t * 0.18) * 0.6;
-    camera.lookAt(0, 0, -6);
+    // Layer 2 at half speed for parallax
+    for (let i = 0; i < pos2.count; i++)
+      pos2.setY(i, base2[i] + wave(pos2.getX(i), pos2.getZ(i), t * 0.5) * 0.55);
+    pos2.needsUpdate = true;
+
+    // Imperceptible camera drift — adds life
+    camera.position.x = Math.sin(t * 0.14) * 0.5;
+    camera.lookAt(0, 0, -5);
 
     renderer.render(scene, camera);
   })();
@@ -76,9 +89,7 @@
   if (!audio) return;
   audio.volume = 0.28;
 
-  // Try immediate autoplay (works in some browsers/contexts)
   audio.play().catch(() => {
-    // Blocked — unlock silently on first user gesture
     const unlock = () => {
       audio.play().catch(() => {});
       document.removeEventListener('click',   unlock);
