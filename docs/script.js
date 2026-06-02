@@ -105,10 +105,10 @@
   // Try immediately (works if browser allows autoplay)
   tryPlay();
 
-  // Unlock on first user gesture — once:true so each fires at most once
-  document.addEventListener('click',  tryPlay, { once: true, passive: true });
-  document.addEventListener('scroll', tryPlay, { once: true, passive: true });
-  document.addEventListener('keydown', tryPlay, { once: true, passive: true });
+  // Unlock on first user gesture — window scroll is more reliable than document
+  document.addEventListener('click',     tryPlay, { once: true, passive: true });
+  window.addEventListener('scroll',      tryPlay, { once: true, passive: true });
+  document.addEventListener('keydown',   tryPlay, { once: true, passive: true });
   document.addEventListener('touchstart', tryPlay, { once: true, passive: true });
 })();
 
