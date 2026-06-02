@@ -129,6 +129,24 @@ document.querySelectorAll('.reveal').forEach((el, i) => {
   revealIO.observe(el);
 });
 
+/* ── Hamburger menu ── */
+(function () {
+  const burger = document.getElementById('nav-burger');
+  const links  = document.getElementById('nav-links');
+  if (!burger || !links) return;
+  burger.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open);
+  });
+  // Close on link click
+  links.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open');
+      burger.setAttribute('aria-expanded', 'false');
+    });
+  });
+})();
+
 /* ── Smooth anchor scroll ── */
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {
