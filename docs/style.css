@@ -314,17 +314,18 @@ body::after {
 }
 .gallery-item:hover img { transform: scale(1.02); }
 
-/* 3D spin — transition disabled while animating to avoid conflict */
+/* 3D tilt on click — stays visible (never edge-on, overflow:hidden safe) */
 .gallery-item img.spin3d,
 .screen-body img.spin3d {
-  transition: none;
-  animation: flip3d 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none !important;
+  animation: tilt3d 0.7s ease;
 }
-@keyframes flip3d {
-  0%   { transform: perspective(600px) rotateY(0deg) scale(1); }
-  35%  { transform: perspective(600px) rotateY(90deg) scale(0.9); }
-  65%  { transform: perspective(600px) rotateY(270deg) scale(0.9); }
-  100% { transform: perspective(600px) rotateY(360deg) scale(1); }
+@keyframes tilt3d {
+  0%   { transform: perspective(500px) rotateX(0deg)  rotateY(0deg)  scale(1);    }
+  20%  { transform: perspective(500px) rotateX(12deg) rotateY(15deg) scale(0.94); }
+  50%  { transform: perspective(500px) rotateX(-8deg) rotateY(-20deg) scale(0.92);}
+  80%  { transform: perspective(500px) rotateX(5deg)  rotateY(10deg) scale(0.96); }
+  100% { transform: perspective(500px) rotateX(0deg)  rotateY(0deg)  scale(1);    }
 }
 .gallery-label {
   position: absolute; bottom: 0; left: 0; right: 0;
@@ -452,7 +453,7 @@ footer {
 }
 @media (max-width: 900px) {
   .container { padding: 0 24px; }
-  .nav-links { display: none; }
+  .nav-links, #nav-links { display: none !important; }
   .oss-grid { grid-template-columns: 1fr; gap: 40px; }
   .oss-sep { display: none; }
   .feat-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
