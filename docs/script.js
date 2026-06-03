@@ -47,22 +47,6 @@
     for (let i = 0; i < farPos.count; i++) farBase[i] = farPos.getY(i);
   }
 
-  // ── Radar ping — expanding LineLoop that pulses outward and fades ─────────
-  const RING_N = mobile ? 56 : 92;
-  const ringPts = [];
-  for (let i = 0; i < RING_N; i++) {
-    const a = (i / RING_N) * Math.PI * 2;
-    ringPts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
-  }
-  const ringGeo  = new THREE.BufferGeometry().setFromPoints(ringPts);
-  const ringMat  = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0 });
-  const ringMat2 = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0 });
-  const ring  = new THREE.LineLoop(ringGeo, ringMat);
-  const ring2 = new THREE.LineLoop(ringGeo, ringMat2);
-  ring.position.set(0, -1.18, -6);
-  ring2.position.set(0, -1.19, -6);
-  scene.add(ring, ring2);
-
   // ── Wave functions ────────────────────────────────────────────────────────
   function ambientWave(x, z, t) {
     return Math.sin(x * 0.28 + t * 0.78) * 0.42
@@ -91,10 +75,6 @@
     if (!paused) tick();
   });
 
-  // Radar ring state
-  const SONAR_T = 0.52; // ~5 s at 60 fps (t increments 0.0018/frame)
-  const MAX_R   = 22;
-
   let t = 0;
   function tick() {
     if (paused) return;
@@ -113,16 +93,6 @@
         farPos.setY(i, farBase[i] + ambientWave(farPos.getX(i), farPos.getZ(i), t * 0.38) * 0.44);
       farPos.needsUpdate = true;
     }
-
-    // Radar ring animation
-    const sp  = (t % SONAR_T) / SONAR_T;
-    const sp2 = Math.max(0, sp - 0.09);
-    const fade = Math.pow(Math.max(0, 1 - sp * 1.05), 1.8);
-    ring.scale.set(Math.max(0.01, sp * MAX_R), 1, Math.max(0.01, sp * MAX_R));
-    ringMat.opacity = fade * 0.88;
-    ring2.visible   = sp > 0.09;
-    ring2.scale.set(Math.max(0.01, sp2 * MAX_R), 1, Math.max(0.01, sp2 * MAX_R));
-    ringMat2.opacity = fade * 0.42;
 
     // Camera: dual-frequency sway
     camera.position.x = Math.sin(t * 0.110) * 0.45 + Math.sin(t * 0.037) * 0.12;
