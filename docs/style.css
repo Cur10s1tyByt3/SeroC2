@@ -202,7 +202,7 @@ body::before {
 /* ── Screenshot ── */
 .screenshot-section {
   position: relative; z-index: 1;
-  padding-bottom: 96px;
+  padding-bottom: 56px;
 }
 .screen-frame {
   border-radius: 10px; overflow: hidden;
@@ -395,7 +395,7 @@ body::before {
 }
 .cta-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .cta-logo {
-  width: clamp(26px, 3.2vw, 38px);
+  width: clamp(20px, 2.4vw, 30px);
   opacity: 0.80;
   margin-bottom: 4px;
   filter: drop-shadow(0 0 14px rgba(74,133,245,0.55)) drop-shadow(0 0 6px rgba(124,92,232,0.40));
