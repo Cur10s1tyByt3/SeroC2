@@ -28,58 +28,64 @@
   light2.position.set(-8, 6, -10);
   scene.add(light2);
 
+  // ── Build H/V index list — PlaneGeometry vertex (col i, row j) = j*(S+1)+i ─
+  function hvIndex(segs) {
+    const nx = segs + 1, idx = [];
+    for (let j = 0; j < nx; j++)
+      for (let i = 0; i < segs; i++) idx.push(j*nx+i, j*nx+i+1);
+    for (let i = 0; i < nx; i++)
+      for (let j = 0; j < segs; j++) idx.push(j*nx+i, (j+1)*nx+i);
+    return idx;
+  }
+
   // ── Main grid ─────────────────────────────────────────────────────────────
-  const S1 = lowEnd ? 24 : mobile ? 36 : 72;
+  const S1 = lowEnd ? 24 : mobile ? 36 : 70;
   const geo1 = new THREE.PlaneGeometry(50, 72, S1, S1);
   geo1.rotateX(-Math.PI / 2);
-
-  // Solid PBR surface — lit, responds to moving lights for realistic shading
-  const solidMesh = new THREE.Mesh(geo1, new THREE.MeshStandardMaterial({
-    color: 0x08102a,
-    emissive: 0x050c1e,
-    roughness: 0.58,
-    metalness: 0.28,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0.72,
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1,
-  }));
-  solidMesh.position.set(0, -1.2, -6);
-  scene.add(solidMesh);
-
-  // Wireframe overlay on the same geometry — grid lines on top
-  const wireMesh = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({
-    color: 0x2060c0,
-    wireframe: true,
-    transparent: true,
-    opacity: mobile ? 0.45 : 0.52,
-  }));
-  wireMesh.position.set(0, -1.2, -6);
-  scene.add(wireMesh);
-
   const pos1  = geo1.attributes.position;
   const base1 = new Float32Array(pos1.count);
   for (let i = 0; i < pos1.count; i++) base1[i] = pos1.getY(i);
 
+  // Solid PBR surface — lit, responds to moving lights for realistic shading
+  const solidMesh = new THREE.Mesh(geo1, new THREE.MeshStandardMaterial({
+    color: 0x08102a, emissive: 0x050c1e,
+    roughness: 0.58, metalness: 0.28,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.72,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+  }));
+  solidMesh.position.set(0, -1.2, -6);
+  scene.add(solidMesh);
+
+  // H/V lines only — shared position attr, no diagonal triangle edges
+  const lineGeo = new THREE.BufferGeometry();
+  lineGeo.setAttribute('position', pos1);
+  lineGeo.setIndex(hvIndex(S1));
+  const gridLines = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({
+    color: 0x2060c0, transparent: true, opacity: mobile ? 0.42 : 0.50,
+  }));
+  gridLines.position.set(0, -1.2, -6);
+  scene.add(gridLines);
+
   // ── Far sparse grid ───────────────────────────────────────────────────────
   let farPos = null, farBase = null;
   if (!mobile) {
-    const geo2 = new THREE.PlaneGeometry(80, 100, 22, 22);
+    const SF = 22;
+    const geo2 = new THREE.PlaneGeometry(80, 100, SF, SF);
     geo2.rotateX(-Math.PI / 2);
-    const farMesh = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
-      color: 0x091a40, wireframe: true, transparent: true, opacity: 0.10,
-    }));
-    farMesh.position.set(0, -4.0, -18);
-    scene.add(farMesh);
     farPos  = geo2.attributes.position;
     farBase = new Float32Array(farPos.count);
     for (let i = 0; i < farPos.count; i++) farBase[i] = farPos.getY(i);
+    const farLineGeo = new THREE.BufferGeometry();
+    farLineGeo.setAttribute('position', farPos);
+    farLineGeo.setIndex(hvIndex(SF));
+    const farLines = new THREE.LineSegments(farLineGeo, new THREE.LineBasicMaterial({
+      color: 0x091a40, transparent: true, opacity: 0.10,
+    }));
+    farLines.position.set(0, -4.0, -18);
+    scene.add(farLines);
   }
 
   // ── Wave functions ────────────────────────────────────────────────────────
-  // Low spatial frequencies + lower amplitudes = broad rounded hills, no spikes
   function ambientWave(x, z, t) {
     return Math.sin(x * 0.16 + t * 0.72) * 0.32
          + Math.sin(z * 0.11 + t * 0.50) * 0.24
