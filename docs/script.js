@@ -1,75 +1,130 @@
-/* ── Three.js — ambient wave terrain ── */
+/* ── Three.js — cyber grid + particles ── */
 (function () {
   const canvas = document.getElementById('bg-canvas');
   if (!canvas || typeof THREE === 'undefined') return;
 
   const mobile = window.innerWidth < 768;
-  const lowEnd = mobile && window.innerWidth < 480;
+  const lowEnd  = window.innerWidth < 480;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: false });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: !mobile });
   renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1 : 1.5));
   renderer.setClearColor(0x07080f, 1);
 
   const scene = new THREE.Scene();
-  // Tight linear fog — grid dissolves cleanly at horizon, no circular artifact
-  scene.fog = new THREE.Fog(0x07080f, mobile ? 10 : 15, mobile ? 38 : 50);
+  scene.fog = new THREE.FogExp2(0x07080f, mobile ? 0.030 : 0.022);
 
-  const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 80);
-  camera.position.set(0, 5, 8);
-  camera.lookAt(0, 0, -4);
+  const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 80);
+  camera.position.set(0, 4.2, 8.0);
+  camera.lookAt(0, -0.5, -5);
 
-  // ── Grid geometry ────────────────────────────────────────────────────────
-  // Single grid on mobile (GPU friendly), dual grid on desktop (depth)
-  const S1 = lowEnd ? 18 : mobile ? 24 : 48;
-  const geo1 = new THREE.PlaneGeometry(46, 60, S1, S1);
+  // ── Main grid — vertex colors map height to dark-navy → cyan → white ─────
+  const S1 = lowEnd ? 20 : mobile ? 30 : 60;
+  const geo1 = new THREE.PlaneGeometry(50, 70, S1, S1);
   geo1.rotateX(-Math.PI / 2);
+
+  const vcBuf  = new Float32Array(geo1.attributes.position.count * 3);
+  const vcAttr = new THREE.BufferAttribute(vcBuf, 3);
+  geo1.setAttribute('color', vcAttr);
+
   const mesh1 = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({
-    color: 0x0f2438,
-    wireframe: true,
-    transparent: true,
-    opacity: mobile ? 0.13 : 0.16,
+    vertexColors: true, wireframe: true, transparent: true,
+    opacity: mobile ? 0.55 : 0.68,
   }));
-  mesh1.position.set(0, -1.5, -6);
+  mesh1.position.set(0, -1.2, -6);
   scene.add(mesh1);
 
-  // Layer 2: desktop only — sparser, further back, slower wave = parallax
-  let geo2 = null, pos2 = null, base2 = null;
-  if (!mobile) {
-    geo2 = new THREE.PlaneGeometry(66, 76, 18, 18);
-    geo2.rotateX(-Math.PI / 2);
-    const mesh2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
-      color: 0x091820, wireframe: true, transparent: true, opacity: 0.07,
-    }));
-    mesh2.position.set(0, -3, -15);
-    scene.add(mesh2);
-    pos2 = geo2.attributes.position;
-    base2 = new Float32Array(pos2.count);
-    for (let i = 0; i < pos2.count; i++) base2[i] = pos2.getY(i);
-  }
-
-  const pos1 = geo1.attributes.position;
+  const pos1  = geo1.attributes.position;
   const base1 = new Float32Array(pos1.count);
   for (let i = 0; i < pos1.count; i++) base1[i] = pos1.getY(i);
 
-  // 4-frequency wave — overlapping sines create pseudo-noise (no obvious repeat)
-  // Amplitudes small so the terrain feels flat and ambient, not dramatic
-  function wave(x, z, t) {
-    return Math.sin(x * 0.28 + t * 0.65) * 0.28
-         + Math.sin(z * 0.17 + t * 0.44) * 0.22
-         + Math.sin((x - z) * 0.11 + t * 0.30) * 0.13
-         + Math.sin((x + z) * 0.055 + t * 0.18) * 0.08;
+  // ── Far sparse grid (parallax depth, ambient-only motion) ─────────────────
+  let farPos = null, farBase = null;
+  if (!mobile) {
+    const geo2 = new THREE.PlaneGeometry(80, 100, 22, 22);
+    geo2.rotateX(-Math.PI / 2);
+    const mesh2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
+      color: 0x091e3a, wireframe: true, transparent: true, opacity: 0.09,
+    }));
+    mesh2.position.set(0, -4.0, -18);
+    scene.add(mesh2);
+    farPos  = geo2.attributes.position;
+    farBase = new Float32Array(farPos.count);
+    for (let i = 0; i < farPos.count; i++) farBase[i] = farPos.getY(i);
   }
 
+  // ── Floating particles — cyan embers drifting upward ──────────────────────
+  const PC = mobile ? 50 : 130;
+  const pp  = new Float32Array(PC * 3);
+  const pv  = new Float32Array(PC * 3);
+  const pcol = new Float32Array(PC * 3);
+
+  function resetParticle(i, scatterY) {
+    pp[i*3]   = (Math.random() - 0.5) * 38;
+    pp[i*3+1] = scatterY ? Math.random() * 12 - 2 : -2.5;
+    pp[i*3+2] = Math.random() * -28 - 2;
+    pv[i*3]   = (Math.random() - 0.5) * 0.0018;
+    pv[i*3+1] = Math.random() * 0.0028 + 0.0008;
+    pv[i*3+2] = (Math.random() - 0.5) * 0.0012;
+    const b = Math.random();
+    pcol[i*3]   = b * 0.15 + 0.08;
+    pcol[i*3+1] = b * 0.10 + 0.88;
+    pcol[i*3+2] = 1.0;
+  }
+  for (let i = 0; i < PC; i++) resetParticle(i, true);
+
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pp,   3));
+  pGeo.setAttribute('color',    new THREE.BufferAttribute(pcol, 3));
+  scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({
+    vertexColors: true, size: 1.5, sizeAttenuation: true,
+    transparent: true, opacity: 0.52,
+  })));
+
+  // ── Wave functions ────────────────────────────────────────────────────────
+  function ambientWave(x, z, t) {
+    return Math.sin(x * 0.28 + t * 0.78) * 0.42
+         + Math.sin(z * 0.18 + t * 0.53) * 0.30
+         + Math.sin((x - z) * 0.12 + t * 0.37) * 0.18
+         + Math.sin((x + z) * 0.062 + t * 0.21) * 0.11;
+  }
+
+  function sonarPulse(x, z, t) {
+    const d = Math.hypot(x, z);
+    return Math.max(0, Math.sin(t * 2.1 - d * 0.27)) * Math.exp(-d * 0.058) * 1.15;
+  }
+
+  // Height → color: dark-navy (#091826) → teal (#107fa0) → cyan (#00e5ff) → white
+  function applyColor(buf, idx, h) {
+    const n = Math.max(0, Math.min(1, (h + 1.0) / 3.0));
+    let r, g, b;
+    if (n < 0.45) {
+      const s = n / 0.45;
+      r = 0.035 + s * 0.030;
+      g = 0.095 + s * 0.400;
+      b = 0.150 + s * 0.480;
+    } else if (n < 0.78) {
+      const s = (n - 0.45) / 0.33;
+      r = 0.065 + s * 0.180;
+      g = 0.495 + s * 0.400;
+      b = 0.630 + s * 0.260;
+    } else {
+      const s = (n - 0.78) / 0.22;
+      r = 0.245 + s * 0.755;
+      g = 0.895 + s * 0.105;
+      b = 0.890 + s * 0.110;
+    }
+    buf[idx] = r; buf[idx+1] = g; buf[idx+2] = b;
+  }
+
+  // ── Resize ────────────────────────────────────────────────────────────────
   function resize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', resize, { passive: true });
   resize();
 
-  // Pause on hidden tab — battery/GPU saving
   let paused = false;
   document.addEventListener('visibilitychange', () => {
     paused = document.hidden;
@@ -80,24 +135,39 @@
   function tick() {
     if (paused) return;
     requestAnimationFrame(tick);
+    t += mobile ? 0.0016 : 0.0018;
 
-    // Slow speed = ambient / background feel, not foreground animation
-    t += mobile ? 0.0014 : 0.0010;
-
-    for (let i = 0; i < pos1.count; i++)
-      pos1.setY(i, base1[i] + wave(pos1.getX(i), pos1.getZ(i), t));
+    // Main grid: heights + vertex colors
+    for (let i = 0; i < pos1.count; i++) {
+      const x = pos1.getX(i), z = pos1.getZ(i);
+      const y = base1[i] + ambientWave(x, z, t) + (mobile ? 0 : sonarPulse(x, z, t));
+      pos1.setY(i, y);
+      applyColor(vcBuf, i * 3, y);
+    }
     pos1.needsUpdate = true;
+    vcAttr.needsUpdate = true;
 
-    if (pos2 && base2) {
-      // Half speed + half amplitude → visually receding layer
-      for (let i = 0; i < pos2.count; i++)
-        pos2.setY(i, base2[i] + wave(pos2.getX(i), pos2.getZ(i), t * 0.4) * 0.45);
-      pos2.needsUpdate = true;
+    // Far grid
+    if (farPos && farBase) {
+      for (let i = 0; i < farPos.count; i++)
+        farPos.setY(i, farBase[i] + ambientWave(farPos.getX(i), farPos.getZ(i), t * 0.38) * 0.44);
+      farPos.needsUpdate = true;
     }
 
-    // Very slow, very small camera sway — imperceptible without comparison
-    camera.position.x = Math.sin(t * 0.10) * 0.35;
-    camera.lookAt(0, 0, -4);
+    // Particles: drift upward, wrap at ceiling
+    const ppa = pGeo.attributes.position.array;
+    for (let i = 0; i < PC; i++) {
+      ppa[i*3]   += pv[i*3];
+      ppa[i*3+1] += pv[i*3+1];
+      ppa[i*3+2] += pv[i*3+2];
+      if (ppa[i*3+1] > 9) resetParticle(i, false);
+    }
+    pGeo.attributes.position.needsUpdate = true;
+
+    // Camera: dual-frequency sway on X + gentle pitch oscillation on Y
+    camera.position.x = Math.sin(t * 0.110) * 0.45 + Math.sin(t * 0.037) * 0.12;
+    camera.position.y = 4.2 + Math.sin(t * 0.072) * 0.18 + Math.sin(t * 0.041) * 0.07;
+    camera.lookAt(Math.sin(t * 0.090) * 0.15, -0.5, -5);
 
     renderer.render(scene, camera);
   }
