@@ -127,20 +127,23 @@ document.querySelectorAll('.reveal').forEach((el, i) => {
   revealIO.observe(el);
 });
 
-/* ── 3D tilt on click/tap — pure inline style, no CSS class needed ── */
+/* ── 3D tilt on click/tap — tilt the container so border-radius moves with it ── */
 document.querySelectorAll('.gallery-item img, .screen-body img').forEach(img => {
   let busy = false;
+  // Tilt the whole box (border + border-radius + image together — no clipping artifact)
+  const box = img.closest('.gallery-item') || img.closest('.screen-frame') || img;
+
   function doTilt() {
     if (busy) return;
     busy = true;
-    img.style.transition = 'transform 0.13s ease';
-    img.style.transform = 'perspective(400px) rotateY(28deg) scale(0.86)';
+    box.style.transition = 'transform 0.13s ease';
+    box.style.transform = 'perspective(700px) rotateY(18deg) scale(0.95)';
     setTimeout(() => {
-      img.style.transform = 'perspective(400px) rotateY(-22deg) scale(0.86)';
+      box.style.transform = 'perspective(700px) rotateY(-14deg) scale(0.95)';
       setTimeout(() => {
-        img.style.transition = 'transform 0.2s ease';
-        img.style.transform = '';
-        setTimeout(() => { busy = false; }, 200);
+        box.style.transition = 'transform 0.22s ease';
+        box.style.transform = '';
+        setTimeout(() => { busy = false; }, 220);
       }, 130);
     }, 130);
   }
