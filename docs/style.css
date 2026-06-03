@@ -56,11 +56,18 @@ body::before {
 .brand { text-decoration: none; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .brand-sero {
   font-size: 1.05rem; font-weight: 700;
-  color: #4a85f5; letter-spacing: 0.03em;
+  letter-spacing: 0.03em;
+  background: linear-gradient(90deg, #4a85f5 0%, #7c5ce8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .brand-rat {
   font-size: 1.05rem; font-weight: 600;
-  color: #7c5ce8;
+  background: linear-gradient(180deg, #d8dcf0 0%, #8890b8 50%, #c4c8e0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .brand-icon { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; }
 
@@ -386,8 +393,20 @@ body::before {
 .cta-section {
   text-align: center;
 }
-.cta-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-.cta-logo { width: clamp(36px, 5vw, 54px); opacity: 0.52; margin-bottom: 16px; filter: drop-shadow(0 0 20px rgba(59,130,246,0.22)); }
+.cta-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.cta-logo {
+  width: clamp(26px, 3.2vw, 38px);
+  opacity: 0.80;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 14px rgba(74,133,245,0.55)) drop-shadow(0 0 6px rgba(124,92,232,0.40));
+  animation: logo3d 7s ease-in-out infinite;
+}
+@keyframes logo3d {
+  0%, 100% { transform: perspective(280px) rotateY(-14deg) rotateX(7deg) translateY(0px); }
+  25%       { transform: perspective(280px) rotateY(0deg)   rotateX(-4deg) translateY(-5px); }
+  50%       { transform: perspective(280px) rotateY(14deg)  rotateX(7deg) translateY(0px); }
+  75%       { transform: perspective(280px) rotateY(0deg)   rotateX(-4deg) translateY(-5px); }
+}
 .cta-section h2 {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
