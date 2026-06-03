@@ -43,6 +43,45 @@ public class TlsServer
     // Per-(client,packetType) dynamic handlers — used by feature windows
     private readonly ConcurrentDictionary<(string, PacketType), Action<Packet>> _handlers = new();
 
+    // ── Rate limiting & auth-fail tracking ──────────────────────────────
+    // Tracks (attempt_count, window_expiry) per IP for connection rate limiting
+    private readonly ConcurrentDictionary<string, (int count, DateTime reset)> _connRate  = new();
+    // Tracks consecutive auth failures per IP — temp-bans after 5 failures in 60s
+    private readonly ConcurrentDictionary<string, (int fails, DateTime unbanAt)> _authFail = new();
+
+    private const int MaxConnPerMinute  = 30;  // max new connections per IP per minute
+    private const int MaxAuthFails      = 5;   // auth failures before 5-minute temp-ban
+
+    private bool IsRateLimited(string ip)
+    {
+        var now = DateTime.UtcNow;
+        _connRate.AddOrUpdate(ip,
+            _ => (1, now.AddMinutes(1)),
+            (_, v) => now > v.reset ? (1, now.AddMinutes(1)) : (v.count + 1, v.reset));
+        return _connRate.TryGetValue(ip, out var r) && r.count > MaxConnPerMinute;
+    }
+
+    private bool IsTempBanned(string ip)
+    {
+        if (!_authFail.TryGetValue(ip, out var v)) return false;
+        if (DateTime.UtcNow > v.unbanAt) { _authFail.TryRemove(ip, out _); return false; }
+        return v.fails >= MaxAuthFails;
+    }
+
+    private void RecordAuthFailure(string ip)
+    {
+        var now = DateTime.UtcNow;
+        _authFail.AddOrUpdate(ip,
+            _ => (1, now.AddMinutes(5)),
+            (_, v) =>
+            {
+                if (now > v.unbanAt) return (1, now.AddMinutes(5));
+                return (v.fails + 1, now.AddMinutes(5)); // extend ban on each new failure
+            });
+        if (_authFail.TryGetValue(ip, out var r) && r.fails >= MaxAuthFails)
+            Log($"[RATE] {ip} temp-banned for 5 min after {r.fails} auth failures.");
+    }
+
     public void RegisterHandler(string clientId, PacketType type, Action<Packet> handler)
         => _handlers[(clientId, type)] = handler;
 
@@ -142,6 +181,19 @@ public class TlsServer
         var ip = ep?.Address.ToString() ?? "?";
         ConnectedClient? client = null;
 
+        // Rate limit: reject if IP is temp-banned or connecting too fast
+        if (IsTempBanned(ip))
+        {
+            tcp.Close();
+            return;
+        }
+        if (IsRateLimited(ip))
+        {
+            Log($"[RATE] {ip} rate-limited ({MaxConnPerMinute} connections/min exceeded).");
+            tcp.Close();
+            return;
+        }
+
         SslStream? sslStream = null;
         try
         {
@@ -167,9 +219,10 @@ public class TlsServer
                 return;
             }
 
-            // Auth key verification (always required)
+            // Auth key verification — record failure for temp-ban
             if (string.IsNullOrEmpty(info.AuthKey) || info.AuthKey != AuthKey)
             {
+                RecordAuthFailure(ip);
                 Log($"[AUTH] Rejected {ip}: invalid auth key.");
                 tcp.Close();
                 return;
@@ -254,8 +307,22 @@ public class TlsServer
             Log($"Client {client.Id} connected ({info.Username}@{ip}, {client.Country})");
             ClientConnected?.Invoke(client);
 
-            // Read loop
+            // Heartbeat watchdog — kicks zombie connections that stopped sending heartbeats
+            // (e.g. client hard-killed, network dead but socket not yet closed by OS)
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(serverCt, client.Cts.Token);
+            _ = Task.Run(async () =>
+            {
+                while (!linkedCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(15_000, linkedCts.Token).ConfigureAwait(false);
+                    if (!linkedCts.Token.IsCancellationRequested && !client.IsAlive)
+                    {
+                        Log($"[WATCHDOG] {client.Id} heartbeat timeout — disconnecting zombie.");
+                        DisconnectClient(client.Id);
+                        break;
+                    }
+                }
+            }, linkedCts.Token).ContinueWith(_ => { }); // swallow OperationCanceledException
             while (!linkedCts.Token.IsCancellationRequested)
             {
                 var packet = await Packet.ReadFromStreamAsync(sslStream, linkedCts.Token);
