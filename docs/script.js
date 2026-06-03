@@ -49,16 +49,16 @@
 
   // ── Wave functions ────────────────────────────────────────────────────────
   function ambientWave(x, z, t) {
-    return Math.sin(x * 0.28 + t * 0.78) * 0.48
-         + Math.sin(z * 0.18 + t * 0.53) * 0.34
-         + Math.sin((x - z) * 0.12 + t * 0.37) * 0.20
-         + Math.sin((x + z) * 0.062 + t * 0.21) * 0.13
-         + Math.sin(x * 0.055 + z * 0.042 + t * 0.14) * 0.09;
+    return Math.sin(x * 0.26 + t * 0.72) * 0.48
+         + Math.sin(z * 0.17 + t * 0.50) * 0.34
+         + Math.sin((x - z) * 0.11 + t * 0.35) * 0.22
+         + Math.sin((x + z) * 0.058 + t * 0.20) * 0.14
+         + Math.sin(x * 0.052 + z * 0.040 + t * 0.13) * 0.09;
   }
 
   function sonarWave(x, z, t) {
     const d = Math.hypot(x, z);
-    return Math.max(0, Math.sin(t * 2.1 - d * 0.27)) * Math.exp(-d * 0.058) * 1.1;
+    return Math.max(0, Math.sin(t * 1.9 - d * 0.25)) * Math.exp(-d * 0.055) * 1.05;
   }
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -73,14 +73,20 @@
   let paused = false;
   document.addEventListener('visibilitychange', () => {
     paused = document.hidden;
-    if (!paused) tick();
+    if (!paused) { clock.start(); tick(); }
   });
+
+  // Delta-time clock — speed stays constant regardless of frame rate
+  const clock = new THREE.Clock();
+  const SPEED = mobile ? 0.096 : 0.108; // units/second (= 0.0016 or 0.0018 × 60)
 
   let t = 0;
   function tick() {
     if (paused) return;
     requestAnimationFrame(tick);
-    t += mobile ? 0.0016 : 0.0018;
+
+    const dt = Math.min(clock.getDelta(), 0.05); // cap at 50ms — no jump after tab restore
+    t += dt * SPEED;
 
     // Main grid wave
     for (let i = 0; i < pos1.count; i++)
@@ -88,18 +94,18 @@
                              + (mobile ? 0 : sonarWave(pos1.getX(i), pos1.getZ(i), t)));
     pos1.needsUpdate = true;
 
-    // Far grid
+    // Far grid (slower, shallower)
     if (farPos && farBase) {
       for (let i = 0; i < farPos.count; i++)
-        farPos.setY(i, farBase[i] + ambientWave(farPos.getX(i), farPos.getZ(i), t * 0.38) * 0.44);
+        farPos.setY(i, farBase[i] + ambientWave(farPos.getX(i), farPos.getZ(i), t * 0.38) * 0.42);
       farPos.needsUpdate = true;
     }
 
-    // Camera: tri-axis drift — X sway + Y breathe + Z slow forward/back
-    camera.position.x = Math.sin(t * 0.110) * 0.50 + Math.sin(t * 0.037) * 0.14;
-    camera.position.y = 4.2 + Math.sin(t * 0.072) * 0.20 + Math.sin(t * 0.041) * 0.08;
-    camera.position.z = 8.0 + Math.sin(t * 0.022) * 1.8;
-    camera.lookAt(Math.sin(t * 0.090) * 0.18, -0.5, -5);
+    // Camera: smooth tri-axis drift, moderate Z float
+    camera.position.x = Math.sin(t * 0.110) * 0.48 + Math.sin(t * 0.037) * 0.13;
+    camera.position.y = 4.2 + Math.sin(t * 0.068) * 0.18 + Math.sin(t * 0.039) * 0.07;
+    camera.position.z = 8.0 + Math.sin(t * 0.018) * 1.2;
+    camera.lookAt(Math.sin(t * 0.085) * 0.16, -0.5, -5);
 
     renderer.render(scene, camera);
   }
