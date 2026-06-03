@@ -29,7 +29,7 @@
   scene.add(light2);
 
   // ── Main grid ─────────────────────────────────────────────────────────────
-  const S1 = lowEnd ? 22 : mobile ? 34 : 66;
+  const S1 = lowEnd ? 24 : mobile ? 36 : 72;
   const geo1 = new THREE.PlaneGeometry(50, 72, S1, S1);
   geo1.rotateX(-Math.PI / 2);
 
@@ -79,17 +79,18 @@
   }
 
   // ── Wave functions ────────────────────────────────────────────────────────
+  // Low spatial frequencies + lower amplitudes = broad rounded hills, no spikes
   function ambientWave(x, z, t) {
-    return Math.sin(x * 0.26 + t * 0.72) * 0.50
-         + Math.sin(z * 0.17 + t * 0.50) * 0.36
-         + Math.sin((x - z) * 0.11 + t * 0.35) * 0.22
-         + Math.sin((x + z) * 0.058 + t * 0.20) * 0.14
-         + Math.sin(x * 0.052 + z * 0.040 + t * 0.13) * 0.09;
+    return Math.sin(x * 0.16 + t * 0.72) * 0.32
+         + Math.sin(z * 0.11 + t * 0.50) * 0.24
+         + Math.sin((x - z) * 0.075 + t * 0.35) * 0.14
+         + Math.sin((x + z) * 0.038 + t * 0.20) * 0.09
+         + Math.sin(x * 0.035 + z * 0.028 + t * 0.13) * 0.06;
   }
 
   function sonarWave(x, z, t) {
     const d = Math.hypot(x, z);
-    return Math.max(0, Math.sin(t * 1.9 - d * 0.25)) * Math.exp(-d * 0.055) * 1.1;
+    return Math.max(0, Math.sin(t * 1.9 - d * 0.22)) * Math.exp(-d * 0.050) * 0.70;
   }
 
   // ── Resize ────────────────────────────────────────────────────────────────
