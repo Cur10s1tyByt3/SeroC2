@@ -474,7 +474,7 @@ footer {
   .hero-actions .btn-primary,
   .hero-actions .btn-outline { justify-content: center; }
   .feat-grid { grid-template-columns: 1fr; gap: 28px; }
-  .btn-gh { font-size: 0.78rem; padding: 6px 10px; }
+  .btn-gh { font-size: 0.78rem; padding: 6px 10px; margin-left: auto; }
   .price-table td { padding: 11px 10px; font-size: 0.82rem; }
   .price-note-cell { display: none; }
   .deepdive-card { padding: 20px; }
