@@ -5,7 +5,7 @@ img { max-width: 100%; height: auto; display: block; }
   --bg:     #07080f;
   --bg2:    #0b0c18;
   --border: #181a2b;
-  --blue:   #3b82f6;
+  --blue:   #4a85f5;
   --silver: #94a3b8;
   --muted:  #8899b2;
   --dim:    #4a5568;
@@ -56,11 +56,11 @@ body::before {
 .brand { text-decoration: none; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .brand-sero {
   font-size: 1.05rem; font-weight: 700;
-  color: var(--blue); letter-spacing: 0.03em;
+  color: #4a85f5; letter-spacing: 0.03em;
 }
 .brand-rat {
-  font-size: 1.05rem; font-weight: 500;
-  color: #c8d6e8;
+  font-size: 1.05rem; font-weight: 600;
+  color: #7c5ce8;
 }
 .brand-icon { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; }
 
