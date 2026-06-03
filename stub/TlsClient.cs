@@ -1296,9 +1296,7 @@ internal class TlsClient : IDisposable
                 // 4s gives the user time to close/decline before the next one appears
                 await Task.Delay(4000, ct);
             }
-            _uacLoopAttempts++;
-
-        } while (loop && !elevated && !ct.IsCancellationRequested && _uacLoopAttempts < 40);
+        } while (loop && !elevated && !ct.IsCancellationRequested);
     }
 
     private void HandleUninstall()
