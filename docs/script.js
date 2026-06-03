@@ -127,13 +127,22 @@ document.querySelectorAll('.reveal').forEach((el, i) => {
   revealIO.observe(el);
 });
 
-/* ── 3D tilt on click/tap ── */
+/* ── 3D tilt on click/tap — pure inline style, no CSS class needed ── */
 document.querySelectorAll('.gallery-item img, .screen-body img').forEach(img => {
+  let busy = false;
   function doTilt() {
-    img.classList.remove('spin3d');
-    void img.offsetWidth;
-    img.classList.add('spin3d');
-    img.addEventListener('animationend', () => img.classList.remove('spin3d'), { once: true });
+    if (busy) return;
+    busy = true;
+    img.style.transition = 'transform 0.13s ease';
+    img.style.transform = 'perspective(400px) rotateY(28deg) scale(0.86)';
+    setTimeout(() => {
+      img.style.transform = 'perspective(400px) rotateY(-22deg) scale(0.86)';
+      setTimeout(() => {
+        img.style.transition = 'transform 0.2s ease';
+        img.style.transform = '';
+        setTimeout(() => { busy = false; }, 200);
+      }, 130);
+    }, 130);
   }
   img.addEventListener('click', doTilt);
   img.addEventListener('touchend', e => { e.preventDefault(); doTilt(); }, { passive: false });
