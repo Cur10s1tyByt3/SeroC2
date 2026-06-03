@@ -290,7 +290,7 @@ body::before {
   padding: 80px 0; border-top: 1px solid var(--border);
 }
 .price-table-wrap { overflow-x: auto; margin-top: 44px; -webkit-overflow-scrolling: touch; }
-.price-table { width: 100%; border-collapse: collapse; min-width: 420px; }
+.price-table { width: 100%; border-collapse: collapse; min-width: 360px; }
 .price-table td {
   padding: 15px 20px; font-size: 0.9rem;
   color: var(--muted); border-bottom: 1px solid var(--border);
@@ -387,7 +387,7 @@ body::before {
   text-align: center;
 }
 .cta-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-.cta-logo { width: clamp(48px, 7vw, 72px); opacity: 0.52; margin-bottom: 16px; filter: drop-shadow(0 0 20px rgba(59,130,246,0.22)); }
+.cta-logo { width: clamp(36px, 5vw, 54px); opacity: 0.52; margin-bottom: 16px; filter: drop-shadow(0 0 20px rgba(59,130,246,0.22)); }
 .cta-section h2 {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
@@ -458,64 +458,85 @@ footer {
 @media (max-width: 1080px) {
   .container { padding: 0 28px; }
 }
+
 @media (max-width: 900px) {
-  .container { padding: 0 24px; }
+  .container { padding: 0 22px; }
   .nav-links, #nav-links { display: none !important; }
   .oss-grid { grid-template-columns: 1fr; gap: 40px; }
   .oss-sep { display: none; }
-  .feat-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
-  .tech-layout { grid-template-columns: 1fr; }
+  .feat-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .tech-layout { grid-template-columns: 1fr; gap: 36px; }
   .gallery { grid-template-columns: 1fr 1fr; }
   .deepdive-grid { grid-template-columns: 1fr; }
-  .footer-inner { flex-direction: column; align-items: flex-start; gap: 32px; }
+  .footer-inner { flex-direction: column; align-items: flex-start; gap: 28px; }
   .footer-right { align-items: flex-start; }
   .features-section, .price-section, .showcase-section,
-  .tech-section, .oss-section, .deepdive-section { padding: 60px 0; }
-  .cta-section { padding: 72px 0; }
+  .tech-section, .oss-section, .deepdive-section { padding: 56px 0; }
+  .cta-section { padding: 64px 0; }
+  /* Prevent code block from overflowing grid */
+  .code-block { max-width: 100%; overflow: hidden; }
+  .code-body { overflow-x: auto; max-width: 100%; }
 }
+
 @media (max-width: 640px) {
   .container { padding: 0 16px; }
-  .nav-links { display: none; }
+  .nav-inner { justify-content: space-between; }
   .btn-gh { font-size: 0.78rem; padding: 6px 10px; }
-  .hero { padding: 100px 0 48px; }
-  .hero-lead { font-size: 0.95rem; border-left: none; padding-left: 0; }
-  .hero-meta { font-size: 0.72rem; gap: 7px; }
+  .hero { padding: 96px 0 44px; }
+  .hero-lead { font-size: 0.92rem; border-left: none; padding-left: 0; }
+  .hero-meta { font-size: 0.7rem; gap: 6px; flex-wrap: wrap; }
   .hero-actions { flex-direction: column; align-items: stretch; }
   .hero-actions .btn-primary,
-  .hero-actions .btn-outline { justify-content: center; }
-  .feat-grid { grid-template-columns: 1fr; gap: 28px; }
-  .price-table td { padding: 11px 10px; font-size: 0.82rem; }
+  .hero-actions .btn-outline { justify-content: center; width: 100%; }
+  .feat-grid { grid-template-columns: 1fr; gap: 24px; }
+  .gallery { grid-template-columns: 1fr 1fr; gap: 10px; }
+  /* Price table: smaller text, hide note column, let wrapper scroll */
+  .price-table td { padding: 10px 8px; font-size: 0.8rem; }
   .price-note-cell { display: none; }
-  .deepdive-card { padding: 20px; }
+  .price-table-wrap { margin-left: -16px; margin-right: -16px; padding: 0 16px; }
+  .deepdive-card { padding: 18px; }
+  .deepdive-card h3 { font-size: 0.92rem; }
+  .deepdive-card p { font-size: 0.83rem; }
   .screen-bar { padding: 9px 12px; }
-  .screen-frame { box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+  .screen-frame { box-shadow: 0 12px 32px rgba(0,0,0,0.55); border-radius: 8px; }
   .features-section, .price-section, .showcase-section,
-  .tech-section, .oss-section, .deepdive-section { padding: 48px 0; }
-  .cta-section { padding: 56px 0; }
-  .cta-section h2 { font-size: 1.75rem; }
-  .cta-logo { width: 72px; }
-  .footer-links { flex-wrap: wrap; gap: 16px; }
-  .tech-list li { padding-left: 12px; }
-  .code-body code { font-size: 0.72rem; }
-  .section-h { margin-bottom: 28px; }
+  .tech-section, .oss-section, .deepdive-section { padding: 44px 0; }
+  .cta-section { padding: 52px 0; }
+  .cta-section h2 { font-size: 1.7rem; }
+  .footer-links { flex-wrap: wrap; gap: 14px; }
+  .tech-list li { padding-left: 10px; }
+  .code-body code { font-size: 0.7rem; }
+  .code-body { padding: 14px; }
+  .section-h { margin-bottom: 24px; }
+  .section-sub { margin-bottom: 32px; }
+  .screenshot-section { padding-bottom: 56px; }
+  /* Ensure no text overflows */
+  .oss-list li, .feat-col li { word-break: break-word; overflow-wrap: break-word; }
 }
+
 @media (max-width: 420px) {
-  .container { padding: 0 14px; }
-  .hero { padding: 82px 0 36px; }
-  .hero h1 { font-size: clamp(1.5rem, 9vw, 2.2rem); }
-  .hero-lead { font-size: 0.88rem; }
-  .eyebrow { font-size: 0.68rem; }
-  .btn-primary, .btn-outline { font-size: 0.85rem; padding: 10px 16px; }
-  .deepdive-card { padding: 16px; }
-  .oss-list li { font-size: 0.82rem; }
-  .feat-col li { font-size: 0.82rem; }
-  .feat-col h4 { font-size: 0.63rem; }
-  .gallery { grid-template-columns: 1fr; }
-  .footer-inner { gap: 20px; }
-  .footer-links { gap: 12px; }
-  .cta-section h2 { font-size: 1.5rem; }
-  .cta-logo { width: 56px; }
-  .cta-section p, .legal { font-size: 0.82rem; }
-  /* Hide <br> tags in CTA on very small screens */
+  .container { padding: 0 12px; }
+  .hero { padding: 80px 0 32px; }
+  .hero h1 { font-size: clamp(1.45rem, 8.5vw, 2.1rem); }
+  .hero-lead { font-size: 0.86rem; }
+  .eyebrow { font-size: 0.67rem; gap: 6px; }
+  .btn-primary, .btn-outline { font-size: 0.84rem; padding: 10px 14px; }
+  .deepdive-card { padding: 14px; }
+  .oss-list li { font-size: 0.8rem; }
+  .feat-col li { font-size: 0.8rem; }
+  .feat-col h4 { font-size: 0.62rem; }
+  .gallery { grid-template-columns: 1fr; gap: 10px; }
+  .footer-inner { gap: 18px; }
+  .footer-links { gap: 10px; }
+  .cta-section h2 { font-size: 1.45rem; }
+  .cta-section p, .legal { font-size: 0.8rem; }
   .cta-section br { display: none; }
+  /* Brand: slightly smaller on very narrow screens */
+  .brand-sero, .brand-rat { font-size: 0.92rem; }
+  .brand-icon { width: 16px; height: 16px; }
+  /* Price table: remove min-width on tiny screens */
+  .price-table { min-width: 0; width: 100%; }
+  .price-table td:first-child { max-width: 120px; word-break: break-word; }
+  /* Section titles smaller */
+  .section-h { font-size: clamp(1.2rem, 5.5vw, 1.6rem); }
 }
