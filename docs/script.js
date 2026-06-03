@@ -18,13 +18,13 @@
   camera.lookAt(0, -0.5, -5);
 
   // ── Lights — brand colors sweep across the surface for dynamic highlights ─
-  scene.add(new THREE.AmbientLight(0x080c18, 1.0));
+  scene.add(new THREE.AmbientLight(0x0d1a30, 1.6));
 
-  const light1 = new THREE.PointLight(0x4a85f5, mobile ? 1.8 : 2.8, 40);
+  const light1 = new THREE.PointLight(0x4a85f5, mobile ? 2.2 : 3.4, 42);
   light1.position.set(5, 8, -2);
   scene.add(light1);
 
-  const light2 = new THREE.PointLight(0x7c5ce8, mobile ? 1.2 : 2.0, 32);
+  const light2 = new THREE.PointLight(0x7c5ce8, mobile ? 1.6 : 2.6, 34);
   light2.position.set(-8, 6, -10);
   scene.add(light2);
 
@@ -35,13 +35,13 @@
 
   // Solid PBR surface — lit, responds to moving lights for realistic shading
   const solidMesh = new THREE.Mesh(geo1, new THREE.MeshStandardMaterial({
-    color: 0x040810,
-    emissive: 0x02050e,
-    roughness: 0.55,
-    metalness: 0.30,
+    color: 0x08102a,
+    emissive: 0x050c1e,
+    roughness: 0.58,
+    metalness: 0.28,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.72,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
@@ -51,10 +51,10 @@
 
   // Wireframe overlay on the same geometry — grid lines on top
   const wireMesh = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({
-    color: 0x1a4a90,
+    color: 0x2060c0,
     wireframe: true,
     transparent: true,
-    opacity: mobile ? 0.38 : 0.44,
+    opacity: mobile ? 0.45 : 0.52,
   }));
   wireMesh.position.set(0, -1.2, -6);
   scene.add(wireMesh);
@@ -68,9 +68,11 @@
   if (!mobile) {
     const geo2 = new THREE.PlaneGeometry(80, 100, 22, 22);
     geo2.rotateX(-Math.PI / 2);
-    scene.add(Object.assign(new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
+    const farMesh = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
       color: 0x091a40, wireframe: true, transparent: true, opacity: 0.10,
-    })), { position: new THREE.Vector3(0, -4.0, -18) }));
+    }));
+    farMesh.position.set(0, -4.0, -18);
+    scene.add(farMesh);
     farPos  = geo2.attributes.position;
     farBase = new Float32Array(farPos.count);
     for (let i = 0; i < farPos.count; i++) farBase[i] = farPos.getY(i);
