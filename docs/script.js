@@ -1,4 +1,4 @@
-/* ── Three.js — cyber grid + particles ── */
+/* ── Three.js — radar grid ── */
 (function () {
   const canvas = document.getElementById('bg-canvas');
   if (!canvas || typeof THREE === 'undefined') return;
@@ -11,24 +11,19 @@
   renderer.setClearColor(0x07080f, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x07080f, mobile ? 0.030 : 0.022);
+  scene.fog = new THREE.FogExp2(0x07080f, mobile ? 0.028 : 0.020);
 
   const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 80);
   camera.position.set(0, 4.2, 8.0);
   camera.lookAt(0, -0.5, -5);
 
-  // ── Main grid — vertex colors map height to dark-navy → cyan → white ─────
+  // ── Main grid — single solid color, wave-deformed ─────────────────────────
   const S1 = lowEnd ? 20 : mobile ? 30 : 60;
   const geo1 = new THREE.PlaneGeometry(50, 70, S1, S1);
   geo1.rotateX(-Math.PI / 2);
-
-  const vcBuf  = new Float32Array(geo1.attributes.position.count * 3);
-  const vcAttr = new THREE.BufferAttribute(vcBuf, 3);
-  geo1.setAttribute('color', vcAttr);
-
   const mesh1 = new THREE.Mesh(geo1, new THREE.MeshBasicMaterial({
-    vertexColors: true, wireframe: true, transparent: true,
-    opacity: mobile ? 0.55 : 0.68,
+    color: 0x0d3060, wireframe: true, transparent: true,
+    opacity: mobile ? 0.36 : 0.40,
   }));
   mesh1.position.set(0, -1.2, -6);
   scene.add(mesh1);
@@ -37,13 +32,13 @@
   const base1 = new Float32Array(pos1.count);
   for (let i = 0; i < pos1.count; i++) base1[i] = pos1.getY(i);
 
-  // ── Far sparse grid (parallax depth, ambient-only motion) ─────────────────
+  // ── Far sparse grid (parallax depth) ─────────────────────────────────────
   let farPos = null, farBase = null;
   if (!mobile) {
     const geo2 = new THREE.PlaneGeometry(80, 100, 22, 22);
     geo2.rotateX(-Math.PI / 2);
     const mesh2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({
-      color: 0x091e3a, wireframe: true, transparent: true, opacity: 0.09,
+      color: 0x071a35, wireframe: true, transparent: true, opacity: 0.10,
     }));
     mesh2.position.set(0, -4.0, -18);
     scene.add(mesh2);
@@ -52,32 +47,35 @@
     for (let i = 0; i < farPos.count; i++) farBase[i] = farPos.getY(i);
   }
 
-  // ── Floating particles — cyan embers drifting upward ──────────────────────
-  const PC = mobile ? 50 : 130;
-  const pp  = new Float32Array(PC * 3);
-  const pv  = new Float32Array(PC * 3);
-  const pcol = new Float32Array(PC * 3);
-
-  function resetParticle(i, scatterY) {
-    pp[i*3]   = (Math.random() - 0.5) * 38;
-    pp[i*3+1] = scatterY ? Math.random() * 12 - 2 : -2.5;
-    pp[i*3+2] = Math.random() * -28 - 2;
-    pv[i*3]   = (Math.random() - 0.5) * 0.0018;
-    pv[i*3+1] = Math.random() * 0.0028 + 0.0008;
-    pv[i*3+2] = (Math.random() - 0.5) * 0.0012;
-    const b = Math.random();
-    pcol[i*3]   = b * 0.15 + 0.08;
-    pcol[i*3+1] = b * 0.10 + 0.88;
-    pcol[i*3+2] = 1.0;
+  // ── Radar ping — expanding LineLoop that pulses outward and fades ─────────
+  const RING_N = mobile ? 56 : 92;
+  const ringPts = [];
+  for (let i = 0; i < RING_N; i++) {
+    const a = (i / RING_N) * Math.PI * 2;
+    ringPts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
   }
-  for (let i = 0; i < PC; i++) resetParticle(i, true);
+  const ringGeo  = new THREE.BufferGeometry().setFromPoints(ringPts);
+  const ringMat  = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0 });
+  const ringMat2 = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0 });
+  const ring  = new THREE.LineLoop(ringGeo, ringMat);
+  const ring2 = new THREE.LineLoop(ringGeo, ringMat2);
+  ring.position.set(0, -1.18, -6);
+  ring2.position.set(0, -1.19, -6);
+  scene.add(ring, ring2);
 
-  const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pp,   3));
-  pGeo.setAttribute('color',    new THREE.BufferAttribute(pcol, 3));
-  scene.add(new THREE.Points(pGeo, new THREE.PointsMaterial({
-    vertexColors: true, size: 1.5, sizeAttenuation: true,
-    transparent: true, opacity: 0.52,
+  // ── Distant stars (static) ────────────────────────────────────────────────
+  const STARS = mobile ? 80 : 180;
+  const sPos  = new Float32Array(STARS * 3);
+  for (let i = 0; i < STARS; i++) {
+    sPos[i*3]   = (Math.random() - 0.5) * 55;
+    sPos[i*3+1] = Math.random() * 7 + 1.5;
+    sPos[i*3+2] = Math.random() * -38 - 6;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.7, sizeAttenuation: true,
+    transparent: true, opacity: 0.28,
   })));
 
   // ── Wave functions ────────────────────────────────────────────────────────
@@ -88,32 +86,9 @@
          + Math.sin((x + z) * 0.062 + t * 0.21) * 0.11;
   }
 
-  function sonarPulse(x, z, t) {
+  function sonarWave(x, z, t) {
     const d = Math.hypot(x, z);
-    return Math.max(0, Math.sin(t * 2.1 - d * 0.27)) * Math.exp(-d * 0.058) * 1.15;
-  }
-
-  // Height → color: dark-navy (#091826) → teal (#107fa0) → cyan (#00e5ff) → white
-  function applyColor(buf, idx, h) {
-    const n = Math.max(0, Math.min(1, (h + 1.0) / 3.0));
-    let r, g, b;
-    if (n < 0.45) {
-      const s = n / 0.45;
-      r = 0.035 + s * 0.030;
-      g = 0.095 + s * 0.400;
-      b = 0.150 + s * 0.480;
-    } else if (n < 0.78) {
-      const s = (n - 0.45) / 0.33;
-      r = 0.065 + s * 0.180;
-      g = 0.495 + s * 0.400;
-      b = 0.630 + s * 0.260;
-    } else {
-      const s = (n - 0.78) / 0.22;
-      r = 0.245 + s * 0.755;
-      g = 0.895 + s * 0.105;
-      b = 0.890 + s * 0.110;
-    }
-    buf[idx] = r; buf[idx+1] = g; buf[idx+2] = b;
+    return Math.max(0, Math.sin(t * 2.1 - d * 0.27)) * Math.exp(-d * 0.058) * 1.1;
   }
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -131,21 +106,21 @@
     if (!paused) tick();
   });
 
+  // Radar ring state
+  const SONAR_T = 0.52; // ~5 s at 60 fps (t increments 0.0018/frame)
+  const MAX_R   = 22;
+
   let t = 0;
   function tick() {
     if (paused) return;
     requestAnimationFrame(tick);
     t += mobile ? 0.0016 : 0.0018;
 
-    // Main grid: heights + vertex colors
-    for (let i = 0; i < pos1.count; i++) {
-      const x = pos1.getX(i), z = pos1.getZ(i);
-      const y = base1[i] + ambientWave(x, z, t) + (mobile ? 0 : sonarPulse(x, z, t));
-      pos1.setY(i, y);
-      applyColor(vcBuf, i * 3, y);
-    }
+    // Main grid wave
+    for (let i = 0; i < pos1.count; i++)
+      pos1.setY(i, base1[i] + ambientWave(pos1.getX(i), pos1.getZ(i), t)
+                             + (mobile ? 0 : sonarWave(pos1.getX(i), pos1.getZ(i), t)));
     pos1.needsUpdate = true;
-    vcAttr.needsUpdate = true;
 
     // Far grid
     if (farPos && farBase) {
@@ -154,17 +129,17 @@
       farPos.needsUpdate = true;
     }
 
-    // Particles: drift upward, wrap at ceiling
-    const ppa = pGeo.attributes.position.array;
-    for (let i = 0; i < PC; i++) {
-      ppa[i*3]   += pv[i*3];
-      ppa[i*3+1] += pv[i*3+1];
-      ppa[i*3+2] += pv[i*3+2];
-      if (ppa[i*3+1] > 9) resetParticle(i, false);
-    }
-    pGeo.attributes.position.needsUpdate = true;
+    // Radar ring animation
+    const sp  = (t % SONAR_T) / SONAR_T;
+    const sp2 = Math.max(0, sp - 0.09);
+    const fade = Math.pow(Math.max(0, 1 - sp * 1.05), 1.8);
+    ring.scale.set(Math.max(0.01, sp * MAX_R), 1, Math.max(0.01, sp * MAX_R));
+    ringMat.opacity = fade * 0.88;
+    ring2.visible   = sp > 0.09;
+    ring2.scale.set(Math.max(0.01, sp2 * MAX_R), 1, Math.max(0.01, sp2 * MAX_R));
+    ringMat2.opacity = fade * 0.42;
 
-    // Camera: dual-frequency sway on X + gentle pitch oscillation on Y
+    // Camera: dual-frequency sway
     camera.position.x = Math.sin(t * 0.110) * 0.45 + Math.sin(t * 0.037) * 0.12;
     camera.position.y = 4.2 + Math.sin(t * 0.072) * 0.18 + Math.sin(t * 0.041) * 0.07;
     camera.lookAt(Math.sin(t * 0.090) * 0.15, -0.5, -5);
