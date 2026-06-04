@@ -17,6 +17,7 @@ internal static class FunFeature
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nint dwExtraInfo);
     [DllImport("user32.dll")] private static extern uint SystemParametersInfo(uint uiAction, uint uiParam, nint pvParam, uint fWinIni);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint SystemParametersInfoW(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
+    [DllImport("winmm.dll", EntryPoint = "mciSendStringW", CharSet = CharSet.Unicode)] private static extern int mciSendString(string cmd, System.Text.StringBuilder? ret, int retLen, nint callback);
 
     private const uint WM_SYSCOMMAND    = 0x0112;
     private const nint SC_MONITORPOWER  = 0xF170;
@@ -37,13 +38,10 @@ internal static class FunFeature
             {
                 // ── CD-ROM ──────────────────────────────────────────────
                 case "cd_open":
-                    RunHidden("cmd", "/c set /a x=0 & for /f \"tokens=1\" %i in ('wmic logicaldisk where drivetype^=5 get deviceid') do if \"%i\" neq \"DeviceID\" mciSendString \"open %i type cdaudio\" & mciSendString \"set cdaudio door open\"");
-                    RunHidden("powershell", "-NoP -NonI -W H -Command \"$wmp = New-Object -ComObject 'WMPlayer.OCX'; $wmp.eject()\"");
+                    mciSendString("set cdaudio door open", null, 0, nint.Zero);
                     break;
                 case "cd_close":
-                    RunHidden("powershell", "-NoP -NonI -W H -Command \"$sh = New-Object -ComObject Shell.Application; $sh.Namespace(17).Items() | Where-Object { $_.IsBrowsable -eq $false }\"");
-                    // DeviceIoControl approach via mciSendString
-                    RunHidden("cmd", "/c mciSendString \"set cdaudio door closed\"");
+                    mciSendString("set cdaudio door closed", null, 0, nint.Zero);
                     break;
 
                 // ── Taskbar ──────────────────────────────────────────────
@@ -84,11 +82,19 @@ internal static class FunFeature
 
                 // ── Tray Notify ─────────────────────────────────────────
                 case "tray_hide":
-                    ToggleTrayElement("TrayNotifyWnd", false);
+                {
+                    var tb = FindWindow("Shell_TrayWnd", null);
+                    var tn = FindWindowEx(tb, nint.Zero, "TrayNotifyWnd", null);
+                    if (tn != nint.Zero) ShowWindow(tn, SW_HIDE);
                     break;
+                }
                 case "tray_show":
-                    ToggleTrayElement("TrayNotifyWnd", true);
+                {
+                    var tb = FindWindow("Shell_TrayWnd", null);
+                    var tn = FindWindowEx(tb, nint.Zero, "TrayNotifyWnd", null);
+                    if (tn != nint.Zero) ShowWindow(tn, SW_SHOW);
                     break;
+                }
 
                 // ── Desktop Icons ────────────────────────────────────────
                 case "desktopicons_hide":

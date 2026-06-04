@@ -23,19 +23,33 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+                        <Border x:Name="PART_Bg"
+                                Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="5" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <!-- Active-state indicator dot — visible only when Tag="on" -->
+                                <Ellipse x:Name="PART_Dot"
+                                         Width="5" Height="5" Fill="#4ECDC4"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                                         Margin="0,3,3,0" Visibility="Collapsed"/>
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1E2248"/>
-                                <Setter Property="BorderBrush" Value="#4A85F5"/>
+                                <Setter TargetName="PART_Bg" Property="Background"   Value="#1E2248"/>
+                                <Setter TargetName="PART_Bg" Property="BorderBrush"  Value="#4A85F5"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#0E1228"/>
+                                <Setter TargetName="PART_Bg" Property="Background"   Value="#0E1228"/>
+                            </Trigger>
+                            <!-- Defined LAST — wins over IsMouseOver for BorderBrush when both are active -->
+                            <Trigger Property="Tag" Value="on">
+                                <Setter TargetName="PART_Dot" Property="Visibility"  Value="Visible"/>
+                                <Setter TargetName="PART_Bg"  Property="BorderBrush" Value="#3A8FFF"/>
+                                <Setter TargetName="PART_Bg"  Property="Background"  Value="#101830"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
