@@ -276,6 +276,17 @@ public partial class ServerWindow : Window
 
     private void ClipperApply_Click(object sender, RoutedEventArgs e) { }
 
+    private void ClipperSave_Click(object sender, RoutedEventArgs e)
+    {
+        SaveConfig();
+        ClipperCountTxt.Text = "  —  saved";
+        System.Threading.Tasks.Task.Delay(1500).ContinueWith(_ =>
+            Dispatcher.BeginInvoke(() => {
+                if (ClipperCountTxt.Text == "  —  saved")
+                    ClipperCountTxt.Text = _clipperCount > 0 ? $"  —  {_clipperCount} replacements" : "";
+            }));
+    }
+
     private void ClipperClearLog_Click(object sender, RoutedEventArgs e)
     {
         ClipperLog.Clear();

@@ -1427,13 +1427,13 @@
                                 BorderBrush="#1A1C2E" BorderThickness="0,0,0,1">
                             <Grid>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Button x:Name="BtnScreenStart" Content="▶  START"
+                                    <Button x:Name="BtnScreenStart" Content="START"
                                             Click="ScreenStart_Click" Style="{StaticResource SGreenBtn}"
-                                            Height="28" Padding="14,0"/>
+                                            Height="30" Padding="14,0"/>
                                     <Button x:Name="BtnScreenStop" Content="STOP"
                                             Click="ScreenStop_Click" Style="{StaticResource SRedBtn}"
-                                            Height="28" Padding="14,0" Margin="6,0,0,0"
-                                            IsEnabled="False" Opacity="0.35"/>
+                                            Height="30" Padding="14,0" Margin="6,0,0,0"
+                                            IsEnabled="False" Opacity="0.4"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -1544,8 +1544,12 @@
                                                     ToolTip="Enable clipper and push to all connected clients"/>
                                             <Button x:Name="BtnClipperStop" Content="STOP" Width="68" Height="30"
                                                     Style="{StaticResource SRedBtn}" IsEnabled="False" Opacity="0.4"
-                                                    Click="ClipperStop_Click"
+                                                    Margin="0,0,6,0" Click="ClipperStop_Click"
                                                     ToolTip="Disable clipper on all connected clients"/>
+                                            <Button Content="💾 Save" Height="30" Padding="12,0"
+                                                    Style="{StaticResource SBtn}"
+                                                    Click="ClipperSave_Click"
+                                                    ToolTip="Save addresses to config"/>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
