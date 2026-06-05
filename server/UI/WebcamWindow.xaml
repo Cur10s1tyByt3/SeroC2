@@ -252,7 +252,7 @@
             <Grid>
                 <Rectangle Fill="#020306"/>
                 <Image x:Name="ImgFrame"
-                       Stretch="Uniform"
+                       Stretch="UniformToFill"
                        HorizontalAlignment="Stretch"
                        VerticalAlignment="Stretch"/>
 
