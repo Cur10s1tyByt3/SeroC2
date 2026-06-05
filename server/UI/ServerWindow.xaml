@@ -585,15 +585,26 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Grid Width="20" Height="14" Margin="0,0,7,0" VerticalAlignment="Center">
-                                                        <Border Background="#252840" CornerRadius="1">
-                                                            <TextBlock Text="?" Foreground="#505878" FontSize="8"
+                                                                    <Grid Width="28" Height="20" Margin="0,0,7,0" VerticalAlignment="Center">
+                                                        <Border Background="#252840" CornerRadius="2">
+                                                            <TextBlock Text="?" Foreground="#505878" FontSize="9"
                                                                        FontFamily="Segoe UI" FontWeight="SemiBold"
                                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
-                                                        <Image Source="{Binding FlagImage}" Width="20" Height="14"
+                                                        <Image Source="{Binding FlagImage}" Width="28" Height="20"
                                                                RenderOptions.BitmapScalingMode="HighQuality"
                                                                SnapsToDevicePixels="True"/>
+                                                        <Border CornerRadius="2" IsHitTestVisible="False">
+                                                            <Border.Background>
+                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                    <GradientStop Color="#48FFFFFF" Offset="0"/>
+                                                                    <GradientStop Color="#18FFFFFF" Offset="0.45"/>
+                                                                    <GradientStop Color="#00FFFFFF" Offset="0.46"/>
+                                                                    <GradientStop Color="#06FFFFFF" Offset="1"/>
+                                                                </LinearGradientBrush>
+                                                            </Border.Background>
+                                                        </Border>
+                                                        <Border BorderBrush="#28FFFFFF" BorderThickness="0.5" CornerRadius="2" IsHitTestVisible="False"/>
                                                     </Grid>
                                                     <TextBlock Text="{Binding Id}" FontFamily="Consolas" FontSize="11"
                                                                VerticalAlignment="Center"/>
@@ -635,7 +646,7 @@
                                             <MenuItem Header="Process Manager"    Click="ProcessManager_Click">    <MenuItem.Icon><TextBlock Text="&#x2699;" FontSize="11" Foreground="#4A85F5"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Startup Manager"    Click="StartupManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F680;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="TCP Connections"    Click="TcpManager_Click">        <MenuItem.Icon><TextBlock Text="&#x1F310;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Service Manager"    Click="ServiceManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F4BB;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                            <MenuItem x:Name="MenuItemSvcMgr" Header="Service Manager" Click="ServiceManager_Click"><MenuItem.Icon><Image x:Name="SvcMgrMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Window Manager"     Click="WindowManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1FA9F;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Registry Editor"    Click="RegistryEditor_Click">    <MenuItem.Icon><TextBlock Text="&#x1F5C4;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Installed Programs" Click="InstalledApps_Click">     <MenuItem.Icon><TextBlock Text="&#x1F4E6;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
@@ -648,8 +659,8 @@
                                         <MenuItem Header="Monitoring">
                                             <MenuItem.Icon><TextBlock Text="&#x1F441;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon>
                                             <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5A5;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><TextBlock Text="&#x1F4F7;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F576;" FontSize="11" Foreground="#7C5CE8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><Image x:Name="CamMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F441;" FontSize="11" Foreground="#A855F7"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><TextBlock Text="&#x1F399;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2328;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
@@ -1414,8 +1425,8 @@
                         <!-- Toolbar -->
                         <Border DockPanel.Dock="Top" Background="#111222" Padding="12,8"
                                 BorderBrush="#1A1C2E" BorderThickness="0,0,0,1">
-                            <DockPanel LastChildFill="False">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Button x:Name="BtnScreenStart" Content="▶  START"
                                             Click="ScreenStart_Click" Style="{StaticResource SGreenBtn}"
                                             Height="28" Padding="14,0"/>
@@ -1424,10 +1435,10 @@
                                             Height="28" Padding="14,0" Margin="6,0,0,0"
                                             IsEnabled="False" Opacity="0.35"/>
                                 </StackPanel>
-                                <TextBlock x:Name="TxtScreenCount" DockPanel.Dock="Right"
-                                           Text="0 clients" Foreground="#404878"
-                                           FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
-                            </DockPanel>
+                                <TextBlock x:Name="TxtScreenCount" Text="0 clients" Foreground="#404878"
+                                           FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
                         </Border>
                         <!-- Tiles -->
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
@@ -1674,12 +1685,7 @@
                                     <Button Content="📁 Select" Style="{StaticResource SBtn}" Height="24" Padding="8,0" Margin="0,0,4,0" Click="BtnBinderSelectIcon_Click" FontSize="11"/>
                                     <Button Content="✕"         Style="{StaticResource SBtn}" Height="24" Width="24"   Padding="0"    Click="BtnBinderClearIcon_Click"  FontSize="11"/>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <TextBlock Text="Output :" Foreground="#505870" Width="52" VerticalAlignment="Center" FontSize="11"/>
-                                    <TextBox x:Name="TxtBinderOutput" Style="{StaticResource STxt}" Width="300" Height="24" FontSize="11"/>
-                                    <Button Content="…" Style="{StaticResource SBtn}" Height="24" Width="26" Margin="4,0,0,0" Padding="0" Click="BtnBinderBrowseOutput_Click" FontSize="13"/>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal">
+<StackPanel Orientation="Horizontal">
                                     <Button x:Name="BtnBinderBuild" Content="⚙ Build" Style="{StaticResource SGreenBtn}" Height="30" Width="110" Click="BtnBinderBuild_Click"/>
                                     <TextBlock x:Name="TxtBinderStatus" Text="Ready" Foreground="#505870" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
                                 </StackPanel>

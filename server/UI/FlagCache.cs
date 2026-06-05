@@ -45,7 +45,7 @@ internal static class FlagCache
             var file = Path.Combine(_dir, $"{key}.png");
             if (!File.Exists(file))
             {
-                var bytes = await _http.GetByteArrayAsync($"https://flagcdn.com/20x15/{key}.png");
+                var bytes = await _http.GetByteArrayAsync($"https://flagcdn.com/w40/{key}.png");
                 await File.WriteAllBytesAsync(file, bytes);
             }
             return LoadFromFile(file);

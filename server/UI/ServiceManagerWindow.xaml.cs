@@ -52,6 +52,13 @@ public class ServiceEntryVM : INotifyPropertyChanged
         _          => _muted,
     };
 
+    public static System.Windows.Media.ImageSource? SvcIcon { get; } = LoadSvcIcon();
+    private static System.Windows.Media.ImageSource? LoadSvcIcon()
+    {
+        var p = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "services.msc");
+        return ShellIcon.GetFromPath(p);
+    }
+
     private static readonly Brush _green = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E)));
     private static readonly Brush _dim   = Freeze(new SolidColorBrush(Color.FromRgb(0x40, 0x48, 0x70)));
     private static readonly Brush _amber = Freeze(new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)));

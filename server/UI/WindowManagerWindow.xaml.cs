@@ -86,9 +86,25 @@ public partial class WindowManagerWindow : Window
     }
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 
+    private static readonly System.Windows.Media.ImageSource _fallbackIcon = MakeFallbackIcon();
+    private static System.Windows.Media.ImageSource MakeFallbackIcon()
+    {
+        var dg = new System.Windows.Media.DrawingGroup();
+        using var ctx = dg.Open();
+        var frame = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x35, 0x48, 0x80));
+        var title = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4A, 0x85, 0xF5));
+        var body  = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x18, 0x20, 0x40));
+        ctx.DrawRoundedRectangle(frame, null, new System.Windows.Rect(0, 0, 16, 13), 1.5, 1.5);
+        ctx.DrawRectangle(title, null, new System.Windows.Rect(1, 1, 14, 3.5));
+        ctx.DrawRectangle(body,  null, new System.Windows.Rect(1, 4.5, 14, 7.5));
+        var img = new System.Windows.Media.DrawingImage(dg);
+        img.Freeze();
+        return img;
+    }
+
     private static System.Windows.Media.ImageSource? DecodeIcon(string b64)
     {
-        if (string.IsNullOrEmpty(b64)) return null;
+        if (string.IsNullOrEmpty(b64)) return _fallbackIcon;
         try
         {
             var bytes = Convert.FromBase64String(b64);
@@ -98,6 +114,6 @@ public partial class WindowManagerWindow : Window
             bmp.StreamSource = ms; bmp.EndInit(); bmp.Freeze();
             return bmp;
         }
-        catch { return null; }
+        catch { return _fallbackIcon; }
     }
 }

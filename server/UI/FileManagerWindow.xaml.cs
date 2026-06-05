@@ -65,7 +65,7 @@ public partial class FileManagerWindow : Window
         if (drives.Count > 0)
         {
             DrivesList.Items.Clear();
-            foreach (var d in drives) DrivesList.Items.Add(d);
+            foreach (var d in drives) DrivesList.Items.Add(new DriveItemVM(d));
         }
     }
 
@@ -381,10 +381,10 @@ public partial class FileManagerWindow : Window
 
     private async void DrivesList_SelectionChanged(object s, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (DrivesList.SelectedItem is string drive)
+        if (DrivesList.SelectedItem is DriveItemVM driveItem)
         {
             DrivesList.SelectedItem = null;
-            await Navigate(drive);
+            await Navigate(driveItem.Path);
         }
     }
 
@@ -601,7 +601,9 @@ public class FileEntryVM
         IsHidden = e.IsHidden;
         Modified = e.Modified;
         SizeRaw  = e.IsDir ? -1 : e.Size;
-        IconImage = ShellIcon.Get(e.IsDir ? "" : Path.GetExtension(e.Name), e.IsDir);
+        IconImage = (e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
+            ? ShellIcon.GetDrive(e.Name.TrimEnd('\\', '/') + "\\")
+            : ShellIcon.Get(e.IsDir ? "" : Path.GetExtension(e.Name), e.IsDir);
 
         if (e.IsDir)
         {
@@ -619,4 +621,11 @@ public class FileEntryVM
                         : $"{bytes / (1024.0*1024*1024):F1} GB";
         }
     }
+}
+
+public class DriveItemVM
+{
+    public string Path { get; }
+    public System.Windows.Media.ImageSource? Icon { get; }
+    public DriveItemVM(string path) { Path = path; Icon = ShellIcon.GetDrive(path); }
 }

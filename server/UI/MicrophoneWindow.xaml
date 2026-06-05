@@ -35,26 +35,8 @@
                     MouseLeftButtonDown="Window_MouseLeftButtonDown">
                 <Grid Margin="14,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                            <TextBlock FontSize="11" FontWeight="SemiBold" FontFamily="Segoe UI">
-                                <TextBlock.Foreground>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#7AAEFF" Offset="0"/>
-                                        <GradientStop Color="#B090FF" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </TextBlock.Foreground>
-                                <Run Text="Microphone"/>
-                            </TextBlock>
-                            <TextBlock x:Name="TxtTitle" Text="" FontSize="10" FontFamily="Segoe UI Mono">
-                                <TextBlock.Foreground>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#C0CCD8" Offset="0"/>
-                                        <GradientStop Color="#6A8099" Offset="0.5"/>
-                                        <GradientStop Color="#B0C0D0" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </TextBlock.Foreground>
-                            </TextBlock>
-                        </StackPanel>
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,0,10,0">🎙 Microphone</TextBlock>
+                        <TextBlock x:Name="TxtTitle" Text="" FontSize="11" Foreground="#8890B8" FontFamily="Consolas"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button x:Name="BtnMax" Content="☐" Width="30" Height="26" Margin="0,0,4,0"

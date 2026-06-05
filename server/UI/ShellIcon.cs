@@ -50,6 +50,16 @@ internal static class ShellIcon
         return r;
     }
 
+    // Drive icon by root path (e.g. "C:\") — uses actual shell lookup, not fake path
+    public static ImageSource? GetDrive(string drivePath)
+    {
+        var key = $"<DRV:{drivePath.ToUpperInvariant()}>";
+        lock (_lock) { if (_cache.TryGetValue(key, out var c)) return c; }
+        var r = Extract(drivePath, FILE_ATTRIBUTE_NORMAL, SHGFI_ICON | SHGFI_SMALLICON);
+        lock (_lock) { _cache.TryAdd(key, r); }
+        return r;
+    }
+
     private static ImageSource? Extract(string path, uint attr, uint flags)
     {
         try

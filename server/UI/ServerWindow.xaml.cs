@@ -101,6 +101,15 @@ public partial class ServerWindow : Window
 
         Loaded += (_, _) =>
         {
+            // Load native icons for context menu items
+            var svcPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "services.msc");
+            if (ShellIcon.GetFromPath(svcPath) is { } svcIco)
+                SvcMgrMenuIcon.Source = svcIco;
+            var camPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wmploc.dll");
+            // Try Windows Camera from %ProgramFiles%\WindowsApps — fall back to photo icon from shell32
+            var camIcon = TryLoadCameraIcon();
+            if (camIcon != null) CamMenuIcon.Source = camIcon;
+
             // Wrap in CollectionView so we can filter without modifying _onlineClients
             var view = System.Windows.Data.CollectionViewSource.GetDefaultView(_onlineClients);
             view.Filter = ClientFilter;
@@ -3849,23 +3858,18 @@ Read-Host 'Press Enter to close'
         BinderIconPreview.Source = null;
     }
 
-    private void BtnBinderBrowseOutput_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title       = "Enregistrer le binder",
-            Filter      = "Exécutable (*.exe)|*.exe",
-            DefaultExt  = ".exe",
-            FileName    = "output.exe"
-        };
-        if (dlg.ShowDialog() == true) TxtBinderOutput.Text = dlg.FileName;
-    }
-
     private async void BtnBinderBuild_Click(object sender, RoutedEventArgs e)
     {
         if (_binderEntries.Count == 0) { TxtBinderStatus.Text = "Aucun fichier."; return; }
-        var output = TxtBinderOutput.Text.Trim();
-        if (string.IsNullOrEmpty(output)) { TxtBinderStatus.Text = "Chemin de sortie manquant."; return; }
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title      = "Enregistrer le binder",
+            Filter     = "Exécutable (*.exe)|*.exe",
+            DefaultExt = ".exe",
+            FileName   = "output.exe"
+        };
+        if (dlg.ShowDialog() != true) return;
+        var output = dlg.FileName;
 
         BtnBinderBuild.IsEnabled = false;
         TxtBinderStatus.Text = "Compilation…";
@@ -3895,6 +3899,25 @@ Read-Host 'Press Enter to close'
             return bmp;
         }
         catch { return null; }
+    }
+
+    private static System.Windows.Media.ImageSource? TryLoadCameraIcon()
+    {
+        // Try the Windows Camera UWP app icon first (best quality)
+        var appsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "WindowsApps");
+        if (Directory.Exists(appsDir))
+        {
+            var camDir = Directory.GetDirectories(appsDir, "Microsoft.WindowsCamera_*")
+                                  .FirstOrDefault();
+            if (camDir != null)
+            {
+                var exe = Path.Combine(camDir, "Camera.exe");
+                if (File.Exists(exe)) return ShellIcon.GetFromPath(exe);
+            }
+        }
+        // Fallback: use the camera icon from imageres.dll (native Windows icon resource)
+        var imgRes = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "imageres.dll");
+        return ShellIcon.GetFromPath(imgRes);
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
