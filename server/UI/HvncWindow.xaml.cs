@@ -104,6 +104,7 @@ public partial class HvncWindow : Window
             LiveBadge.Visibility = streaming ? Visibility.Visible : Visibility.Collapsed;
             TxtPlaceholder.Visibility = streaming ? Visibility.Collapsed : Visibility.Visible;
             if (!streaming) TxtFps.Text = "";
+            if (streaming) ImgFrame.Focus(); // keyboard ready immediately without needing a click
         });
     }
 
@@ -295,7 +296,10 @@ public partial class HvncWindow : Window
     private void ImgFrame_KeyDown(object s, KeyEventArgs e)
     {
         if (ChkKeyboard.IsChecked != true) return;
-        int vk = KeyInterop.VirtualKeyFromKey(e.Key);
+        // WPF fires Key.System for Alt and Alt+X combos — real key is in e.SystemKey
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        int vk = KeyInterop.VirtualKeyFromKey(key);
+        if (vk == 0) return;
         SendInput(new HvncInputData { T = "kd", VK = vk });
         e.Handled = true;
     }
@@ -303,7 +307,9 @@ public partial class HvncWindow : Window
     private void ImgFrame_KeyUp(object s, KeyEventArgs e)
     {
         if (ChkKeyboard.IsChecked != true) return;
-        int vk = KeyInterop.VirtualKeyFromKey(e.Key);
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        int vk = KeyInterop.VirtualKeyFromKey(key);
+        if (vk == 0) return;
         SendInput(new HvncInputData { T = "ku", VK = vk });
         e.Handled = true;
     }

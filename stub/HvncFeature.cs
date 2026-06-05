@@ -1208,11 +1208,9 @@ internal static class HvncFeature
 
     private static int SafeNCHitTest(nint hwnd, nint lparam)
     {
-        // SendMessage (blocking) handles Windows 11 DWM-themed window chrome correctly.
-        // Fall back to SendMessageTimeout if the call returns 0 (hung or unusual window).
-        nint r = SendMessage(hwnd, WM_NCHITTEST, 0, lparam);
-        if ((int)r != 0) return (int)r;
-        SendMessageTimeout(hwnd, WM_NCHITTEST, 0, lparam, SMTO_ABORTIFHUNG, 100, out r);
+        // 30ms cap: SendMessage (unbounded) added 100ms+ click latency on sluggish windows.
+        // DWM hit-test always responds well within 30ms on any modern hardware.
+        SendMessageTimeout(hwnd, WM_NCHITTEST, 0, lparam, SMTO_ABORTIFHUNG, 30, out nint r);
         return (int)r;
     }
 
