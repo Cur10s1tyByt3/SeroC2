@@ -609,63 +609,63 @@
                                     <ContextMenu>
                                         <!-- Administration -->
                                         <MenuItem Header="Administration">
-                                            <MenuItem.Icon><TextBlock Text="&#x2630;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F4BC;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon>
                                             <MenuItem Header="Remote Shell"       Click="RemoteShell_Click">       <MenuItem.Icon><TextBlock Text="&gt;_" FontSize="10" FontFamily="Consolas" FontWeight="Bold" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="File Manager"       Click="FileManager_Click">       <MenuItem.Icon><TextBlock Text="&#x25A1;" FontSize="12" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="File Manager"       Click="FileManager_Click">       <MenuItem.Icon><TextBlock Text="&#x1F4C2;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Process Manager"    Click="ProcessManager_Click">    <MenuItem.Icon><TextBlock Text="&#x2699;" FontSize="11" Foreground="#4A85F5"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Startup Manager"    Click="StartupManager_Click">    <MenuItem.Icon><TextBlock Text="&#x25B6;" FontSize="10" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="TCP Connections"    Click="TcpManager_Click">        <MenuItem.Icon><TextBlock Text="&#x21C4;" FontSize="12" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Service Manager"    Click="ServiceManager_Click">    <MenuItem.Icon><TextBlock Text="&#x25D7;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Window Manager"     Click="WindowManager_Click">     <MenuItem.Icon><TextBlock Text="&#x2610;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Registry Editor"    Click="RegistryEditor_Click">    <MenuItem.Icon><TextBlock Text="&#x22EE;" FontSize="13" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Installed Programs" Click="InstalledApps_Click">     <MenuItem.Icon><TextBlock Text="&#x25A6;" FontSize="10" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Device Manager"     Click="DeviceManager_Click">     <MenuItem.Icon><TextBlock Text="&#x27F4;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="SOCKS5 Proxy"       Click="Socks5_Click">            <MenuItem.Icon><TextBlock Text="&#x21CC;" FontSize="12" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Startup Manager"    Click="StartupManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F680;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="TCP Connections"    Click="TcpManager_Click">        <MenuItem.Icon><TextBlock Text="&#x1F310;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Service Manager"    Click="ServiceManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F4BB;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Window Manager"     Click="WindowManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1FA9F;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Registry Editor"    Click="RegistryEditor_Click">    <MenuItem.Icon><TextBlock Text="&#x1F5C4;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Installed Programs" Click="InstalledApps_Click">     <MenuItem.Icon><TextBlock Text="&#x1F4E6;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Device Manager"     Click="DeviceManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1F50C;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="SOCKS5 Proxy"       Click="Socks5_Click">            <MenuItem.Icon><TextBlock Text="&#x1F517;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
                                             <MenuItem Header="Remote Execute"     Click="RemoteFileExec_Click">    <MenuItem.Icon><TextBlock Text="&#x26A1;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                         <!-- Monitoring -->
                                         <MenuItem Header="Monitoring">
-                                            <MenuItem.Icon><TextBlock Text="&#x25CE;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon>
-                                            <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x2B1B;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><TextBlock Text="&#x25D9;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x25C9;" FontSize="11" Foreground="#7C5CE8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><TextBlock Text="&#x25CF;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2395;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F441;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon>
+                                            <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5A5;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><TextBlock Text="&#x1F4F7;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F576;" FontSize="11" Foreground="#7C5CE8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><TextBlock Text="&#x1F399;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2328;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
-                                            <MenuItem Header="Performance Monitor" Click="PerformanceMonitor_Click">  <MenuItem.Icon><TextBlock Text="&#x25B3;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Performance Monitor" Click="PerformanceMonitor_Click">  <MenuItem.Icon><TextBlock Text="&#x1F4CA;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                         <!-- Miscellaneous -->
                                         <MenuItem Header="Miscellaneous">
-                                            <MenuItem.Icon><TextBlock Text="&#x2026;" FontSize="13" Foreground="#606880"/></MenuItem.Icon>
-                                            <MenuItem Header="Exclude C:\ (Defender)" Click="QuickExcludeCDrive_Click"><MenuItem.Icon><TextBlock Text="&#x25D6;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Block AV DNS"        Click="QuickBlockAvDns_Click">     <MenuItem.Icon><TextBlock Text="&#x2296;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Block WSReset"       Click="QuickBlockReset_Click">     <MenuItem.Icon><TextBlock Text="&#x2298;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F527;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
+                                            <MenuItem Header="Exclude C:\ (Defender)" Click="QuickExcludeCDrive_Click"><MenuItem.Icon><TextBlock Text="&#x1F6E1;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Block AV DNS"        Click="QuickBlockAvDns_Click">     <MenuItem.Icon><TextBlock Text="&#x1F6AB;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Block WSReset"       Click="QuickBlockReset_Click">     <MenuItem.Icon><TextBlock Text="&#x1F6AB;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Disable UAC"         Click="QuickDisableUac_Click" ToolTip="EnableLUA=0 (admin required, takes effect after reboot)"><MenuItem.Icon><TextBlock Text="&#x26A0;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
                                             <MenuItem Header="Run BotKiller"       Click="BotKiller_Click" ToolTip="Kill unsigned random-name processes"><MenuItem.Icon><TextBlock Text="&#x2620;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                         <!-- Fun -->
                                         <MenuItem Header="Fun">
-                                            <MenuItem.Icon><TextBlock Text="&#x25CB;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon>
-                                            <MenuItem Header="Fun Panel"   Click="Fun_Click">       <MenuItem.Icon><TextBlock Text="&#x25CE;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F3AE;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon>
+                                            <MenuItem Header="Fun Panel"   Click="Fun_Click">       <MenuItem.Icon><TextBlock Text="&#x1F3A8;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
-                                            <MenuItem Header="TikTok Bot"  Click="TikTok_Click">    <MenuItem.Icon><TextBlock Text="&#x266A;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="TikTok Bot"  Click="TikTok_Click">    <MenuItem.Icon><TextBlock Text="&#x1F3B5;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                         <Separator />
                                         <!-- Client Management -->
                                         <MenuItem Header="Client Management">
-                                            <MenuItem.Icon><TextBlock Text="&#x25A3;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
-                                            <MenuItem Header="UAC Elevation"       Click="RequestElevation_Click">      <MenuItem.Icon><TextBlock Text="&#x25B2;" FontSize="10" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F464;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
+                                            <MenuItem Header="UAC Elevation"       Click="RequestElevation_Click">      <MenuItem.Icon><TextBlock Text="&#x1F53A;" FontSize="10" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Loop UAC"            Click="RequestElevationLoop_Click">  <MenuItem.Icon><TextBlock Text="&#x21BA;" FontSize="13" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
-                                            <MenuItem Header="Update Client"       Click="UpdateClient_Click">          <MenuItem.Icon><TextBlock Text="&#x27F3;" FontSize="13" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Disconnect"          Click="DisconnectClient_Click">      <MenuItem.Icon><TextBlock Text="&#x23CF;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Uninstall Client"    Click="UninstallClient_Click">       <MenuItem.Icon><TextBlock Text="&#x2715;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Update Client"       Click="UpdateClient_Click">          <MenuItem.Icon><TextBlock Text="&#x1F504;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Disconnect"          Click="DisconnectClient_Click">      <MenuItem.Icon><TextBlock Text="&#x1F4DF;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Uninstall Client"    Click="UninstallClient_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                             <Separator/>
-                                            <MenuItem Header="Set Tag"             Click="SetTag_Click">                <MenuItem.Icon><TextBlock Text="&#x25C6;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="View Logs"           Click="ViewClientLogs_Click">        <MenuItem.Icon><TextBlock Text="&#x2261;" FontSize="13" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Copy IP"             Click="CopyIP_Click">                <MenuItem.Icon><TextBlock Text="&#x2299;" FontSize="12" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Set Tag"             Click="SetTag_Click">                <MenuItem.Icon><TextBlock Text="&#x1F3F7;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="View Logs"           Click="ViewClientLogs_Click">        <MenuItem.Icon><TextBlock Text="&#x1F4DC;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Copy IP"             Click="CopyIP_Click">                <MenuItem.Icon><TextBlock Text="&#x1F4CB;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
                                         </MenuItem>
                                     </ContextMenu>
                                 </DataGrid.ContextMenu>

@@ -23,10 +23,24 @@ public class ProcEntryVM : INotifyPropertyChanged
     public string Name      { get; set; } = "";
     public long   Memory    { get; set; }
     public float  CpuUsage  { get; set; }
-    public int    TcpConns  { get; set; }
-    public string Title     { get; set; } = "";
-    public string ExePath   { get; set; } = "";
-    public string NetDisplay => TcpConns > 0 ? $"{TcpConns} conn" : "—";
+    public int           TcpConns  { get; set; }
+    public List<string>? RemoteIps { get; set; }
+    public string        Title     { get; set; } = "";
+    public string        ExePath   { get; set; } = "";
+
+    public string NetDisplay
+    {
+        get
+        {
+            if (RemoteIps is { Count: > 0 })
+            {
+                var ips = RemoteIps.Take(3).ToList();
+                var suffix = RemoteIps.Count > 3 ? $" +{RemoteIps.Count - 3}" : "";
+                return string.Join("  ", ips) + suffix;
+            }
+            return TcpConns > 0 ? $"{TcpConns} conn" : "—";
+        }
+    }
 
     // Tree view support
     private int _depth;

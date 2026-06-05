@@ -87,6 +87,20 @@ public partial class TcpManagerWindow : Window
         await Refresh();
     }
 
+    private async void BlockIp_Click(object s, RoutedEventArgs e)
+    {
+        var selected = GridTcp.SelectedItem as TcpEntryVM;
+        string? defIp = selected?.RemoteAddr?.Split(':').FirstOrDefault();
+        var ip = SimpleInput("Block remote IP in firewall (inbound + outbound):", defIp ?? "");
+        if (string.IsNullOrWhiteSpace(ip)) return;
+        await _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.TcpFirewallBlock,
+            Data = JsonConvert.SerializeObject(new TcpFirewallBlockData { ProcessName = "", Port = 0, RemoteIp = ip, Direction = "both" })
+        });
+        TxtStatus.Text = $"🛡 Firewall block sent → IP {ip}";
+    }
+
     private async void BlockProcess_Click(object s, RoutedEventArgs e)
     {
         var selected = GridTcp.SelectedItem as TcpEntryVM;

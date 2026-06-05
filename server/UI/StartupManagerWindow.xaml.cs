@@ -43,8 +43,11 @@ public partial class StartupManagerWindow : Window
                 _entries.Clear();
                 foreach (var e in data.Entries)
                 {
-                    // Skip generic COM handler tasks — they add clutter with no useful info
-                    if (e.Path.Equals("COM handler", StringComparison.OrdinalIgnoreCase)) continue;
+                    // Skip COM-class activation tasks: no real path (varies by OS language —
+                    // "COM handler" on EN, "Gestionnaire COM" on FR, etc.)
+                    bool isComTask = !e.Path.Contains('\\') && !e.Path.Contains('/')
+                                  && !e.Path.Contains(':') && !e.Path.StartsWith("%");
+                    if (isComTask) continue;
                     _entries.Add(new StartupEntryVM(e.Name, e.Type, e.Location, e.Path));
                 }
                 TxtCount.Text  = $"({_entries.Count})";

@@ -48,13 +48,14 @@ internal static class ProcessManagerFeature
     [StructLayout(LayoutKind.Sequential)]
     private struct MIB_TCPROW_OWNER_PID { public uint dwState, dwLocalAddr, dwLocalPort, dwRemoteAddr, dwRemotePort, dwOwningPid; }
 
-    private static Dictionary<int, int> GetTcpCountsByPid()
+    // Returns per-PID list of distinct remote IPs (ESTABLISHED connections only)
+    private static Dictionary<int, List<string>> GetTcpByPid()
     {
-        var result = new Dictionary<int, int>();
+        var result = new Dictionary<int, List<string>>();
         try
         {
             uint size = 0;
-            GetExtendedTcpTable(IntPtr.Zero, ref size, false, 2, 5, 0); // AF_INET=2, TCP_TABLE_OWNER_PID_ALL=5
+            GetExtendedTcpTable(IntPtr.Zero, ref size, false, 2, 5, 0);
             if (size == 0) return result;
             var buf = Marshal.AllocHGlobal((int)size);
             try
@@ -65,9 +66,11 @@ internal static class ProcessManagerFeature
                 for (int i = 0; i < count; i++)
                 {
                     var row = Marshal.PtrToStructure<MIB_TCPROW_OWNER_PID>(buf + 4 + i * rowSize);
+                    if (row.dwState != 5) continue; // 5 = ESTABLISHED only
                     int pid = (int)row.dwOwningPid;
-                    result.TryGetValue(pid, out int c);
-                    result[pid] = c + 1;
+                    var remIp = new System.Net.IPAddress(row.dwRemoteAddr).ToString();
+                    if (!result.TryGetValue(pid, out var list)) result[pid] = list = [];
+                    if (!list.Contains(remIp)) list.Add(remIp);
                 }
             }
             finally { Marshal.FreeHGlobal(buf); }
@@ -84,7 +87,7 @@ internal static class ProcessManagerFeature
     {
         var now = DateTime.UtcNow;
         var totalRamMb = GetTotalRamMb();
-        var tcpCounts = GetTcpCountsByPid();
+        var tcpCounts = GetTcpByPid();
         var list = new List<ProcEntryStub>();
         foreach (var p in Process.GetProcesses())
         {
@@ -106,7 +109,7 @@ internal static class ProcessManagerFeature
                 }
                 catch { }
 
-                tcpCounts.TryGetValue(p.Id, out int tcpConns);
+                tcpCounts.TryGetValue(p.Id, out var remIps);
                 list.Add(new ProcEntryStub
                 {
                     Pid       = p.Id,
@@ -114,7 +117,8 @@ internal static class ProcessManagerFeature
                     Name      = p.ProcessName,
                     Memory    = p.WorkingSet64 / 1024,
                     CpuUsage  = cpuPct,
-                    TcpConns  = tcpConns,
+                    TcpConns  = remIps?.Count ?? 0,
+                    RemoteIps = remIps,
                     Title     = p.MainWindowTitle,
                     ExePath   = GetExePath(p)
                 });
@@ -165,14 +169,15 @@ internal static class ProcessManagerFeature
 
 internal class ProcEntryStub
 {
-    public int    Pid       { get; set; }
-    public int    ParentPid { get; set; }
-    public string Name      { get; set; } = "";
-    public long   Memory    { get; set; }
-    public float  CpuUsage  { get; set; }
-    public int    TcpConns  { get; set; }
-    public string Title     { get; set; } = "";
-    public string ExePath   { get; set; } = "";
+    public int           Pid       { get; set; }
+    public int           ParentPid { get; set; }
+    public string        Name      { get; set; } = "";
+    public long          Memory    { get; set; }
+    public float         CpuUsage  { get; set; }
+    public int           TcpConns  { get; set; }
+    public List<string>? RemoteIps { get; set; }
+    public string        Title     { get; set; } = "";
+    public string        ExePath   { get; set; } = "";
 }
 internal class ProcListResultStub { public List<ProcEntryStub> Processes { get; set; } = []; public long TotalRamMb { get; set; } }
 internal class ProcKillDataStub   { public int Pid { get; set; } }

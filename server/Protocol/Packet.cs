@@ -532,6 +532,7 @@ public class TcpFirewallBlockData
 {
     public string ProcessName { get; set; } = string.Empty;
     public int    Port        { get; set; }
+    public string RemoteIp    { get; set; } = string.Empty;
     public string Direction   { get; set; } = "both"; // in/out/both
 }
 public class TcpFirewallUnblockData { public string RuleName { get; set; } = string.Empty; }

@@ -117,6 +117,24 @@ internal static class TcpManagerFeature
 
     // ── Firewall blocking via netsh advfirewall ──────────────────────────────
 
+    internal static string BlockIp(string remoteIp, string direction)
+    {
+        try
+        {
+            var ruleName = $"SeroBlock_IP_{remoteIp.Replace('.', '_').Replace(':', '_')}";
+            if (direction is "" or "both" or "in")
+                RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_IN\" dir=in action=block remoteip={remoteIp} enable=yes");
+            if (direction is "" or "both" or "out")
+                RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_OUT\" dir=out action=block remoteip={remoteIp} enable=yes");
+            var result = new TcpFirewallRulesResultStub { Rules = [
+                new TcpFirewallRuleStub { RuleName = ruleName + "_IN",  ProcessName = "", Port = 0, Direction = "in" },
+                new TcpFirewallRuleStub { RuleName = ruleName + "_OUT", ProcessName = "", Port = 0, Direction = "out" }
+            ]};
+            return System.Text.Json.JsonSerializer.Serialize(result, SeroJson.Default.TcpFirewallRulesResultStub);
+        }
+        catch { return System.Text.Json.JsonSerializer.Serialize(new TcpFirewallRulesResultStub(), SeroJson.Default.TcpFirewallRulesResultStub); }
+    }
+
     internal static string BlockProcess(string processName, int port, string direction)
     {
         try
