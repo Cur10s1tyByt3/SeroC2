@@ -45,32 +45,33 @@ internal static class WindowManagerFeature
     internal static string GetList()
     {
         var wins = new List<WindowEntryStub>();
+
+        // First pass: enumerate all windows without icon loading so no window is skipped
+        // due to a slow/failing MainModule access.
         EnumWindows((hwnd, _) =>
         {
-            try
+            var titleSb = new StringBuilder(256);
+            GetWindowTextW(hwnd, titleSb, 256);
+            var title = titleSb.ToString();
+            if (string.IsNullOrWhiteSpace(title)) return true;
+
+            var classSb = new StringBuilder(128);
+            GetClassNameW(hwnd, classSb, 128);
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            wins.Add(new WindowEntryStub
             {
-                var titleSb = new StringBuilder(256);
-                GetWindowTextW(hwnd, titleSb, 256);
-                var title = titleSb.ToString();
-                if (string.IsNullOrWhiteSpace(title)) return true;
-
-                var classSb = new StringBuilder(128);
-                GetClassNameW(hwnd, classSb, 128);
-
-                GetWindowThreadProcessId(hwnd, out uint pid);
-                wins.Add(new WindowEntryStub
-                {
-                    Handle    = hwnd.ToInt64(),
-                    Title     = title,
-                    ClassName = classSb.ToString(),
-                    Pid       = (int)pid,
-                    Visible   = IsWindowVisible(hwnd),
-                    IconB64   = GetExeIcon(pid)
-                });
-            }
-            catch { }
+                Handle    = hwnd.ToInt64(),
+                Title     = title,
+                ClassName = classSb.ToString(),
+                Pid       = (int)pid,
+                Visible   = IsWindowVisible(hwnd),
+            });
             return true;
         }, IntPtr.Zero);
+
+        // Second pass: load icons (cached per exe path, safe to fail per entry)
+        foreach (var w in wins)
+            w.IconB64 = GetExeIcon((uint)w.Pid);
 
         return JsonSerializer.Serialize(new WinListResultStub { Windows = wins }, SeroJson.Default.WinListResultStub);
     }

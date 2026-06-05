@@ -45,6 +45,27 @@ internal static class StubIconHelper
     // PNG encoder — preserves alpha channel unlike JPEG
     static readonly Guid PngClsid = new("557CF406-1A04-11D3-9A73-0000F81EF32E");
 
+    private static string? _genericExeIcon;
+
+    // Returns the default Windows .exe shell icon (16x16 PNG base64), cached.
+    internal static string GetGenericExeIcon()
+    {
+        if (_genericExeIcon != null) return _genericExeIcon;
+        try
+        {
+            const uint FILE_ATTRIBUTE_NORMAL  = 0x80;
+            const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+            var shfi = new SHFILEINFO();
+            if (SHGetFileInfo("dummy.exe", FILE_ATTRIBUTE_NORMAL, ref shfi,
+                    (uint)Marshal.SizeOf<SHFILEINFO>(),
+                    SHGFI_USEFILEATTRIBUTES | 0x100 | 0x001) == 0 || shfi.hIcon == 0)
+                return _genericExeIcon = "";
+            try   { return _genericExeIcon = HIconToPngBase64(shfi.hIcon, 16); }
+            finally { DestroyIcon(shfi.hIcon); }
+        }
+        catch { return _genericExeIcon = ""; }
+    }
+
     internal static unsafe string ExtractExeIcon(string path)
     {
         if (string.IsNullOrEmpty(path)) return "";

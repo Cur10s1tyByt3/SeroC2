@@ -44,7 +44,8 @@ internal static class InstalledAppsFeature
                                 Publisher       = sub.GetValue("Publisher")?.ToString() ?? "",
                                 InstallDate     = sub.GetValue("InstallDate")?.ToString() ?? "",
                                 UninstallString = sub.GetValue("UninstallString")?.ToString() ?? "",
-                                IconB64         = string.IsNullOrEmpty(iconPath) ? "" : StubIconHelper.ExtractExeIcon(iconPath)
+                                IconB64         = (string.IsNullOrEmpty(iconPath) ? "" : StubIconHelper.ExtractExeIcon(iconPath))
+                                                  is { Length: > 0 } ico ? ico : StubIconHelper.GetGenericExeIcon()
                             });
                         }
                         catch { }
