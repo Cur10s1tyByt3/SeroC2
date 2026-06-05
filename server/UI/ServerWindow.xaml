@@ -580,7 +580,26 @@
                                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                       ColumnHeaderStyle="{StaticResource SColHeader}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="ID"        Binding="{Binding Id}"                                 Width="68"  FontFamily="Consolas" FontSize="11"/>
+                                    <DataGridTemplateColumn Header="ID" Width="96" SortMemberPath="Id">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Grid Width="20" Height="14" Margin="0,0,7,0" VerticalAlignment="Center">
+                                                        <Border Background="#252840" CornerRadius="1">
+                                                            <TextBlock Text="?" Foreground="#505878" FontSize="8"
+                                                                       FontFamily="Segoe UI" FontWeight="SemiBold"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <Image Source="{Binding FlagImage}" Width="20" Height="14"
+                                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                                               SnapsToDevicePixels="True"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Id}" FontFamily="Consolas" FontSize="11"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
                                     <DataGridTextColumn Header="TAG"       Binding="{Binding Tag}"                                Width="80"  />
                                     <DataGridTextColumn Header="USER"      Binding="{Binding Username}"                           Width="110" />
                                     <DataGridTextColumn Header="IP"        Binding="{Binding IP}"                                 Width="110" FontFamily="Consolas" FontSize="11"/>

@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using Newtonsoft.Json;
 using SeroServer.Data;
 using SeroServer.Protocol;
+using SeroServer.UI;
 
 namespace SeroServer.Net;
 
@@ -275,6 +276,7 @@ public class TlsServer
             var (country, countryCode) = await ResolveCountryAsync(ip);
             client.Country = country;
             client.CountryCode = countryCode;
+            FlagCache.QueueLoad(client, countryCode);
 
             // Restore tag + first seen from persistent record
             var record = _store.RecordConnection(client);

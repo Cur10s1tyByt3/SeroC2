@@ -992,38 +992,92 @@ internal static partial class Protection
 
     public static bool IsVirtualMachine()
     {
+        // 1. BIOS strings — VMware, VirtualBox, QEMU, Hyper-V, Parallels, Xen
         try
         {
-            // Check BIOS registry for VM indicators
-            using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\BIOS"))
+            using var bios = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\BIOS");
+            if (bios != null)
             {
-                if (key != null)
+                var mfg  = bios.GetValue("SystemManufacturer")?.ToString()?.ToLowerInvariant() ?? "";
+                var prod = bios.GetValue("SystemProductName")?.ToString()?.ToLowerInvariant() ?? "";
+                var ver  = bios.GetValue("BIOSVersion")?.ToString()?.ToLowerInvariant() ?? "";
+                var vend = bios.GetValue("BIOSVendor")?.ToString()?.ToLowerInvariant() ?? "";
+                var all  = mfg + "|" + prod + "|" + ver + "|" + vend;
+
+                string[] vmHints = ["vmware", "virtualbox", "vbox", "innotek", "qemu",
+                    "bochs", "seabios", "parallels", "xen", "oracle vm", "vrtual"];
+                foreach (var h in vmHints)
+                    if (all.Contains(h)) return true;
+
+                // Hyper-V reports "Microsoft Corporation" + "Virtual Machine"
+                if (mfg.Contains("microsoft") && prod.Contains("virtual")) return true;
+            }
+        }
+        catch { }
+
+        // 2. VM component registry keys
+        string[] vmKeys = [
+            @"SOFTWARE\VMware, Inc.\VMware Tools",
+            @"SOFTWARE\Oracle\VirtualBox Guest Additions",
+            @"SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters",   // Hyper-V Integration Services
+            @"SOFTWARE\Parallels\Coherence",
+            @"HARDWARE\ACPI\DSDT\VBOX__",
+            @"HARDWARE\ACPI\FADT\VBOX__",
+            @"HARDWARE\ACPI\DSDT\BOCHS_",
+            @"HARDWARE\ACPI\FADT\BOCHS_",
+            @"SYSTEM\ControlSet001\Services\VBoxGuest",
+            @"SYSTEM\ControlSet001\Services\VBoxMouse",
+            @"SYSTEM\ControlSet001\Services\vmhgfs",
+            @"SYSTEM\ControlSet001\Services\xen",
+            @"SYSTEM\ControlSet001\Services\xenevtchn",
+            @"SYSTEM\ControlSet001\Services\vmbus",                    // Hyper-V VMBus
+        ];
+        foreach (var path in vmKeys)
+        {
+            try
+            {
+                using var k = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(path);
+                if (k != null) return true;
+            }
+            catch { }
+        }
+
+        // 3. VM NIC MAC OUI prefixes
+        try
+        {
+            foreach (var iface in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                var mac = iface.GetPhysicalAddress().ToString();
+                if (mac.Length < 6) continue;
+                var oui = mac[..6].ToUpperInvariant();
+                string[] vmOuis = [
+                    "000569", "000C29", "001C14", "005056",  // VMware
+                    "080027",                                  // VirtualBox
+                    "525400",                                  // QEMU/KVM
+                    "00155D", "0003FF",                        // Hyper-V
+                    "001C42",                                  // Parallels
+                ];
+                foreach (var o in vmOuis)
+                    if (oui == o) return true;
+            }
+        }
+        catch { }
+
+        // 4. VM-specific processes
+        string[] vmProcs = ["vmtoolsd", "vmwaretray", "vmwareuser", "vboxservice",
+            "vboxtray", "vgauthservice", "vmacthlp", "prl_tools", "xenservice", "qemu-ga"];
+        try
+        {
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
                 {
-                    var biosVersion = key.GetValue("BIOSVersion")?.ToString();
-                    var systemManufacturer = key.GetValue("SystemManufacturer")?.ToString();
-                    var systemProductName = key.GetValue("SystemProductName")?.ToString();
-
-                    if (biosVersion != null && (biosVersion.Contains("VMware") || biosVersion.Contains("VirtualBox") || biosVersion.Contains("VBOX")))
-                        return true;
-                    if (systemManufacturer != null && (systemManufacturer.Contains("VMware") || systemManufacturer.Contains("innotek")))
-                        return true;
-                    if (systemProductName != null && (systemProductName.Contains("VMware") || systemProductName.Contains("VirtualBox")))
-                        return true;
+                    var name = proc.ProcessName.ToLowerInvariant();
+                    foreach (var vp in vmProcs)
+                        if (name.Contains(vp)) return true;
                 }
-            }
-
-            // Check for VMware tools registry
-            using (var vmwareKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\VMware, Inc.\VMware Tools"))
-            {
-                if (vmwareKey != null)
-                    return true;
-            }
-
-            // Check for VirtualBox registry
-            using (var vboxKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Oracle\VirtualBox Guest Additions"))
-            {
-                if (vboxKey != null)
-                    return true;
+                catch { }
+                finally { proc.Dispose(); }
             }
         }
         catch { }
@@ -1238,6 +1292,43 @@ internal static partial class Protection
                 score++;
         }
         catch { }
+
+        // Process count — VT/Any.Run VMs have very few processes (< 30)
+        try
+        {
+            var procs = Process.GetProcesses();
+            int cnt = procs.Length;
+            foreach (var p in procs) try { p.Dispose(); } catch { }
+            if (cnt < 30)
+            {
+                score++;
+                StubLog.Info($"[AntiSandbox] Few processes: {cnt} (+1)");
+            }
+        }
+        catch { }
+
+        // Cursor entropy — sandboxes keep a static/zero cursor position
+        try
+        {
+            GetCursorPos(out var p0);
+            Thread.Sleep(600);
+            GetCursorPos(out var p1);
+            if (p0.X == p1.X && p0.Y == p1.Y)
+                score++;
+        }
+        catch { }
+
+        // Desktop file count — VT/Any.Run desktops are empty or near-empty
+        try
+        {
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (Directory.Exists(desktop) && Directory.GetFiles(desktop).Length == 0)
+                score++;
+        }
+        catch { }
+
+        if (score >= 3)
+            StubLog.Info($"[AntiSandbox] BLOCKED — score={score} (threshold=3)");
 
         return score >= 3;
     }

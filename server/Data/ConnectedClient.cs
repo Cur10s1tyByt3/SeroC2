@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Net.Security;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace SeroServer.Data;
 
@@ -23,6 +24,13 @@ public class ConnectedClient : INotifyPropertyChanged
     public string Country { get; set; } = "...";
     public string CountryCode { get; set; } = "";
     public string CountryDisplay => string.IsNullOrEmpty(CountryCode) ? Country : $"[{CountryCode.ToUpper()}] {Country}";
+
+    private BitmapImage? _flagImage;
+    public BitmapImage? FlagImage
+    {
+        get => _flagImage;
+        set { if (!ReferenceEquals(_flagImage, value)) { _flagImage = value; Notify(); } }
+    }
     public DateTime FirstSeen { get; set; } = DateTime.UtcNow;
     public DateTime ConnectedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;

