@@ -15,12 +15,6 @@ internal static class StartupManagerFeature
         // HKLM Run
         AddRegEntries(entries, Registry.LocalMachine,
             @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "Reg", "HKLM\\Run");
-        // HKCU RunOnce
-        AddRegEntries(entries, Registry.CurrentUser,
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce", "Reg", "HKCU\\RunOnce");
-        // HKLM RunOnce
-        AddRegEntries(entries, Registry.LocalMachine,
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce", "Reg", "HKLM\\RunOnce");
 
         // Startup folders
         AddStartupFolder(entries, Environment.GetFolderPath(Environment.SpecialFolder.Startup), "File", "User Startup");

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace SeroStub;
 
-// Extracts a 16x16 app icon from an exe/dll path and encodes it as base64 JPEG
+// Extracts a 16x16 app icon from an exe/dll path and encodes it as base64 PNG (alpha-preserving)
 internal static class StubIconHelper
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -37,33 +37,34 @@ internal static class StubIconHelper
     private struct BmpInfo    { public BmpInfoHdr hdr; [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)] public uint[] colors; }
     [StructLayout(LayoutKind.Sequential)]
     private struct GdipIn     { public uint Version; public nint Callback; public int SuppBg, SuppExt; }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct EncParam   { public Guid Guid; public uint Count, Type; public nint Value; }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct EncParams  { public uint Count; public EncParam Param; }
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate uint VtRelease(nint p);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int  VtSeek(nint p, long move, uint origin, ref long pos);
     [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int  VtRead(nint p, nint pv, uint cb, out uint n);
 
-    static readonly Guid JpegClsid  = new("557CF401-1A04-11D3-9A73-0000F81EF32E");
-    static readonly Guid EncQuality = new("1D5BE4B5-FA4A-452D-9CDD-5DB35105E7EB");
+    // PNG encoder — preserves alpha channel unlike JPEG
+    static readonly Guid PngClsid = new("557CF406-1A04-11D3-9A73-0000F81EF32E");
 
     internal static unsafe string ExtractExeIcon(string path)
     {
-        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return "";
+        if (string.IsNullOrEmpty(path)) return "";
+        // Strip leading @ (e.g. @C:\Windows\system32\shell32.dll,-1)
+        path = path.TrimStart('@').Trim();
+        // Expand environment variables (e.g. %ProgramFiles%\...)
+        path = Environment.ExpandEnvironmentVariables(path);
+        if (!System.IO.File.Exists(path)) return "";
         try
         {
             var shfi = new SHFILEINFO();
-            if (SHGetFileInfo(path, 0x080, ref shfi, (uint)Marshal.SizeOf<SHFILEINFO>(), 0x100 | 0x001) == 0 || shfi.hIcon == 0)
+            if (SHGetFileInfo(path, 0, ref shfi, (uint)Marshal.SizeOf<SHFILEINFO>(), 0x100 | 0x001) == 0 || shfi.hIcon == 0)
                 return "";
-            try { return HIconToJpegBase64(shfi.hIcon, 16); }
+            try { return HIconToPngBase64(shfi.hIcon, 16); }
             finally { DestroyIcon(shfi.hIcon); }
         }
         catch { return ""; }
     }
 
-    private static unsafe string HIconToJpegBase64(nint hIcon, int size)
+    private static unsafe string HIconToPngBase64(nint hIcon, int size)
     {
         nint hdcScreen = GetDC(0);
         if (hdcScreen == 0) return "";
@@ -81,6 +82,15 @@ internal static class StubIconHelper
             SelectObject(hdcMem, hbm);
             DrawIconEx(hdcMem, 0, 0, hIcon, size, size, 0, 0, 0x0003); // DI_NORMAL
 
+            // GDI DrawIconEx leaves alpha=0 on opaque pixels for old-format icons.
+            // Fix: any pixel with color data but alpha=0 is treated as fully opaque.
+            var px = (uint*)bits;
+            for (int i = 0; i < size * size; i++)
+            {
+                if ((px[i] >> 24) == 0 && (px[i] & 0x00FFFFFFu) != 0)
+                    px[i] |= 0xFF000000u;
+            }
+
             var gdipInp = new GdipIn { Version = 1 };
             GdiplusStartup(out nint tok, ref gdipInp, 0);
             try
@@ -91,10 +101,8 @@ internal static class StubIconHelper
                 {
                     nint stream = SHCreateMemStream(0, 0);
                     if (stream == 0) { GdipDisposeImage(bmp); DeleteObject(hbm); DeleteDC(hdcMem); return ""; }
-                    int q = 80;
-                    var ep = new EncParams { Count = 1, Param = new EncParam { Guid = EncQuality, Count = 1, Type = 4, Value = (nint)(&q) } };
-                    var cls = JpegClsid;
-                    GdipSaveImageToStream(bmp, stream, ref cls, (nint)(&ep));
+                    var cls = PngClsid;
+                    GdipSaveImageToStream(bmp, stream, ref cls, 0); // PNG needs no encoder params
                     long pos = 0;
                     var seek = Marshal.GetDelegateForFunctionPointer<VtSeek>((*(nint**)stream)[5]);
                     seek(stream, 0, 0, ref pos);

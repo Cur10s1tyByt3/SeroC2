@@ -175,9 +175,12 @@ public partial class ProcessManagerWindow : Window
 
             Dispatcher.BeginInvoke(() =>
             {
+                var selectedPid = (GridProcs.SelectedItem as ProcEntryVM)?.Pid;
                 _all.Clear();
                 foreach (var v in vms) _all.Add(v);
                 ApplyFilter();
+                if (selectedPid.HasValue)
+                    GridProcs.SelectedItem = _view.FirstOrDefault(p => p.Pid == selectedPid.Value);
                 TxtCount.Text = $"({vms.Count})";
                 TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {vms.Count} processes";
             });
