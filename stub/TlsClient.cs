@@ -1982,7 +1982,7 @@ internal class InstalledListResultStub{ public List<InstalledAppStub> Apps { get
 internal class InstalledUninstallStub { public string UninstallString { get; set; } = ""; }
 
 // ── Service Manager ───────────────────────────────────
-internal class ServiceEntryStub   { public string Name { get; set; } = ""; public string DisplayName { get; set; } = ""; public string Status { get; set; } = ""; public string StartType { get; set; } = ""; public string Description { get; set; } = ""; }
+internal class ServiceEntryStub   { public string Name { get; set; } = ""; public string DisplayName { get; set; } = ""; public string Status { get; set; } = ""; public string StartType { get; set; } = ""; public string Description { get; set; } = ""; public string LogOnAs { get; set; } = ""; }
 internal class SvcListResultStub  { public List<ServiceEntryStub> Services { get; set; } = []; }
 internal class SvcActionStub      { public string ServiceName { get; set; } = ""; }
 internal class SvcAckStub         { public bool Success { get; set; } public string Error { get; set; } = ""; }

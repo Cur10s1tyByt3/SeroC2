@@ -27,6 +27,35 @@ internal static partial class Protection
     [LibraryImport("kernel32.dll")]
     private static partial nint GetCurrentProcess();
 
+    // Hardware-breakpoint detection via raw CONTEXT buffer
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetThreadContext(nint hThread, nint lpContext);
+
+    // Parent-process enumeration
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern bool Process32First(nint hSnapshot, ref PROCESSENTRY32 lppe);
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern bool Process32Next(nint hSnapshot, ref PROCESSENTRY32 lppe);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct PROCESSENTRY32
+    {
+        public uint  dwSize;
+        public uint  cntUsage;
+        public uint  th32ProcessID;
+        public nint  th32DefaultHeapID;
+        public uint  th32ModuleID;
+        public uint  cntThreads;
+        public uint  th32ParentProcessID;
+        public int   pcPriClassBase;
+        public uint  dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szExeFile;
+    }
+
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetCursorPos(out POINT lpPoint);
@@ -270,17 +299,99 @@ internal static partial class Protection
         if (IsDebuggerPresent()) return true;
         if (CheckRemoteDebuggerPresent(GetCurrentProcess(), out bool remote) && remote) return true;
 
-        // NtQueryInformationProcess - DebugPort (0x7)
-        if (NtQueryInformationProcess(GetCurrentProcess(), 0x7, out nint debugPort, nint.Size, out _) == 0 && debugPort != 0)
+        // DebugPort (0x7)
+        if (NtQueryInformationProcess(GetCurrentProcess(), 0x7, out nint dbgPort, nint.Size, out _) == 0 && dbgPort != 0)
             return true;
 
-        // Timing check â€" use a higher threshold to avoid false positives on loaded systems
+        // DebugObject handle (0x1e = 30) — more reliable, not reset by ClearDebugPort tricks
+        if (NtQueryInformationProcess(GetCurrentProcess(), 0x1e, out nint dbgObj, nint.Size, out _) == 0 && dbgObj != 0)
+            return true;
+
+        // NtGlobalFlag (0x22 = 34): bits 0x70 set → heap debug flags injected by debugger
+        if (NtQueryInformationProcess(GetCurrentProcess(), 0x22, out nint ntFlag, 4, out _) == 0 && (ntFlag & 0x70) != 0)
+            return true;
+
+        // Hardware breakpoints via DR0–DR3 in the current thread CONTEXT
+        if (HardwareBreakpointsSet()) return true;
+
+        // Parent process is a known debugger/analyzer tool
+        if (ParentIsDebugger()) return true;
+
+        // Timing check — large delay = single-step tracing
         long t1 = Environment.TickCount64;
-        Thread.SpinWait(1000);
+        Thread.SpinWait(1_500);
         long t2 = Environment.TickCount64;
         if (t2 - t1 > 500) return true;
 
         return false;
+    }
+
+    private static unsafe bool HardwareBreakpointsSet()
+    {
+        // x64 CONTEXT: size=0x4D0, requires 16-byte alignment
+        // ContextFlags @ 0x30, DR0–DR3 @ 0x98/0xA0/0xA8/0xB0, DR7 @ 0xC0
+        const int  SIZE  = 0x4D0 + 16;
+        const int  FLAGS = 0x00010010; // CONTEXT_DEBUG_REGISTERS
+        var buf = new byte[SIZE];
+        fixed (byte* raw = buf)
+        {
+            byte* ctx = (byte*)(((nint)raw + 15) & ~15L);
+            *(int*)(ctx + 0x30) = FLAGS;
+            if (!GetThreadContext(GetCurrentThread(), (nint)ctx)) return false;
+            long dr0 = *(long*)(ctx + 0x98);
+            long dr1 = *(long*)(ctx + 0xA0);
+            long dr2 = *(long*)(ctx + 0xA8);
+            long dr3 = *(long*)(ctx + 0xB0);
+            long dr7 = *(long*)(ctx + 0xC0);
+            return dr0 != 0 || dr1 != 0 || dr2 != 0 || dr3 != 0 || (dr7 & 0xFF) != 0;
+        }
+    }
+
+    private static bool ParentIsDebugger()
+    {
+        try
+        {
+            // Get parent PID via process snapshot
+            int myPid    = Environment.ProcessId;
+            int parentId = -1;
+            nint snap = CreateToolhelp32Snapshot(0x2, 0); // TH32CS_SNAPPROCESS
+            if (snap == -1) return false;
+            try
+            {
+                var pe = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32>() };
+                if (!Process32First(snap, ref pe)) return false;
+                do
+                {
+                    if ((int)pe.th32ProcessID == myPid) { parentId = (int)pe.th32ParentProcessID; break; }
+                } while (Process32Next(snap, ref pe));
+            }
+            finally { CloseHandle(snap); }
+
+            if (parentId <= 0) return false;
+            using var parent = Process.GetProcessById(parentId);
+            var name = parent.ProcessName.ToLowerInvariant();
+            string[] dbgNames = ["x64dbg", "x32dbg", "ollydbg", "windbg", "ida", "idaq",
+                "dnspy", "dotpeek", "pestudio", "die", "pe-bear", "processhacker"];
+            foreach (var n in dbgNames)
+                if (name.Contains(n)) return true;
+        }
+        catch { }
+        return false;
+    }
+
+    // Burn analyst CPU+time for 30-60s — called by ProtectionExit to make automated analysis timeout
+    public static void BurnAnalystTime()
+    {
+        var rng = new Random();
+        int delay = rng.Next(28_000, 55_000);
+        long t0 = Environment.TickCount64;
+        while (Environment.TickCount64 - t0 < delay)
+        {
+            // Allocate + fill random memory to simulate legitimate work
+            var buf = new byte[rng.Next(4096, 32768)];
+            for (int i = 0; i < buf.Length; i++) buf[i] = (byte)(i ^ rng.Next(256));
+            Thread.Sleep(rng.Next(80, 250));
+        }
     }
 
     public static void HideFromDebugger()
@@ -1292,6 +1403,39 @@ internal static partial class Protection
                 score++;
         }
         catch { }
+
+        // Disk size — analysis VMs rarely have > 100 GB free
+        try
+        {
+            var info = new System.IO.DriveInfo(Environment.GetFolderPath(Environment.SpecialFolder.System)[..1]);
+            if (info.TotalSize < 40L * 1024 * 1024 * 1024) // < 40 GB total
+            {
+                score += 2;
+                StubLog.Info($"[AntiSandbox] Small disk: {info.TotalSize / (1024 * 1024 * 1024)} GB (+2)");
+            }
+        }
+        catch { }
+
+        // Logical CPU count — sandboxes often use 1-2 cores
+        if (Environment.ProcessorCount <= 2)
+        {
+            score++;
+            StubLog.Info($"[AntiSandbox] Low CPU count: {Environment.ProcessorCount} (+1)");
+        }
+
+        // DNS resolution — sandboxes often block outbound DNS
+        try
+        {
+            var sw = Stopwatch.StartNew();
+            System.Net.Dns.GetHostEntry("www.microsoft.com");
+            sw.Stop();
+            // If DNS resolved instantly (< 10ms) it may be cached/mocked — but if it fails at all, that's suspicious
+        }
+        catch
+        {
+            score += 2; // DNS completely blocked
+            StubLog.Info("[AntiSandbox] DNS blocked (+2)");
+        }
 
         // Process count — VT/Any.Run VMs have very few processes (< 30)
         try

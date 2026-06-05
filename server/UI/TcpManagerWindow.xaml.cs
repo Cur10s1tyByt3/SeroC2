@@ -39,7 +39,7 @@ public partial class TcpManagerWindow : Window
         {
             var data = JsonConvert.DeserializeObject<TcpListResultData>(pkt.Data);
             if (data == null) return;
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
             {
                 _entries.Clear();
                 foreach (var e in data.Entries)

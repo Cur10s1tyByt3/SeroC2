@@ -54,10 +54,12 @@ public partial class ServerWindow : Window
     private DispatcherTimer? _batchTimer;
 
     private volatile bool _clientsDirty = true;
+    private volatile bool _autoTasksDirty;
     private int _logLineCount;
     private const int LogMaxLines = 2000;
     private const int LogTrimTo   = 1000;
     private readonly Dictionary<TextBlock, DispatcherTimer> _counterTimers = new();
+    private DispatcherTimer? _searchDebounce;
     private readonly Dictionary<string, Window> _featureWindows = new();
     private byte[]? _bldXmrigBytes;
     private string? _bldXmrigPath;
@@ -626,13 +628,13 @@ public partial class ServerWindow : Window
 
         UpdateClientCount();
 
-        // Only rebuild grids when something changed (add/remove/tag)
         if (_clientsDirty)
         {
             _clientsDirty = false;
             RefreshClients();
             RefreshAllClients();
         }
+        if (_autoTasksDirty) { _autoTasksDirty = false; GridAutoTasks.Items.Refresh(); }
     }
 
     // ── Client Actions ──────────────────────────────
@@ -1348,8 +1350,17 @@ public partial class ServerWindow : Window
 
     private void TxtSearch_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(_onlineClients);
-        view?.Refresh();
+        if (_searchDebounce == null)
+        {
+            _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            _searchDebounce.Tick += (_, _) =>
+            {
+                _searchDebounce.Stop();
+                System.Windows.Data.CollectionViewSource.GetDefaultView(_onlineClients)?.Refresh();
+            };
+        }
+        _searchDebounce.Stop();
+        _searchDebounce.Start();
     }
 
     private void TxtSearch_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -3257,7 +3268,7 @@ Read-Host 'Press Enter to close'
                 _ = Dispatcher.BeginInvoke(() =>
                 {
                     task.NotifyExecutionCount();
-                    GridAutoTasks.Items.Refresh();
+                    _autoTasksDirty = true;
                     Log($"[+] AutoTask: executed {task.FileName} on {client.Id}");
                 });
 
@@ -3917,4 +3928,5 @@ Read-Host 'Press Enter to close'
         presenter.BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
     }
+
 }

@@ -16,6 +16,8 @@ public class DataStore
     private readonly object _lock = new();
     private volatile bool _clientsDirty;
     private readonly System.Timers.Timer _saveTimer;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _logQueue = new();
+    private readonly System.Timers.Timer _logFlushTimer;
 
     public ObservableCollection<string> Logs { get; } = [];
 
@@ -25,10 +27,13 @@ public class DataStore
     public DataStore()
     {
         LoadClients();
-        // Save clients.json at most every 10 seconds instead of on every event
         _saveTimer = new System.Timers.Timer(10_000) { AutoReset = true };
         _saveTimer.Elapsed += (_, _) => { if (_clientsDirty) { _clientsDirty = false; SaveClientsNow(); } };
         _saveTimer.Start();
+        // Flush log lines to disk every 2s — avoids blocking the caller on every log call
+        _logFlushTimer = new System.Timers.Timer(2_000) { AutoReset = true };
+        _logFlushTimer.Elapsed += FlushLogQueue;
+        _logFlushTimer.Start();
     }
 
     // ── Logging ─────────────────────────────────────
@@ -39,14 +44,22 @@ public class DataStore
         Logs.Add(entry);
         if (Logs.Count > 1000)
         {
-            // Batch remove instead of one-by-one
             for (int i = 0; i < 500; i++) Logs.RemoveAt(0);
         }
+        // Queue for async disk write — never blocks the caller
+        _logQueue.Enqueue(entry);
+    }
 
+    private void FlushLogQueue(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (_logQueue.IsEmpty) return;
         try
         {
             Directory.CreateDirectory(DataDir);
-            File.AppendAllText(LogPath, entry + Environment.NewLine);
+            var sb = new System.Text.StringBuilder();
+            while (_logQueue.TryDequeue(out var line))
+                sb.AppendLine(line);
+            File.AppendAllText(LogPath, sb.ToString());
         }
         catch { }
     }

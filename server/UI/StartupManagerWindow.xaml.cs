@@ -38,7 +38,7 @@ public partial class StartupManagerWindow : Window
         {
             var data = JsonConvert.DeserializeObject<StartupListResultData>(pkt.Data);
             if (data == null) return;
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
             {
                 _entries.Clear();
                 foreach (var e in data.Entries)

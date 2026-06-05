@@ -28,7 +28,7 @@ public partial class FunWindow : Window
         _server.RegisterHandler(clientId, PacketType.FunResult, pkt =>
         {
             var r = JsonConvert.DeserializeObject<FunResultData>(pkt.Data);
-            Dispatcher.Invoke(() => TxtStatus.Text = $"{r?.Action}: {r?.Result}");
+            Dispatcher.BeginInvoke(() => TxtStatus.Text = $"{r?.Action}: {r?.Result}");
         });
         Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.FunResult);
     }

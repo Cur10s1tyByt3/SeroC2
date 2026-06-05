@@ -131,7 +131,7 @@ public partial class MicrophoneWindow : Window
     private readonly string    _clientId;
 
     private bool _recording;
-    private WaveOutPlayer? _player;
+    private volatile WaveOutPlayer? _player;
     private readonly List<byte[]> _chunks = [];
     private const int SampleRate = 16000;
     private const int Channels   = 1;
@@ -142,6 +142,14 @@ public partial class MicrophoneWindow : Window
     private int     _recSeconds;
     private float[] _waveform = new float[100];
     private int     _wavePos;
+
+    private static readonly SolidColorBrush _waveAccent = MakeWaveBrush();
+    private static SolidColorBrush MakeWaveBrush()
+    {
+        var b = new SolidColorBrush(Color.FromArgb(0xCC, 0xEF, 0x44, 0x44));
+        b.Freeze();
+        return b;
+    }
 
     public MicrophoneWindow(TlsServer server, string clientId, string clientLabel)
     {
@@ -171,7 +179,7 @@ public partial class MicrophoneWindow : Window
     {
         var data = JsonConvert.DeserializeObject<MicDevicesResultData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             CmbDevice.Items.Clear();
             foreach (var d in data.Devices)
@@ -188,7 +196,7 @@ public partial class MicrophoneWindow : Window
         var pcm = Convert.FromBase64String(data.Data);
         lock (_chunks) _chunks.Add(pcm);
 
-        // Update waveform data
+        // Update waveform peak — compute on network thread, store in array
         var shorts = new short[pcm.Length / 2];
         Buffer.BlockCopy(pcm, 0, shorts, 0, pcm.Length);
         float peak = 0;
@@ -197,10 +205,12 @@ public partial class MicrophoneWindow : Window
         lock (_waveform) _waveform[_wavePos % _waveform.Length] = peak;
         _wavePos++;
 
-        // Real-time playback — always on when recording
+        // Capture to local — _player can be set null on UI thread at any moment
         _player?.Enqueue(pcm);
 
-        Dispatcher.Invoke(() => TxtStatus.Text = $"Recording… {_chunks.Count} chunks received");
+        // BeginInvoke (fire-and-forget) — never block the network receive thread
+        int count; lock (_chunks) count = _chunks.Count;
+        Dispatcher.BeginInvoke(() => TxtStatus.Text = $"Recording… {count} chunks received");
     }
 
     private async void Record_Click(object s, RoutedEventArgs e)
@@ -293,31 +303,33 @@ public partial class MicrophoneWindow : Window
 
     private void DrawWaveform()
     {
-        WaveCanvas.Children.Clear();
         double w = WaveCanvas.ActualWidth, h = WaveCanvas.ActualHeight;
         if (w < 2 || h < 2) return;
 
         int bars = (int)(w / 6);
         double barW = w / bars;
-        var accent = new SolidColorBrush(Color.FromArgb(0xCC, 0xEF, 0x44, 0x44));
 
         float[] snap; lock (_waveform) snap = [.. _waveform];
 
+        // Reuse existing Rectangle children; only add/remove when bar count changes
+        while (WaveCanvas.Children.Count > bars)
+            WaveCanvas.Children.RemoveAt(WaveCanvas.Children.Count - 1);
+        while (WaveCanvas.Children.Count < bars)
+        {
+            var r = new System.Windows.Shapes.Rectangle { Fill = _waveAccent, RadiusX = 1, RadiusY = 1 };
+            WaveCanvas.Children.Add(r);
+        }
+
+        double rectW = Math.Max(1, barW - 2);
         for (int i = 0; i < bars; i++)
         {
             int dataIdx = (_wavePos - bars + i + snap.Length) % snap.Length;
-            float amp = snap[dataIdx];
-            double barH = Math.Max(3, amp * h * 0.9);
-            var rect = new System.Windows.Shapes.Rectangle
-            {
-                Width = Math.Max(1, barW - 2),
-                Height = barH,
-                Fill = accent,
-                RadiusX = 1, RadiusY = 1
-            };
+            double barH = Math.Max(3, snap[dataIdx] * h * 0.9);
+            var rect = (System.Windows.Shapes.Rectangle)WaveCanvas.Children[i];
+            rect.Width  = rectW;
+            rect.Height = barH;
             System.Windows.Controls.Canvas.SetLeft(rect, i * barW);
             System.Windows.Controls.Canvas.SetTop(rect, (h - barH) / 2);
-            WaveCanvas.Children.Add(rect);
         }
     }
 

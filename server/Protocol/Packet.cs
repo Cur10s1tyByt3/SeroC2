@@ -569,9 +569,10 @@ public class ServiceEntry
 {
     public string Name        { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
-    public string Status      { get; set; } = string.Empty;  // Running/Stopped/Paused
-    public string StartType   { get; set; } = string.Empty;  // Auto/Manual/Disabled
+    public string Status      { get; set; } = string.Empty;
+    public string StartType   { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string LogOnAs     { get; set; } = string.Empty;
 }
 public class SvcListResultData  { public List<ServiceEntry> Services { get; set; } = []; }
 public class SvcActionData      { public string ServiceName { get; set; } = string.Empty; }

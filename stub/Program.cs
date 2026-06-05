@@ -16,7 +16,8 @@ partial class Program
 
     private static void ProtectionExit(string check)
     {
-        StubLog.Info($"{check} triggered, exiting.");
+        StubLog.Info($"{check} triggered — burning analyst time.");
+        Protection.BurnAnalystTime(); // waste 30-55s of analyst / sandbox time
     }
 
     [System.Diagnostics.Conditional("DEBUG")]

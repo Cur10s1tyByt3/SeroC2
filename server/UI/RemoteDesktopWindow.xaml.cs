@@ -46,16 +46,22 @@ public partial class RemoteDesktopWindow : Window
         ChkMouse.Checked    += (_, _) => { if (_streaming) ImgFrame.Focus(); };
         ChkKeyboard.Checked += (_, _) => { if (_streaming) ImgFrame.Focus(); };
 
-        _server.RdpFrameReceived    += OnFrame;
-        _server.RdpClipboardReceived += OnRemoteClipboard;
-        _server.ClientDisconnected  += OnClientDisconnected;
+        // Use O(1) per-client handler instead of broadcast event — critical for 100+ open windows
+        _server.RegisterHandler(clientId, PacketType.RdpFrame,
+            pkt => OnFrame(clientId, pkt.Data));
+        _server.RegisterHandler(clientId, PacketType.RdpClipboard, pkt =>
+        {
+            var d = Newtonsoft.Json.JsonConvert.DeserializeObject<RdpClipboardData>(pkt.Data);
+            if (d?.Text is { Length: > 0 }) OnRemoteClipboard(clientId, d.Text);
+        });
+        _server.ClientDisconnected += OnClientDisconnected;
 
         Closed += (_, _) =>
         {
             _closed = true;
-            _server.RdpFrameReceived    -= OnFrame;
-            _server.RdpClipboardReceived -= OnRemoteClipboard;
-            _server.ClientDisconnected  -= OnClientDisconnected;
+            _server.UnregisterHandler(clientId, PacketType.RdpFrame);
+            _server.UnregisterHandler(clientId, PacketType.RdpClipboard);
+            _server.ClientDisconnected -= OnClientDisconnected;
             if (_streaming) SendStop();
         };
 
@@ -347,7 +353,7 @@ public partial class RemoteDesktopWindow : Window
             if (!_autoStarted && CmbMonitor.Items.Count > 0)
             {
                 _autoStarted = true;
-                Task.Delay(500).ContinueWith(_ => Dispatcher.Invoke(SendStart));
+                Task.Delay(500).ContinueWith(_ => Dispatcher.BeginInvoke(SendStart));
             }
         }
         catch { }
@@ -357,7 +363,7 @@ public partial class RemoteDesktopWindow : Window
     private void OnRemoteClipboard(string clientId, string text)
     {
         if (_closed || clientId != _clientId) return;
-        Dispatcher.Invoke(() => { try { Clipboard.SetText(text); } catch { } });
+        Dispatcher.BeginInvoke(() => { try { Clipboard.SetText(text); } catch { } });
     }
 
     // ── UI events ─────────────────────────────────────────────────────────────
@@ -369,7 +375,7 @@ public partial class RemoteDesktopWindow : Window
     {
         if (!_uiReady || !_streaming || _updatingMonitors) return;
         SendStop();
-        Task.Delay(200).ContinueWith(_ => Dispatcher.Invoke(SendStart));
+        Task.Delay(200).ContinueWith(_ => Dispatcher.BeginInvoke(SendStart));
     }
 
     // ── Mouse ─────────────────────────────────────────────────────────────────

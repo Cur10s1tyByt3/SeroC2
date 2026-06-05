@@ -174,7 +174,7 @@ public partial class WebcamWindow : Window
             // Device list
             if (root.TryGetProperty("devices", out var devList))
             {
-                Dispatcher.Invoke(() =>
+                Dispatcher.BeginInvoke(() =>
                 {
                     CmbDevice.Items.Clear();
                     int count = 0;

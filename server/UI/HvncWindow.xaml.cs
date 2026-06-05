@@ -48,13 +48,14 @@ public partial class HvncWindow : Window
         SldQuality.ValueChanged += (_, e) => TxtQuality.Text = $"{(int)e.NewValue}";
         SldFps.ValueChanged     += (_, e) => TxtFpsVal.Text  = $"{(int)e.NewValue}";
 
-        _server.HvncFrameReceived  += OnHvncFrame;
+        _server.RegisterHandler(clientId, PacketType.HvncFrame,
+            pkt => OnHvncFrame(clientId, pkt.Data));
         _server.ClientDisconnected += OnClientDisconnected;
         Closed += (_, _) =>
         {
             _closed = true;
             _clipTimer?.Stop(); _clipTimer = null;
-            _server.HvncFrameReceived  -= OnHvncFrame;
+            _server.UnregisterHandler(clientId, PacketType.HvncFrame);
             _server.ClientDisconnected -= OnClientDisconnected;
             if (_streaming) SendStop();
         };

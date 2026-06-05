@@ -42,7 +42,7 @@ public partial class CryptoClipperWindow : Window
     {
         var data = JsonConvert.DeserializeObject<ClipperStatsResultData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             ChkEnabled.IsChecked = data.Enabled;
             BadgeActive.Visibility = data.Enabled ? Visibility.Visible : Visibility.Collapsed;
@@ -56,7 +56,7 @@ public partial class CryptoClipperWindow : Window
     {
         var data = JsonConvert.DeserializeObject<ClipperDetectedData>(pkt.Data);
         if (data == null) return;
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             _totalCount++;
             TxtCount.Text = $"{_totalCount} replacement{(_totalCount != 1 ? "s" : "")}";

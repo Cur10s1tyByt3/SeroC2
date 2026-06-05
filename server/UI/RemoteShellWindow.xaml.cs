@@ -43,7 +43,7 @@ public partial class RemoteShellWindow : Window
         // Only show output from our target clients
         if (!_clients.Any(c => c.Id == clientId)) return;
 
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             var prefix = _clients.Count > 1 ? $"[{clientId}] " : "";
             if (TxtOutput.Text == "Type a command and press Enter...")

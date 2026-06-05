@@ -35,6 +35,12 @@ public partial class RegistryEditorWindow : Window
     // Root hives
     private static readonly string[] _roots = ["HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER", "HKEY_CLASSES_ROOT", "HKEY_USERS"];
 
+    private static readonly SolidColorBrush _brushRoot  = Freeze(new SolidColorBrush(Color.FromRgb(0xAA, 0xB8, 0xF0)));
+    private static readonly SolidColorBrush _brushChild = Freeze(new SolidColorBrush(Color.FromRgb(0xCC, 0xD0, 0xE8)));
+    private static readonly SolidColorBrush _brushDim   = Freeze(new SolidColorBrush(Color.FromRgb(0x30, 0x38, 0x58)));
+    private static readonly SolidColorBrush _brushLoad  = Freeze(new SolidColorBrush(Color.FromRgb(0x40, 0x48, 0x68)));
+    private static SolidColorBrush Freeze(SolidColorBrush b) { b.Freeze(); return b; }
+
     public RegistryEditorWindow(TlsServer server, string clientId, string label)
     {
         InitializeComponent();
@@ -84,15 +90,13 @@ public partial class RegistryEditorWindow : Window
         panel.Children.Add(new TextBlock
         {
             Text = name,
-            Foreground = isRoot
-                ? new SolidColorBrush(Color.FromRgb(0xAA, 0xB8, 0xF0))
-                : new SolidColorBrush(Color.FromRgb(0xCC, 0xD0, 0xE8)),
+            Foreground = isRoot ? _brushRoot : _brushChild,
             VerticalAlignment = VerticalAlignment.Center
         });
         item.Header = panel;
 
         // Dummy child so the expand arrow appears
-        item.Items.Add(new TreeViewItem { Header = "⌛ Loading…", Foreground = new SolidColorBrush(Color.FromRgb(0x40, 0x48, 0x68)) });
+        item.Items.Add(new TreeViewItem { Header = "⌛ Loading…", Foreground = _brushLoad });
         item.Expanded += TreeItem_Expanded;
         return item;
     }
@@ -120,6 +124,8 @@ public partial class RegistryEditorWindow : Window
         if (item.Tag is not RegKeyNode node) return;
         _currentPath = node.FullPath;
         TxtPath.Text = _currentPath;
+        // Skip if TreeItem_Expanded already sent this request (node not yet loaded)
+        if (!node.IsLoaded) return;
         RequestChildren(_currentPath);
     }
 
@@ -175,7 +181,7 @@ public partial class RegistryEditorWindow : Window
             item.Items.Add(MakeTreeItem(sub, childPath));
         }
         if (subKeys.Count == 0)
-            item.Items.Add(new TreeViewItem { Header = "  (empty)", Foreground = new SolidColorBrush(Color.FromRgb(0x30, 0x38, 0x58)), IsHitTestVisible = false });
+            item.Items.Add(new TreeViewItem { Header = "  (empty)", Foreground = _brushDim, IsHitTestVisible = false });
     }
 
     private static TreeViewItem? FindTreeItem(ItemCollection items, string path)
