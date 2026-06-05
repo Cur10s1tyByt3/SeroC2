@@ -612,7 +612,6 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="TAG"       Binding="{Binding Tag}"                                Width="80"  />
                                     <DataGridTextColumn Header="USER"      Binding="{Binding Username}"                           Width="110" />
                                     <DataGridTextColumn Header="IP"        Binding="{Binding IP}"                                 Width="110" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="PRIV"      Binding="{Binding Privilege}"                          Width="52"  FontSize="11"/>
@@ -627,6 +626,7 @@
                                     <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"   Width="105" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="CAM"       Binding="{Binding CameraStatus}" Width="44"  FontSize="11"/>
                                     <DataGridTextColumn Header="WINDOW"    Binding="{Binding ActiveWindow}" Width="140" />
+                                    <DataGridTextColumn Header="TAG"       Binding="{Binding Tag}"                                Width="80"  />
                                     <DataGridTemplateColumn Header="PING"  Width="70" MinWidth="50" SortMemberPath="PingMs">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -657,9 +657,9 @@
                                         </MenuItem>
                                         <!-- Monitoring -->
                                         <MenuItem Header="Monitoring">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F48E;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon>
+                                            <MenuItem.Icon><TextBlock Text="&#x1F575;" FontSize="11" Foreground="#89dceb"/></MenuItem.Icon>
                                             <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5A5;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><Image x:Name="CamMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
+                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><Grid Width="15" Height="15"><TextBlock Text="📷" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#89dceb"/><Image x:Name="CamMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></Grid></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F48E;" FontSize="11" Foreground="#A855F7"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><TextBlock Text="&#x1F399;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
                                             <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2328;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
@@ -770,7 +770,6 @@
                                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                       ColumnHeaderStyle="{StaticResource SColHeader}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="TAG"       Binding="{Binding Tag}"                                          Width="80"  />
                                     <DataGridTextColumn Header="USER"      Binding="{Binding LastUsername}"                                 Width="110" />
                                     <DataGridTextColumn Header="IP"        Binding="{Binding LastIP}"                                       Width="110" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="COUNTRY"   Binding="{Binding LastCountry}"                                  Width="110" />
@@ -782,7 +781,8 @@
                                     <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding LastPayload}"                                  Width="90"  FontSize="11"/>
                                     <DataGridTextColumn Header="RAM"        Binding="{Binding LastRamDisplay}"                               Width="105" FontFamily="Consolas" FontSize="11"/>
                                     <DataGridTextColumn Header="FIRST SEEN" Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd HH:mm}"   Width="118" FontFamily="Consolas" FontSize="11"/>
-                                    <DataGridTextColumn Header="LAST SEEN"  Binding="{Binding LastSeen,  StringFormat=yyyy-MM-dd HH:mm}"   Width="*"   FontFamily="Consolas" FontSize="11"/>
+                                    <DataGridTextColumn Header="LAST SEEN"  Binding="{Binding LastSeen,  StringFormat=yyyy-MM-dd HH:mm}"   Width="118" FontFamily="Consolas" FontSize="11"/>
+                                    <DataGridTextColumn Header="TAG"        Binding="{Binding Tag}"                                         Width="*"   />
                                 </DataGrid.Columns>
                                 <DataGrid.ContextMenu>
                                     <ContextMenu>

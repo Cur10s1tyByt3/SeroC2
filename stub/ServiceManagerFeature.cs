@@ -88,9 +88,13 @@ internal static class ServiceManagerFeature
     {
         try
         {
-            // UseShellExecute=false → args not interpreted by cmd.exe, no injection
-            using var p = Process.Start(new ProcessStartInfo("sc.exe", args)
-                { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true });
+            // cmd /u forces UTF-16 LE output — avoids OEM codepage corruption on non-English systems
+            using var p = Process.Start(new ProcessStartInfo("cmd.exe", $"/u /c sc.exe {args}")
+            {
+                CreateNoWindow = true, UseShellExecute = false,
+                RedirectStandardOutput = true,
+                StandardOutputEncoding = System.Text.Encoding.Unicode
+            });
             return p?.StandardOutput.ReadToEnd() ?? "";
         }
         catch { return ""; }

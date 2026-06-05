@@ -94,9 +94,11 @@ internal static class DeviceManagerFeature
 
     private static string GetProp(IntPtr hSet, ref SP_DEVINFO_DATA dd, uint prop)
     {
-        var buf = new byte[256];
-        if (!SetupDiGetDeviceRegistryPropertyW(hSet, ref dd, prop, out _, buf, (uint)buf.Length, out _)) return "";
-        return System.Text.Encoding.Unicode.GetString(buf).TrimEnd('\0', '\r', '\n');
+        var buf = new byte[512];
+        if (!SetupDiGetDeviceRegistryPropertyW(hSet, ref dd, prop, out _, buf, (uint)buf.Length, out uint reqSize)) return "";
+        var s = System.Text.Encoding.Unicode.GetString(buf, 0, (int)Math.Min(reqSize, (uint)buf.Length));
+        var idx = s.IndexOf('\0');
+        return (idx >= 0 ? s[..idx] : s).Trim();
     }
 
     private static string GetInstanceId(IntPtr hSet, ref SP_DEVINFO_DATA dd)
