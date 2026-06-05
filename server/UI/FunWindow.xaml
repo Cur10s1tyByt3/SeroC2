@@ -50,6 +50,7 @@
                                 <Setter TargetName="PART_Dot" Property="Visibility"  Value="Visible"/>
                                 <Setter TargetName="PART_Bg"  Property="BorderBrush" Value="#3A8FFF"/>
                                 <Setter TargetName="PART_Bg"  Property="Background"  Value="#101830"/>
+                                <Setter Property="Foreground"                         Value="#4ade80"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
