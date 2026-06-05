@@ -1671,8 +1671,8 @@
                             <WrapPanel>
                                 <Button x:Name="BtnBinderAdd"    Content="＋ Add"    Style="{StaticResource SBtn}" Margin="0,0,4,0" Height="26" Padding="10,0" Click="BtnBinderAdd_Click"/>
                                 <Button x:Name="BtnBinderRemove" Content="✕ Remove" Style="{StaticResource SBtn}" Margin="0,0,4,0" Height="26" Padding="10,0" Click="BtnBinderRemove_Click"/>
-                                <Button x:Name="BtnBinderUp"     Content="↑"         Style="{StaticResource SBtn}" Margin="0,0,4,0" Height="26" Width="30"    Click="BtnBinderUp_Click"/>
-                                <Button x:Name="BtnBinderDown"   Content="↓"         Style="{StaticResource SBtn}" Margin="0,0,0,0" Height="26" Width="30"    Click="BtnBinderDown_Click"/>
+                                <Button x:Name="BtnBinderUp"     Content="▲" ToolTip="Move up"   Style="{StaticResource SBtn}" Margin="0,0,4,0" Height="26" Width="30" FontSize="10" Click="BtnBinderUp_Click"/>
+                                <Button x:Name="BtnBinderDown"   Content="▼" ToolTip="Move down" Style="{StaticResource SBtn}" Margin="0,0,0,0" Height="26" Width="30" FontSize="10" Click="BtnBinderDown_Click"/>
                             </WrapPanel>
                         </Border>
                         <!-- Bottom controls -->
