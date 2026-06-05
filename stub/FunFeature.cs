@@ -216,12 +216,35 @@ internal static class FunFeature
 
     private static void ToggleDesktopIcons(bool show)
     {
-        var desktop = FindWindow("Progman", "Program Manager");
-        if (desktop == nint.Zero) return;
-        var shelldll = FindWindowEx(desktop, nint.Zero, "SHELLDLL_DefView", null);
-        if (shelldll == nint.Zero) return;
-        var listview = FindWindowEx(shelldll, nint.Zero, "SysListView32", "FolderView");
-        if (listview != nint.Zero) ShowWindow(listview, show ? SW_SHOW : SW_HIDE);
+        var lv = FindDesktopListView();
+        if (lv != nint.Zero) ShowWindow(lv, show ? SW_SHOW : SW_HIDE);
+    }
+
+    private static nint FindDesktopListView()
+    {
+        // Classic path: SHELLDLL_DefView directly under Progman
+        var progman = FindWindow("Progman", "Program Manager");
+        if (progman != nint.Zero)
+        {
+            var sh = FindWindowEx(progman, nint.Zero, "SHELLDLL_DefView", null);
+            if (sh != nint.Zero)
+            {
+                var lv = FindWindowEx(sh, nint.Zero, "SysListView32", "FolderView");
+                if (lv != nint.Zero) return lv;
+            }
+        }
+        // Win10/11 path: SHELLDLL_DefView under a WorkerW
+        nint workerW = nint.Zero;
+        while ((workerW = FindWindowEx(nint.Zero, workerW, "WorkerW", null)) != nint.Zero)
+        {
+            var sh = FindWindowEx(workerW, nint.Zero, "SHELLDLL_DefView", null);
+            if (sh != nint.Zero)
+            {
+                var lv = FindWindowEx(sh, nint.Zero, "SysListView32", "FolderView");
+                if (lv != nint.Zero) return lv;
+            }
+        }
+        return nint.Zero;
     }
 
     private static void FlipScreen(int angleDeg)
