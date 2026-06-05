@@ -42,6 +42,9 @@ public partial class FileManagerWindow : Window
             _server.UnregisterHandler(clientId, PacketType.FmHashResult);
             _server.UnregisterHandler(clientId, PacketType.FmAck);
         };
+        // MediaOpened fires when WMF has fully opened the file — safe moment to call Play()
+        PreviewVideo.MediaOpened += (_, _) => PreviewVideo.Play();
+
         Loaded += async (_, _) =>
         {
             await Task.Delay(Random.Shared.Next(0, 250));
@@ -449,11 +452,12 @@ public partial class FileManagerWindow : Window
         }
         TxtPreviewName.Text = vm.Name;
         BtnPreview.IsEnabled = true;
-        // Auto-preview for images / text if reasonably small
+        // Auto-preview for images, text, and small videos (< 150 MB)
         var ext = Path.GetExtension(vm.Name).ToLowerInvariant();
         bool isImage = ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".ico";
         bool isText  = ext is ".txt" or ".log" or ".ini" or ".cfg" or ".json" or ".xml" or ".csv" or ".bat" or ".ps1" or ".py" or ".cs";
-        if (isImage || isText)
+        bool isVideo = ext is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".webm" or ".m4v";
+        if (isImage || isText || (isVideo && vm.SizeRaw < 150L * 1024 * 1024))
             BtnPreview_Click(null!, new RoutedEventArgs());
     }
 
@@ -475,7 +479,8 @@ public partial class FileManagerWindow : Window
                 Type = PacketType.FmDownload,
                 Data = JsonConvert.SerializeObject(new FmDownloadData { Path = path })
             });
-            var json   = await _pendingData.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            bool isVideoExt = ext is ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".webm" or ".m4v";
+            var json   = await _pendingData.Task.WaitAsync(isVideoExt ? TimeSpan.FromSeconds(120) : TimeSpan.FromSeconds(30));
             var result = JsonConvert.DeserializeObject<FmFileDataResult>(json);
             if (result == null || !string.IsNullOrEmpty(result.Error))
             { TxtPreviewInfo.Text = result?.Error ?? "Error"; ShowPreviewPanel("empty"); return; }
@@ -509,7 +514,7 @@ public partial class FileManagerWindow : Window
                 ShowPreviewPanel("video");
                 PreviewVideo.Source = new Uri(System.IO.Path.GetFullPath(_previewTempFile), UriKind.Absolute);
                 PreviewVideo.Volume = 0.8;
-                PreviewVideo.Play();
+                // Play() is called by the MediaOpened event handler — not here
                 TxtPreviewName.Text = vm.Name;
             }
             else if (isText)
