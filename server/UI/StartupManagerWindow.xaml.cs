@@ -48,7 +48,7 @@ public partial class StartupManagerWindow : Window
                     bool isComTask = !e.Path.Contains('\\') && !e.Path.Contains('/')
                                   && !e.Path.Contains(':') && !e.Path.StartsWith("%");
                     if (isComTask) continue;
-                    _entries.Add(new StartupEntryVM(e.Name, e.Type, e.Location, e.Path));
+                    _entries.Add(new StartupEntryVM(e.Name, e.Type, e.Location, e.Path, e.Verified, e.Publisher));
                 }
                 TxtCount.Text  = $"({_entries.Count})";
                 TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {_entries.Count} startup item(s)";
@@ -94,4 +94,9 @@ public partial class StartupManagerWindow : Window
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 }
 
-public record StartupEntryVM(string Name, string Type, string Location, string Path);
+public record StartupEntryVM(string Name, string Type, string Location, string Path, bool Verified, string Publisher)
+{
+    public string PublisherDisplay => Verified
+        ? (string.IsNullOrEmpty(Publisher) ? "(Verified)" : $"(Verified) {Publisher}")
+        : "(Not Verified)";
+}

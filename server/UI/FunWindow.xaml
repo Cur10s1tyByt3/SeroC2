@@ -38,11 +38,20 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="PART_Bg" Property="Background"   Value="#0E1228"/>
                             </Trigger>
-                            <!-- Defined LAST — wins over IsMouseOver for BorderBrush when both are active -->
+                            <!-- Inactive: partner was clicked — heavily dimmed -->
+                            <Trigger Property="Tag" Value="off">
+                                <Setter TargetName="PART_Bg" Property="Background"  Value="#0C0D18"/>
+                                <Setter TargetName="PART_Bg" Property="BorderBrush" Value="#1A1C28"/>
+                                <Setter Property="Foreground"                        Value="#353858"/>
+                                <Setter Property="Opacity"                           Value="0.6"/>
+                            </Trigger>
+                            <!-- Active state: thick left accent + blue fill — clearly visible on all variants -->
                             <Trigger Property="Tag" Value="on">
-                                <Setter TargetName="PART_Bg"  Property="BorderBrush" Value="#3A8FFF"/>
-                                <Setter TargetName="PART_Bg"  Property="Background"  Value="#101830"/>
-                                <Setter Property="Foreground"                         Value="#4ade80"/>
+                                <Setter TargetName="PART_Bg" Property="BorderBrush"     Value="#4A85F5"/>
+                                <Setter TargetName="PART_Bg" Property="BorderThickness" Value="3,1,1,1"/>
+                                <Setter TargetName="PART_Bg" Property="Background"      Value="#0A1530"/>
+                                <Setter Property="Foreground"                            Value="#90C8FF"/>
+                                <Setter Property="Opacity"                               Value="1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

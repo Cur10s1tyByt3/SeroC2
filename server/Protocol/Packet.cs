@@ -375,10 +375,12 @@ public class TcpCloseData       { public string LocalAddr { get; set; } = string
 // ── Startup Manager ──────────────────────────────────
 public class StartupEntry
 {
-    public string Name     { get; set; } = string.Empty;
-    public string Path     { get; set; } = string.Empty;
-    public string Type     { get; set; } = string.Empty;  // Reg / File / Task
-    public string Location { get; set; } = string.Empty;
+    public string Name      { get; set; } = string.Empty;
+    public string Path      { get; set; } = string.Empty;
+    public string Type      { get; set; } = string.Empty;  // Reg / File / Task / WMI
+    public string Location  { get; set; } = string.Empty;
+    public bool   Verified  { get; set; }
+    public string Publisher { get; set; } = string.Empty;
 }
 public class StartupListResultData { public List<StartupEntry> Entries { get; set; } = []; }
 public class StartupDeleteData     { public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; public string Location { get; set; } = string.Empty; }

@@ -11,11 +11,11 @@ public partial class FunWindow : Window
     private readonly TlsServer _server;
     private readonly string    _clientId;
 
-    // Tag="on" → template trigger shows dot + blue border; null → default style
+    // Tag="on" → active (blue accent), Tag="off" → dimmed inactive, null → unknown/reset
     private static void Activate(System.Windows.Controls.Button active, params System.Windows.Controls.Button[] others)
     {
         active.Tag = "on";
-        foreach (var b in others) b.Tag = null;
+        foreach (var b in others) b.Tag = "off";
     }
 
     public FunWindow(TlsServer server, string clientId, string clientLabel)

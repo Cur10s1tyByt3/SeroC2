@@ -13,8 +13,13 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground"      Value="#CDD0E8"/>
             <Style.Triggers>
+                <!-- Unverified rows: red tint (like Autoruns) — must come before IsSelected so selection overrides it -->
+                <DataTrigger Binding="{Binding Verified}" Value="False">
+                    <Setter Property="Background" Value="#1A0808"/>
+                    <Setter Property="Foreground" Value="#E88080"/>
+                </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#0F1525"/>
+                    <Setter Property="Background" Value="#1A1020"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background"      Value="#152040"/>
@@ -151,10 +156,17 @@
                     </ContextMenu>
                 </DataGrid.ContextMenu>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="NAME"     Binding="{Binding Name}"     Width="200" FontSize="12"/>
-                    <DataGridTextColumn Header="TYPE"     Binding="{Binding Type}"     Width="80"  FontSize="11"/>
-                    <DataGridTextColumn Header="LOCATION" Binding="{Binding Location}" Width="130" FontSize="11"/>
-                    <DataGridTextColumn Header="PATH"     Binding="{Binding Path}"     Width="*"   FontSize="11"/>
+                    <DataGridTextColumn Header="NAME"      Binding="{Binding Name}"             Width="200" FontSize="12"/>
+                    <DataGridTextColumn Header="TYPE"      Binding="{Binding Type}"             Width="70"  FontSize="11"/>
+                    <DataGridTextColumn Header="LOCATION"  Binding="{Binding Location}"         Width="115" FontSize="11"/>
+                    <DataGridTemplateColumn Header="PUBLISHER" Width="210" SortMemberPath="PublisherDisplay">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding PublisherDisplay}" FontSize="11" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="PATH"      Binding="{Binding Path}"             Width="*"   FontSize="11"/>
                 </DataGrid.Columns>
             </DataGrid>
 

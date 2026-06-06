@@ -125,15 +125,21 @@
                 </Grid>
             </Border>
 
-            <!-- State legend bar -->
-            <Border DockPanel.Dock="Top" Background="#0A0B14" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="12,6">
+            <!-- Toolbar + State legend bar -->
+            <Border DockPanel.Dock="Top" Background="#0A0B14" BorderBrush="#181A28" BorderThickness="0,0,0,1" Padding="10,5">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
+                    <!-- Action buttons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="🛡 Block IP"   Style="{StaticResource SBtn}" Height="24" FontSize="11" Padding="8,0" Margin="0,0,4,0" Click="BlockIp_Click"   ToolTip="Block remote IP in Windows Firewall (inbound + outbound)"/>
+                        <Button Content="🛡 Block Port" Style="{StaticResource SBtn}" Height="24" FontSize="11" Padding="8,0" Margin="0,0,0,0" Click="BlockPort_Click" ToolTip="Block TCP port in Windows Firewall (inbound + outbound)"/>
+                    </StackPanel>
                     <!-- State legend -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="7" Height="7" Fill="#22C55E" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <TextBlock Text="ESTABLISHED" Foreground="#405060" FontSize="10" Margin="0,0,12,0" VerticalAlignment="Center"/>
                         <Ellipse Width="7" Height="7" Fill="#4A85F5" VerticalAlignment="Center" Margin="0,0,4,0"/>
@@ -180,12 +186,8 @@
                       ColumnHeaderStyle="{StaticResource SColHeader}">
                 <DataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="⛔  Close Connection"  Click="CloseConn_Click"/>
-                        <MenuItem Header="💀  Kill Process"       Click="KillProc_Click"/>
-                        <Separator/>
-                        <MenuItem Header="🛡  Block IP"           Click="BlockIp_Click"      ToolTip="Block remote IP in Windows Firewall (admin required)"/>
-                        <MenuItem Header="🛡  Block Process"      Click="BlockProcess_Click"  ToolTip="Block process in Windows Firewall (admin required)"/>
-                        <MenuItem Header="🛡  Block Port"         Click="BlockPort_Click"     ToolTip="Block TCP port in Windows Firewall (admin required)"/>
+                        <MenuItem Header="⛔  Close Connection" Click="CloseConn_Click"/>
+                        <MenuItem Header="💀  Kill Process"      Click="KillProc_Click"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
                 <DataGrid.Columns>
