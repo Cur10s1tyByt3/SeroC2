@@ -35,6 +35,13 @@ public partial class FileManagerWindow : Window
         _server.RegisterHandler(clientId, PacketType.FmHashResult,  pkt => { _pendingHash?.TrySetResult(pkt.Data); });
         _server.RegisterHandler(clientId, PacketType.FmAck,         pkt => { _pendingAck?.TrySetResult(pkt.Data); });
 
+        // Stop WMF pipeline BEFORE window closes to prevent it from blocking disposal
+        Closing += (_, _) =>
+        {
+            PreviewVideo.Stop();
+            PreviewVideo.Source = null;
+            if (_previewTempFile != null) try { System.IO.File.Delete(_previewTempFile); } catch { }
+        };
         Closed += (_, _) =>
         {
             _server.UnregisterHandler(clientId, PacketType.FmListResult);
