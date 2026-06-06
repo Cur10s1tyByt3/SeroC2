@@ -99,7 +99,7 @@
                       RowBackground="Transparent" AlternatingRowBackground="#05101428"
                       GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#0C0E1A"
                       HeadersVisibility="Column" FontFamily="Segoe UI" FontSize="12"
-                      SelectionMode="Single" CanUserAddRows="False"
+                      SelectionMode="Extended" CanUserAddRows="False"
                       VirtualizingStackPanel.IsVirtualizing="True"
                       EnableRowVirtualization="True"
                       ColumnHeaderStyle="{StaticResource SColHeader}">

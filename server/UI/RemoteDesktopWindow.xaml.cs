@@ -11,6 +11,17 @@ namespace SeroServer.UI;
 
 public partial class RemoteDesktopWindow : Window
 {
+    // Stagger auto-start across simultaneously opened windows to avoid a burst of
+    // RdpStart packets all firing at the same time when the user opens many windows.
+    private static int _openCount = 0;
+
+    // Global cap on concurrent JPEG decode work across all open RDP windows.
+    // Each window's Parallel.ForEach is bounded to 2 threads; this semaphore
+    // prevents all N windows from saturating the thread pool simultaneously.
+    private static readonly SemaphoreSlim _decodeSlots =
+        new(Math.Max(2, Environment.ProcessorCount / 2),
+            Math.Max(2, Environment.ProcessorCount / 2));
+
     private readonly TlsServer _server;
     private readonly string _clientId;
     private int _remoteW, _remoteH;
@@ -176,8 +187,9 @@ public partial class RemoteDesktopWindow : Window
         if (_renderBusy) { if (!_closed) SendAck(); return; }
         _renderBusy = true;
 
-        Task.Run(() =>
+        Task.Run(async () =>
         {
+            await _decodeSlots.WaitAsync();
             try
             {
                 using var doc = JsonDocument.Parse(json);
@@ -196,7 +208,7 @@ public partial class RemoteDesktopWindow : Window
                         var jpegBytes = Convert.FromBase64String(jEl.GetString() ?? "");
                         var pixels = DecodeJpeg(jpegBytes, w, h);
                         if (pixels != null && !_closed)
-                            Dispatcher.BeginInvoke(() => BlitFullFrame(w, h, pixels, w * 4));
+                            _ = Dispatcher.BeginInvoke(() => BlitFullFrame(w, h, pixels, w * 4));
                         else
                         {
                             // Decode failed — still ack so the stub keeps sending frames
@@ -212,7 +224,7 @@ public partial class RemoteDesktopWindow : Window
                 var blockList = blocksEl.EnumerateArray().ToList();
                 var decoded   = new System.Collections.Concurrent.ConcurrentBag<(int X, int Y, int W, int H, byte[] Pixels, int Stride)>();
                 Parallel.ForEach(blockList,
-                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                    new ParallelOptions { MaxDegreeOfParallelism = 2 },
                     block =>
                     {
                         try
@@ -235,9 +247,10 @@ public partial class RemoteDesktopWindow : Window
                 // Reduces stub idle time from (decode+blit+RTT) to (decode+RTT), cutting effective
                 // latency nearly in half and allowing the pipeline to stay full at high framerates.
                 if (!_closed) SendAck();
-                Dispatcher.BeginInvoke(() => BlitBlocks(w, h, decodedList, ackAlreadySent: true));
+                _ = Dispatcher.BeginInvoke(() => BlitBlocks(w, h, decodedList, ackAlreadySent: true));
             }
             catch { _renderBusy = false; if (!_closed) SendAck(); }
+            finally { _decodeSlots.Release(); }
         });
     }
 
@@ -352,11 +365,15 @@ public partial class RemoteDesktopWindow : Window
             if (CmbMonitor.Items.Count > 0)
                 CmbMonitor.SelectedIndex = 0;
 
-            // Auto-start on first monitor list received
+            // Auto-start on first monitor list received.
+            // Stagger by window index (150ms apart) so opening 20 windows at once
+            // doesn't blast 20 RdpStart packets simultaneously.
             if (!_autoStarted && CmbMonitor.Items.Count > 0)
             {
                 _autoStarted = true;
-                Task.Delay(500).ContinueWith(_ => Dispatcher.BeginInvoke(SendStart));
+                int idx = Interlocked.Increment(ref _openCount);
+                int delay = 300 + (idx % 20) * 150;
+                Task.Delay(delay).ContinueWith(_ => Dispatcher.BeginInvoke(SendStart));
             }
         }
         catch { }

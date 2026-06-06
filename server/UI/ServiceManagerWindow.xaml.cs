@@ -170,13 +170,11 @@ public partial class ServiceManagerWindow : Window
 
     private void SendAction(PacketType type)
     {
-        if (GridServices.SelectedItem is not ServiceEntryVM vm) return;
-        _ = _server.SendToClient(_clientId, new Packet
-        {
-            Type = type,
-            Data = JsonConvert.SerializeObject(new SvcActionData { ServiceName = vm.Name })
-        });
-        TxtStatus.Text = $"Sending {type} → {vm.DisplayName}…";
+        var sel = GridServices.SelectedItems.Cast<ServiceEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = type, Data = JsonConvert.SerializeObject(new SvcActionData { ServiceName = vm.Name }) });
+        TxtStatus.Text = sel.Count == 1 ? $"Sending {type} → {sel[0].DisplayName}…" : $"Sending {type} → {sel.Count} services…";
     }
 
     private void BtnRefresh_Click(object s, RoutedEventArgs e) => Refresh();

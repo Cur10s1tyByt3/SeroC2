@@ -178,7 +178,7 @@
                       AlternatingRowBackground="#05101428"
                       GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#0C0E1A"
                       HeadersVisibility="Column"
-                      FontFamily="Consolas" FontSize="12" SelectionMode="Single"
+                      FontFamily="Consolas" FontSize="12" SelectionMode="Extended"
                       CanUserAddRows="False" CanUserResizeRows="False"
                       VirtualizingStackPanel.IsVirtualizing="True"
                       VirtualizingStackPanel.VirtualizationMode="Recycling"

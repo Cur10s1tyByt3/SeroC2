@@ -61,16 +61,20 @@ public partial class StartupManagerWindow : Window
 
     private async void Delete_Click(object s, RoutedEventArgs e)
     {
-        if (GridStartup.SelectedItem is not StartupEntryVM row) return;
-        if (MessageBox.Show($"Delete startup entry '{row.Name}'?", "Confirm",
-            MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var selected = GridStartup.SelectedItems.Cast<StartupEntryVM>().ToList();
+        if (selected.Count == 0) return;
+        string msg = selected.Count == 1
+            ? $"Delete startup entry '{selected[0].Name}'?"
+            : $"Delete {selected.Count} startup entries?";
+        if (MessageBox.Show(msg, "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 
-        var data = JsonConvert.SerializeObject(new StartupDeleteData
+        foreach (var row in selected)
         {
-            Name = row.Name, Type = row.Type, Location = row.Location
-        });
-        await _server.SendToClient(_clientId, new Packet { Type = PacketType.StartupDelete, Data = data });
-        await Task.Delay(500);
+            var data = JsonConvert.SerializeObject(new StartupDeleteData { Name = row.Name, Type = row.Type, Location = row.Location });
+            await _server.SendToClient(_clientId, new Packet { Type = PacketType.StartupDelete, Data = data });
+            await Task.Delay(80);
+        }
+        await Task.Delay(400);
         await Refresh();
     }
 

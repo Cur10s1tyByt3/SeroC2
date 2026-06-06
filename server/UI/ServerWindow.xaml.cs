@@ -1479,7 +1479,7 @@ public partial class ServerWindow : Window
 
         try
         {
-            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) };
             foreach (var id in targets)
             {
                 var url  = $"https://api.telegram.org/bot{token}/sendMessage" +
@@ -1504,10 +1504,20 @@ public partial class ServerWindow : Window
                 }
             }
         }
+        catch (TaskCanceledException)
+        {
+            allOk   = false;
+            lastErr = "Timeout — api.telegram.org unreachable or token invalid";
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            allOk   = false;
+            lastErr = $"Network error: {ex.Message}";
+        }
         catch (Exception ex)
         {
             allOk   = false;
-            lastErr = ex.GetType().Name;
+            lastErr = $"{ex.GetType().Name}: {ex.Message}";
         }
 
         BtnTelegramTest.IsEnabled = true;
@@ -3719,7 +3729,7 @@ Read-Host 'Press Enter to close'
             if (_screenTiles[key].Parent is System.Windows.FrameworkElement fe)
             {
                 var panel = VisualTreeHelperGetParent(fe);
-                if (panel is System.Windows.Controls.WrapPanel wp) wp.Children.Remove(fe);
+                if (panel is System.Windows.Controls.Primitives.UniformGrid ug) ug.Children.Remove(fe);
             }
             _screenTiles.Remove(key);
         }
@@ -3742,6 +3752,8 @@ Read-Host 'Press Enter to close'
         System.Windows.DependencyObject obj)
         => System.Windows.Media.VisualTreeHelper.GetParent(obj);
 
+    private double _tileImgHeight = 140;
+
     private void EnsureScreenTile(ConnectedClient client)
     {
         if (_screenTiles.ContainsKey(client.Id)) return;
@@ -3749,7 +3761,7 @@ Read-Host 'Press Enter to close'
         var img = new System.Windows.Controls.Image
         {
             Stretch = Stretch.Uniform,
-            Height  = 240,
+            Height  = _tileImgHeight,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
@@ -3757,9 +3769,9 @@ Read-Host 'Press Enter to close'
         {
             Text = client.Id,
             Foreground = new SolidColorBrush(Color.FromRgb(0xB8, 0xC0, 0xD8)),
-            FontSize = 12, FontFamily = new System.Windows.Media.FontFamily("Consolas"),
-            Margin = new Thickness(6, 4, 6, 5),
-            TextTrimming = System.Windows.TextTrimming.None,
+            FontSize = 11, FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+            Margin = new Thickness(6, 3, 6, 4),
+            TextTrimming = System.Windows.TextTrimming.CharacterEllipsis,
             TextWrapping = System.Windows.TextWrapping.NoWrap
         };
 
@@ -3770,16 +3782,33 @@ Read-Host 'Press Enter to close'
 
         var border = new System.Windows.Controls.Border
         {
-            Width = 380, Margin = new Thickness(6),
-            Background   = new SolidColorBrush(Color.FromRgb(0x07, 0x08, 0x12)),
-            BorderBrush  = new SolidColorBrush(Color.FromRgb(0x1A, 0x1E, 0x36)),
+            Margin = new Thickness(3),
+            Background      = new SolidColorBrush(Color.FromRgb(0x07, 0x08, 0x12)),
+            BorderBrush     = new SolidColorBrush(Color.FromRgb(0x1A, 0x1E, 0x36)),
             BorderThickness = new Thickness(1),
-            CornerRadius = new System.Windows.CornerRadius(6),
+            CornerRadius    = new System.Windows.CornerRadius(5),
             Child = dp
         };
 
         ScreenPanel.Children.Add(border);
         _screenTiles[client.Id] = img;
+    }
+
+    private void ScreenScroll_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var sv = (System.Windows.Controls.ScrollViewer)sender;
+        double avail = sv.ViewportWidth - 8;
+        if (avail <= 0) return;
+
+        int cols = Math.Max(2, (int)(avail / 220));
+        ScreenPanel.Columns = cols;
+
+        double tileW = avail / cols - 6; // subtract tile margin
+        double imgH  = Math.Round(tileW * 9.0 / 16.0);
+        _tileImgHeight = imgH;
+
+        foreach (var img in _screenTiles.Values)
+            img.Height = imgH;
     }
 
     private void OnScreenshotResult(string clientId, string json)

@@ -346,35 +346,29 @@ public partial class ProcessManagerWindow : Window
 
     private void BtnKill_Click(object s, RoutedEventArgs e)
     {
-        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
-        _ = _server.SendToClient(_clientId, new Packet
-        {
-            Type = PacketType.ProcKill,
-            Data = JsonConvert.SerializeObject(new ProcKillData { Pid = vm.Pid })
-        });
-        TxtStatus.Text = $"Kill → PID {vm.Pid} ({vm.Name})";
+        var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcKill, Data = JsonConvert.SerializeObject(new ProcKillData { Pid = vm.Pid }) });
+        TxtStatus.Text = sel.Count == 1 ? $"Kill → PID {sel[0].Pid} ({sel[0].Name})" : $"Kill → {sel.Count} processes";
     }
 
     private void BtnSuspend_Click(object s, RoutedEventArgs e)
     {
-        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
-        _ = _server.SendToClient(_clientId, new Packet
-        {
-            Type = PacketType.ProcSuspend,
-            Data = JsonConvert.SerializeObject(new ProcSuspendData2 { Pid = vm.Pid })
-        });
-        TxtStatus.Text = $"Suspend → PID {vm.Pid} ({vm.Name})";
+        var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcSuspend, Data = JsonConvert.SerializeObject(new ProcSuspendData2 { Pid = vm.Pid }) });
+        TxtStatus.Text = sel.Count == 1 ? $"Suspend → PID {sel[0].Pid} ({sel[0].Name})" : $"Suspend → {sel.Count} processes";
     }
 
     private void BtnResume_Click(object s, RoutedEventArgs e)
     {
-        if (GridProcs.SelectedItem is not ProcEntryVM vm) return;
-        _ = _server.SendToClient(_clientId, new Packet
-        {
-            Type = PacketType.ProcResume,
-            Data = JsonConvert.SerializeObject(new ProcResumeData2 { Pid = vm.Pid })
-        });
-        TxtStatus.Text = $"Resume → PID {vm.Pid} ({vm.Name})";
+        var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcResume, Data = JsonConvert.SerializeObject(new ProcResumeData2 { Pid = vm.Pid }) });
+        TxtStatus.Text = sel.Count == 1 ? $"Resume → PID {sel[0].Pid} ({sel[0].Name})" : $"Resume → {sel.Count} processes";
     }
 
 

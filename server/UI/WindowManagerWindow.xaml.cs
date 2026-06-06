@@ -55,9 +55,11 @@ public partial class WindowManagerWindow : Window
 
     private void SendAction(string action)
     {
-        if (GridWins.SelectedItem is not WindowEntryVM vm) return;
-        _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.WinAction, Data = JsonConvert.SerializeObject(new WinActionData { Handle = vm.Handle, Action = action }) });
-        TxtStatus.Text = $"{action} → {vm.Title}";
+        var sel = GridWins.SelectedItems.Cast<WindowEntryVM>().ToList();
+        if (sel.Count == 0) return;
+        foreach (var vm in sel)
+            _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.WinAction, Data = JsonConvert.SerializeObject(new WinActionData { Handle = vm.Handle, Action = action }) });
+        TxtStatus.Text = sel.Count == 1 ? $"{action} → {sel[0].Title}" : $"{action} → {sel.Count} windows";
     }
 
     private void BtnRefresh_Click(object s, RoutedEventArgs e) => Refresh();

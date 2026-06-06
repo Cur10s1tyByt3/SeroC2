@@ -1440,9 +1440,11 @@
                             </Grid>
                         </Border>
                         <!-- Tiles -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <WrapPanel x:Name="ScreenPanel" Margin="8,8"/>
+                        <ScrollViewer x:Name="ScreenScroll"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      SizeChanged="ScreenScroll_SizeChanged">
+                            <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="4,4"/>
                         </ScrollViewer>
                     </DockPanel>
                 </TabItem>
