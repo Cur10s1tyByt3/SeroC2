@@ -170,7 +170,10 @@ public partial class RemoteDesktopWindow : Window
             return;
         }
 
-        if (!_streaming || _renderBusy) return;
+        if (!_streaming) return;
+        // If busy rendering the previous frame, return the credit so the stub keeps
+        // its pipeline full — without this the 8 in-flight credits drain and the stream freezes.
+        if (_renderBusy) { if (!_closed) SendAck(); return; }
         _renderBusy = true;
 
         Task.Run(() =>
