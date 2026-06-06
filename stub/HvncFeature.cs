@@ -920,12 +920,31 @@ internal static class HvncFeature
                         ScreenToClient(hwnd, ref cClose);
                         PostMessage(hwnd, WM_LBUTTONUP, 0, MakeLParam(cClose.x, cClose.y));
                         PostMessage(root, WM_CLOSE, 0, 0);
+                        // Explorer with a media preview can take several seconds to handle WM_CLOSE
+                        // (preview handler flushes video decode buffers). Force-kill after 1.5 s.
+                        string closeCls = WinClass(root);
+                        if (closeCls is "CabinetWClass" or "ExploreWClass")
+                        {
+                            GetWindowThreadProcessId(root, out uint closePid);
+                            if (closePid != 0)
+                                Task.Run(async () =>
+                                {
+                                    await Task.Delay(1500);
+                                    nint hp = OpenProcess(0x0001, false, closePid);
+                                    if (hp != 0) { TerminateProcess(hp, 0); CloseHandle(hp); }
+                                });
+                        }
                         return;
                     }
                     if (hit == HTMAXBUTTON)
                         { ShowWindow(root, IsWindowMaximized(root) ? 9 /*SW_RESTORE*/ : 3 /*SW_SHOWMAXIMIZED*/); return; }
                     if (hit == HTMINBUTTON)
-                        { ShowWindow(root, 6 /*SW_MINIMIZE*/); return; }
+                    {
+                        // WM_SYSCOMMAND SC_MINIMIZE is more reliable than ShowWindow(SW_MINIMIZE)
+                        // for Chromium browsers on a hidden desktop (no taskbar to anchor minimised state).
+                        PostMessage(root, 0x0112 /*WM_SYSCOMMAND*/, 0xF020 /*SC_MINIMIZE*/, 0);
+                        return;
+                    }
                 }
             }
 

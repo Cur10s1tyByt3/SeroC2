@@ -10,6 +10,9 @@ internal static class WindowManagerFeature
     private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
 
     [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern bool EnumDesktopWindows(nint hDesktop, EnumWindowsProc lpfn, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern nint OpenDesktop(string lpszDesktop, uint dwFlags, bool fInherit, uint dwDesiredAccess);
+    [DllImport("user32.dll")] private static extern bool CloseDesktop(nint hDesktop);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowTextW(IntPtr hwnd, StringBuilder lpString, int nMaxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassNameW(IntPtr hwnd, StringBuilder lpClassName, int nMaxCount);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
@@ -46,9 +49,16 @@ internal static class WindowManagerFeature
     {
         var wins = new List<WindowEntryStub>();
 
+        // Open the default interactive desktop explicitly — EnumWindows uses the current
+        // thread's desktop which may be the HVNC hidden desktop if SetThreadDesktop was
+        // called on this thread, causing HVNC windows to show instead of real ones.
+        const uint DESKTOP_READOBJECTS = 0x0001;
+        const uint DESKTOP_ENUMERATE   = 0x0040;
+        nint hDesk = OpenDesktop("Default", 0, false, DESKTOP_READOBJECTS | DESKTOP_ENUMERATE);
+
         // First pass: enumerate all windows without icon loading so no window is skipped
         // due to a slow/failing MainModule access.
-        EnumWindows((hwnd, _) =>
+        EnumWindowsProc cb = (hwnd, _) =>
         {
             var titleSb = new StringBuilder(256);
             GetWindowTextW(hwnd, titleSb, 256);
@@ -67,7 +77,16 @@ internal static class WindowManagerFeature
                 Visible   = IsWindowVisible(hwnd),
             });
             return true;
-        }, IntPtr.Zero);
+        };
+        if (hDesk != nint.Zero)
+        {
+            EnumDesktopWindows(hDesk, cb, IntPtr.Zero);
+            CloseDesktop(hDesk);
+        }
+        else
+        {
+            EnumWindows(cb, IntPtr.Zero); // fallback
+        }
 
         // Second pass: load icons (cached per exe path, safe to fail per entry)
         foreach (var w in wins)
