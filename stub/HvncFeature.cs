@@ -786,6 +786,20 @@ internal static class HvncFeature
         return WinClass(r != 0 ? r : hwnd) == "Shell_TrayWnd";
     }
 
+    // Walks child window tree to find a window with the given class name.
+    private static nint FindChildByClass(nint parent, string cls)
+    {
+        nint child = GetWindow(parent, 5 /*GW_CHILD*/);
+        while (child != 0)
+        {
+            if (WinClass(child) == cls) return child;
+            nint found = FindChildByClass(child, cls);
+            if (found != 0) return found;
+            child = GetWindow(child, 2 /*GW_HWNDNEXT*/);
+        }
+        return 0;
+    }
+
     // Walks the child window tree looking for Win11 taskbar's XAML input target.
     // Win11 taskbar hosts its app icons in a WinUI3/XAML island. PostMessage to the outer
     // Shell_TrayWnd or DesktopWindowContentBridge is swallowed by the composition layer.
@@ -968,24 +982,49 @@ internal static class HvncFeature
                 }
             }
 
-            // Taskbar: Win11 hosts taskbar icons in a XAML island — WindowFromPoint returns
-            // DesktopWindowContentBridge (composition layer), not the actual input target.
-            // Only Windows.UI.Input.InputSite.WindowClass processes WM_LBUTTONDOWN/UP.
+            // Taskbar: route the click to the real input target.
+            //
+            // Win11 (with DWM / interactive desktop): app icons live in a XAML island —
+            //   WindowFromPoint returns DesktopWindowContentBridge; we need
+            //   Windows.UI.Input.InputSite.WindowClass inside it.
+            //
+            // Win10 / Win11 on a hidden desktop (no DWM → no XAML): the taskbar falls back
+            //   to the classic layout — app buttons are in MSTaskListWClass.  PostMessage to
+            //   Shell_TrayWnd or any ancestor is silently swallowed; only MSTaskListWClass
+            //   processes WM_LBUTTONDOWN and determines the button hit via cursor position.
+            //
+            // Use SendMessageTimeout (synchronous) — PostMessage can be dropped by the
+            // taskbar's internal message filter on a hidden desktop.
             if (IsTaskbar(root))
             {
-                nint target = hwnd;
-                if (WinClass(hwnd) != "Windows.UI.Input.InputSite.WindowClass")
+                nint target    = hwnd;
+                string hwndCls = WinClass(hwnd);
+
+                if (hwndCls != "Windows.UI.Input.InputSite.WindowClass" &&
+                    hwndCls != "MSTaskListWClass")
                 {
-                    nint site = FindInputSite(hwnd); // try the specific window first
-                    if (site == 0) site = FindInputSite(root); // fallback to root
-                    if (site != 0) target = site;
+                    // Win11 XAML island
+                    nint site = FindInputSite(hwnd);
+                    if (site == 0) site = FindInputSite(root);
+
+                    if (site != 0)
+                    {
+                        target = site;
+                    }
+                    else
+                    {
+                        // Win10 / hidden-desktop fallback: walk the tree for MSTaskListWClass
+                        nint taskList = FindChildByClass(root, "MSTaskListWClass");
+                        if (taskList != 0) target = taskList;
+                    }
                 }
+
                 var cPt2 = new POINT { x = x, y = y };
                 ScreenToClient(target, ref cPt2);
                 nint lp2 = MakeLParam(cPt2.x, cPt2.y);
-                PostMessage(target, WM_MOUSEMOVE, 0, lp2);
-                if (down)  PostMessage(target, WM_LBUTTONDOWN, (nint)MK_LBUTTON, lp2);
-                if (!down) PostMessage(target, WM_LBUTTONUP,   0, lp2);
+                SendMessageTimeout(target, WM_MOUSEMOVE, 0, lp2, SMTO_ABORTIFHUNG, 50, out _);
+                if (down)  SendMessageTimeout(target, WM_LBUTTONDOWN, (nint)MK_LBUTTON, lp2, SMTO_ABORTIFHUNG, 100, out _);
+                if (!down) SendMessageTimeout(target, WM_LBUTTONUP,   0, lp2, SMTO_ABORTIFHUNG, 100, out _);
                 return;
             }
         }
