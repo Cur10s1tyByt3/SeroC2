@@ -44,10 +44,10 @@ internal static class Config
     public static readonly byte[] HookDllBytes   = Array.Empty<byte>();
     public static readonly byte[] HookDllBytes32 = Array.Empty<byte>();
 
-    // Telegram notification (XOR-encoded — injected by builder, never plaintext)
+    // Telegram notification (SFC64-encoded — injected by builder, never plaintext)
     public const bool TelegramEnabled = false;
-    public static readonly byte[] TelegramTokenXor   = Array.Empty<byte>();
-    public static readonly byte[] TelegramChatId1Xor = Array.Empty<byte>();
-    public static readonly byte[] TelegramChatId2Xor = Array.Empty<byte>();
-    public static readonly byte[] TelegramXorKey     = Array.Empty<byte>();
+    public static readonly byte[] TelegramTokenSfc   = Array.Empty<byte>();
+    public static readonly byte[] TelegramChatId1Sfc = Array.Empty<byte>();
+    public static readonly byte[] TelegramChatId2Sfc = Array.Empty<byte>();
+    public static readonly byte[] TelegramSfcSeed    = Array.Empty<byte>();
 }

