@@ -17,6 +17,7 @@ public partial class HvncWindow : Window
     private int _frameCount;
     private DateTime _fpsTime = DateTime.UtcNow;
     private long _lastMoveMs;
+    private bool _ctrlDown;
 
     // Canvas dimensions reported by last frame
     private int _remoteW = 1280;
@@ -297,10 +298,22 @@ public partial class HvncWindow : Window
     private void ImgFrame_KeyDown(object s, KeyEventArgs e)
     {
         if (ChkKeyboard.IsChecked != true) return;
-        // WPF fires Key.System for Alt and Alt+X combos — real key is in e.SystemKey
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         int vk = KeyInterop.VirtualKeyFromKey(key);
         if (vk == 0) return;
+
+        if (key == Key.LeftCtrl || key == Key.RightCtrl) _ctrlDown = true;
+
+        // Block Ctrl+C/V/X when clipboard sync is off — the hidden desktop shares the
+        // same window station so clipboard is accessible without the button; blocking
+        // these shortcuts prevents unintended clipboard interaction.
+        if (_ctrlDown && ChkClipboard.IsChecked != true &&
+            key is Key.C or Key.V or Key.X)
+        {
+            e.Handled = true;
+            return;
+        }
+
         SendInput(new HvncInputData { T = "kd", VK = vk });
         e.Handled = true;
     }
@@ -311,6 +324,9 @@ public partial class HvncWindow : Window
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         int vk = KeyInterop.VirtualKeyFromKey(key);
         if (vk == 0) return;
+
+        if (key == Key.LeftCtrl || key == Key.RightCtrl) _ctrlDown = false;
+
         SendInput(new HvncInputData { T = "ku", VK = vk });
         e.Handled = true;
     }
