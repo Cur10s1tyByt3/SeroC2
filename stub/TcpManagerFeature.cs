@@ -117,6 +117,7 @@ internal static class TcpManagerFeature
 
     // ── Firewall blocking via COM API (HNetCfg.FwPolicy2) with netsh fallback ──
 
+#pragma warning disable IL2072, IL2075 // COM late-binding via ProgID — trimming annotations unavailable for HNetCfg types
     // direction: 1 = inbound, 2 = outbound
     private static bool TryAddRuleCom(string name, int direction, string? remoteIp, string? program, int port)
     {
@@ -326,6 +327,7 @@ internal static class TcpManagerFeature
         catch { }
         return JsonSerializer.Serialize(new TcpFirewallRulesResultStub { Rules = rules }, SeroJson.Default.TcpFirewallRulesResultStub);
     }
+#pragma warning restore IL2072, IL2075
 }
 
 internal class TcpEntryStub

