@@ -155,6 +155,7 @@ public partial class FileManagerWindow : Window
             if (result == null || !string.IsNullOrEmpty(result.Error)) { TxtStatus.Text = $"Error: {result?.Error}"; return; }
             var bytes = Convert.FromBase64String(result.Data);
             await File.WriteAllBytesAsync(dlg.FileName, bytes);
+            NotificationService.NotifyDownloadComplete();
             TxtStatus.Text = $"Downloaded: {row.Name}  ({bytes.Length:N0} bytes)";
         }
         catch (Exception ex) { TxtStatus.Text = ex.Message; }
@@ -179,6 +180,7 @@ public partial class FileManagerWindow : Window
                 Data = JsonConvert.SerializeObject(new FmUploadData { Path = destPath, Data = Convert.ToBase64String(bytes) })
             });
             await _pendingAck.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            NotificationService.NotifyUploadComplete();
             TxtStatus.Text = $"Uploaded: {Path.GetFileName(dlg.FileName)}";
             await Navigate(_currentPath);
         }
@@ -197,7 +199,7 @@ public partial class FileManagerWindow : Window
             var path = Path.Combine(_currentPath, row.Name);
             _pendingAck = new TaskCompletionSource<string>();
             await _server.SendToClient(_clientId, new Packet { Type = PacketType.FmDelete, Data = JsonConvert.SerializeObject(new FmDeleteData { Path = path }) });
-            try { await _pendingAck.Task.WaitAsync(TimeSpan.FromSeconds(10)); } catch { }
+            try { await _pendingAck.Task.WaitAsync(TimeSpan.FromSeconds(10)); NotificationService.NotifyFileDeleted(); } catch { }
             finally { _pendingAck = null; }
         }
         await Navigate(_currentPath);

