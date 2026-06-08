@@ -14,6 +14,8 @@ public static class NotificationService
     private static string S(string file) =>
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", file);
 
+    private static readonly string SndIntro = S("Intro.wav");
+
     // startup_shutdown
     private static readonly string SndStartup    = S("01_startup_chime.mp3");
     private static readonly string SndShutdown   = S("04_shutdown_gentle_descent.mp3");
@@ -45,11 +47,14 @@ public static class NotificationService
         var icon = File.Exists(iconPath) ? new Icon(iconPath) : SystemIcons.Application;
 
         _trayIcon = new NotifyIcon { Icon = icon, Visible = true, Text = "SeroC2 Server" };
+
+        PlayIntro();
     }
 
     public static void SetEnabled(bool enabled) => _enabled = enabled;
 
     // ── Always plays (server lifecycle) ──────────────────────────────────────
+    public static void PlayIntro()    => PlaySound(SndIntro);
     public static void PlayStartup()  => PlaySound(SndStartup);
     public static void PlayShutdown() => PlaySound(SndShutdown);
 
