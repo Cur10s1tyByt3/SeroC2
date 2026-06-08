@@ -3388,7 +3388,7 @@ Read-Host 'Press Enter to close'
                 }
 
                 if (client.Stream == null) continue;
-                await client.WriteLock.WaitAsync();
+                if (!await client.WriteLock.WaitAsync(TimeSpan.FromSeconds(8))) continue;
                 if (client.Stream == null) { client.WriteLock.Release(); continue; }
                 try { await Protocol.Packet.WriteToStreamAsync(client.Stream, packet); }
                 catch { lock (task.ExecutedHwids) task.ExecutedHwids.Remove(client.Hwid); throw; }

@@ -154,8 +154,9 @@ public class TlsServer
             bool failed = false;
             try
             {
-                // Re-check stream after acquiring lock — client may have disconnected
-                if (client.Stream == null) { client.WriteLock.Release(); return; }
+                // Re-check stream after acquiring lock — client may have disconnected.
+                // Do NOT call Release() here: finally always runs and will release.
+                if (client.Stream == null) return;
                 await Packet.WriteToStreamAsync(client.Stream, packet);
             }
             catch { failed = true; }

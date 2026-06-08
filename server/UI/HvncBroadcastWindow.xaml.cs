@@ -15,6 +15,8 @@ public partial class HvncBroadcastWindow : Window
     private readonly TlsServer _server;
     private readonly ObservableCollection<BroadcastClientVM> _clients = [];
     private bool _maximized;
+    private readonly Action<ConnectedClient> _onConnected;
+    private readonly Action<ConnectedClient> _onDisconnected;
 
     // App entries — same as HvncWindow but without custom user-data-dir on default browser
     // so the existing profile (with Google logged in) is used automatically.
@@ -48,13 +50,15 @@ public partial class HvncBroadcastWindow : Window
 
         RefreshClients();
 
-        // Track connects/disconnects
-        _server.ClientConnected    += _ => Dispatcher.BeginInvoke(RefreshClients);
-        _server.ClientDisconnected += _ => Dispatcher.BeginInvoke(RefreshClients);
+        // Track connects/disconnects — store delegates so -= uses the same instance
+        _onConnected    = _ => Dispatcher.BeginInvoke(RefreshClients);
+        _onDisconnected = _ => Dispatcher.BeginInvoke(RefreshClients);
+        _server.ClientConnected    += _onConnected;
+        _server.ClientDisconnected += _onDisconnected;
         Closed += (_, _) =>
         {
-            _server.ClientConnected    -= _ => Dispatcher.BeginInvoke(RefreshClients);
-            _server.ClientDisconnected -= _ => Dispatcher.BeginInvoke(RefreshClients);
+            _server.ClientConnected    -= _onConnected;
+            _server.ClientDisconnected -= _onDisconnected;
         };
     }
 

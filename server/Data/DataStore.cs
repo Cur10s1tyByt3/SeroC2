@@ -154,7 +154,9 @@ public class DataStore
         try
         {
             Directory.CreateDirectory(DataDir);
-            var json = JsonSerializer.Serialize(AllClients, JsonOpts);
+            string json;
+            // Serialize inside lock so ActivityLog is not modified mid-enumeration
+            lock (_lock) { json = JsonSerializer.Serialize(AllClients, JsonOpts); }
             File.WriteAllText(ClientsPath, json);
         }
         catch { }
