@@ -375,6 +375,7 @@ public partial class ServerWindow : Window
     {
         if (_server is { IsRunning: true })
         {
+            NotificationService.PlayShutdown();
             _server.Stop();
             _dashTimer.Stop();
             _uptimeTimer.Stop();
@@ -473,6 +474,7 @@ public partial class ServerWindow : Window
                 if (int.TryParse(SettingsMaxClients.Text, out int maxClients) && maxClients > 0)
                     _server.MaxConnectedClients = maxClients;
                 _server.Start(port);
+                NotificationService.PlayStartup();
                 _serverStartedAt = DateTime.UtcNow;
                 TxtPort.IsEnabled = false;
                 SetServerStatus(true);

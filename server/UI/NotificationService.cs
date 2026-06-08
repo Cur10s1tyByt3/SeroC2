@@ -14,6 +14,8 @@ public static class NotificationService
 
     private static readonly string ConnectSound    = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", "connect.mp3");
     private static readonly string DisconnectSound = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", "disconnect.mp3");
+    private static readonly string StartupSound    = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", "startup.mp3");
+    private static readonly string ShutdownSound   = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", "shutdown.mp3");
 
     public static void Initialize(bool enabled)
     {
@@ -33,6 +35,9 @@ public static class NotificationService
     }
 
     public static void SetEnabled(bool enabled) => _enabled = enabled;
+
+    public static void PlayStartup()  => PlaySound(StartupSound);
+    public static void PlayShutdown() => PlaySound(ShutdownSound);
 
     public static void NotifyConnected(string clientId)
     {
