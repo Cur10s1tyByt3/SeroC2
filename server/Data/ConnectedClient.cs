@@ -39,8 +39,9 @@ public class ConnectedClient : INotifyPropertyChanged
     public SemaphoreSlim WriteLock { get; } = new(1, 1);
     public CancellationTokenSource Cts { get; set; } = new();
     public bool PendingUninstall { get; set; }
-    // 3s heartbeat × 4 missed = 12s dead-client window
-    public bool IsAlive => (DateTime.UtcNow - LastHeartbeat).TotalSeconds < 12;
+    // 3s heartbeat interval; 25s window tolerates congested VM connections where
+    // heartbeats can be delayed by large RDP/webcam frames backing up the TLS write lock.
+    public bool IsAlive => (DateTime.UtcNow - LastHeartbeat).TotalSeconds < 25;
 
     private string _os = string.Empty;
     public string OS { get => _os; set { if (_os != value) { _os = value; Notify(); } } }
