@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
@@ -63,7 +64,8 @@ public partial class RemoteDesktopWindow : Window
         // Reclaim keyboard focus on ImgFrame whenever focus leaves it.
         // Clicking the checkboxes in the status bar steals focus, which also
         // breaks MouseMove routing on the Focusable Image element.
-        Activated       += (_, _) => { if (_streaming) ImgFrame.Focus(); };
+        Activated       += (_, _) => { InstallHook(); if (_streaming) ImgFrame.Focus(); };
+        Deactivated     += (_, _) => UninstallHook();
         SizeChanged     += (_, _) => { if (_streaming) ImgFrame.Focus(); };
         ChkClicks.Checked   += (_, _) => { UiPrefs.Set("RdpClicks",    1); if (_streaming) ImgFrame.Focus(); };
         ChkClicks.Unchecked += (_, _) =>   UiPrefs.Set("RdpClicks",    0);
@@ -86,6 +88,7 @@ public partial class RemoteDesktopWindow : Window
 
         Closed += (_, _) =>
         {
+            UninstallHook();
             _closed = true;
             _server.UnregisterHandler(clientId, PacketType.RdpFrame);
             _server.UnregisterHandler(clientId, PacketType.RdpClipboard);
@@ -497,26 +500,84 @@ public partial class RemoteDesktopWindow : Window
         SendInputPacket(new RdpInputData { T = "kk", VK = KeyInterop.VirtualKeyFromKey(e.Key), Down = false });
     }
 
-    // ── Special keys ──────────────────────────────────────────────────────────
+    // ── Special keys: low-level keyboard hook ────────────────────────────────
+    // Win, Alt+Tab, Alt+F4, Ctrl+Esc are consumed by Windows before WPF KeyDown
+    // fires. A WH_KEYBOARD_LL hook (installed on Activated, removed on Deactivated)
+    // is the only way to intercept and forward them to the remote.
 
-    // Sends a key-down for every key in order, then key-up in reverse order.
-    // VK_LWIN (0x5B) and similar extended keys need Extended=true for SendInput.
-    private void SendKeyCombo(params (int vk, bool ext)[] keys)
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, nint hMod, uint dwThreadId);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool UnhookWindowsHookEx(nint hhk);
+    [DllImport("user32.dll")]
+    private static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+    private static extern nint GetModuleHandle(string? lpModuleName);
+    [DllImport("user32.dll")]
+    private static extern short GetKeyState(int nVirtKey);
+
+    private delegate nint LowLevelKeyboardProc(int nCode, nint wParam, nint lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KBDLLHOOKSTRUCT { public int vkCode, scanCode, flags, time; public nint dwExtraInfo; }
+
+    private const int WH_KEYBOARD_LL = 13;
+    private const int WM_KEYDOWN     = 0x0100;
+    private const int WM_KEYUP       = 0x0101;
+    private const int WM_SYSKEYDOWN  = 0x0104;
+    private const int WM_SYSKEYUP    = 0x0105;
+
+    private nint _hookHandle;
+    private LowLevelKeyboardProc? _hookProc; // field keeps delegate alive — GC must not collect it
+
+    private void InstallHook()
     {
-        if (!_streaming) return;
-        for (int i = 0; i < keys.Length; i++)
-            SendInputPacket(new RdpInputData { T = "kk", VK = keys[i].vk, Down = true,  Extended = keys[i].ext });
-        for (int i = keys.Length - 1; i >= 0; i--)
-            SendInputPacket(new RdpInputData { T = "kk", VK = keys[i].vk, Down = false, Extended = keys[i].ext });
-        ImgFrame.Focus();
+        if (_hookHandle != 0) return;
+        _hookProc = HookCallback;
+        using var proc = System.Diagnostics.Process.GetCurrentProcess();
+        using var mod  = proc.MainModule!;
+        _hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _hookProc, GetModuleHandle(mod.ModuleName), 0);
     }
 
-    private void BtnWin_Click   (object s, RoutedEventArgs e) => SendKeyCombo((0x5B, true));
-    private void BtnWinR_Click  (object s, RoutedEventArgs e) => SendKeyCombo((0x5B, true), (0x52, false));
-    private void BtnWinD_Click  (object s, RoutedEventArgs e) => SendKeyCombo((0x5B, true), (0x44, false));
-    private void BtnWinE_Click  (object s, RoutedEventArgs e) => SendKeyCombo((0x5B, true), (0x45, false));
-    private void BtnAltTab_Click(object s, RoutedEventArgs e) => SendKeyCombo((0x12, false), (0x09, false));
-    private void BtnPrtSc_Click (object s, RoutedEventArgs e) => SendKeyCombo((0x2C, false));
+    private void UninstallHook()
+    {
+        if (_hookHandle == 0) return;
+        UnhookWindowsHookEx(_hookHandle);
+        _hookHandle = 0;
+    }
+
+    private nint HookCallback(int nCode, nint wParam, nint lParam)
+    {
+        if (nCode >= 0 && ChkKeyboard.IsChecked == true && _streaming)
+        {
+            var info = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            int  vk   = info.vkCode;
+            bool down = wParam == WM_KEYDOWN    || wParam == WM_SYSKEYDOWN;
+            bool sys  = wParam == WM_SYSKEYDOWN || wParam == WM_SYSKEYUP;
+
+            if (vk is 0x5B or 0x5C) // VK_LWIN, VK_RWIN — Start menu
+            {
+                SendInputPacket(new RdpInputData { T = "kk", VK = vk, Down = down, Extended = true });
+                return 1;
+            }
+            if (sys && vk == 0x09) // Alt+Tab — app switcher
+            {
+                SendInputPacket(new RdpInputData { T = "kk", VK = vk, Down = down });
+                return 1;
+            }
+            if (sys && vk == 0x73) // Alt+F4 — close command
+            {
+                SendInputPacket(new RdpInputData { T = "kk", VK = vk, Down = down });
+                return 1;
+            }
+            if (!sys && vk == 0x1B && (GetKeyState(0x11) & 0x8000) != 0) // Ctrl+Esc — Start menu
+            {
+                SendInputPacket(new RdpInputData { T = "kk", VK = vk, Down = down });
+                return 1;
+            }
+        }
+        return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+    }
 
     private void Img_Loaded(object s, RoutedEventArgs e) => ImgFrame.Focus();
     private void Close_Click(object s, RoutedEventArgs e)  => Close();
