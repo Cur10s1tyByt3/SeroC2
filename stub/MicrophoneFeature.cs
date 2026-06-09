@@ -46,9 +46,10 @@ internal static class MicrophoneFeature
     [DllImport("winmm.dll")] private static extern int waveInGetNumDevs();
     [DllImport("winmm.dll", CharSet = CharSet.Auto)] private static extern int waveInGetDevCaps(int uDeviceID, ref WAVEINCAPS pwic, int cbwic);
     [DllImport("winmm.dll")] private static extern int waveInOpen(out nint phwi, int uDeviceID, ref WAVEFORMATEX pwfx, nint dwCallback, nint dwInstance, uint fdwOpen);
-    [DllImport("winmm.dll")] private static extern int waveInPrepareHeader(nint hwi, ref WAVEHDR pwh, int cbwh);
-    [DllImport("winmm.dll")] private static extern int waveInUnprepareHeader(nint hwi, ref WAVEHDR pwh, int cbwh);
-    [DllImport("winmm.dll")] private static extern int waveInAddBuffer(nint hwi, ref WAVEHDR pwh, int cbwh);
+    // nint overloads — headers are in unmanaged memory so GC can't move them while WinMM holds the pointer
+    [DllImport("winmm.dll")] private static extern int waveInPrepareHeader(nint hwi, nint pwh, int cbwh);
+    [DllImport("winmm.dll")] private static extern int waveInUnprepareHeader(nint hwi, nint pwh, int cbwh);
+    [DllImport("winmm.dll")] private static extern int waveInAddBuffer(nint hwi, nint pwh, int cbwh);
     [DllImport("winmm.dll")] private static extern int waveInStart(nint hwi);
     [DllImport("winmm.dll")] private static extern int waveInStop(nint hwi);
     [DllImport("winmm.dll")] private static extern int waveInReset(nint hwi);
@@ -95,39 +96,42 @@ internal static class MicrophoneFeature
 
     private static void CaptureThread(int deviceIndex, int sampleRate)
     {
-        const int bufferMs  = 100;   // 100 ms chunks
-        const int channels  = 1;
+        const int bufferMs      = 100;
+        const int channels      = 1;
         const int bitsPerSample = 16;
-
-        int blockAlign     = channels * bitsPerSample / 8;
-        int bufferSamples  = sampleRate * bufferMs / 1000;
-        int bufferBytes    = bufferSamples * blockAlign;
+        int blockAlign    = channels * bitsPerSample / 8;
+        int bufferBytes   = sampleRate * bufferMs / 1000 * blockAlign;
+        int hdrSize       = Marshal.SizeOf<WAVEHDR>();
 
         var fmt = new WAVEFORMATEX
         {
-            wFormatTag      = 1,  // PCM
+            wFormatTag      = 1,
             nChannels       = (ushort)channels,
             nSamplesPerSec  = (uint)sampleRate,
             nAvgBytesPerSec = (uint)(sampleRate * blockAlign),
             nBlockAlign     = (ushort)blockAlign,
             wBitsPerSample  = (ushort)bitsPerSample,
-            cbSize          = 0
         };
 
         nint hwi = nint.Zero;
         if (waveInOpen(out hwi, deviceIndex, ref fmt, nint.Zero, nint.Zero, CALLBACK_NULL) != 0) return;
 
-        // Double-buffer for seamless capture
+        // Use unmanaged memory for both data buffers and WAVEHDR headers.
+        // Managed memory can be moved by the GC between P/Invoke calls; WinMM holds the
+        // raw pointer after waveInAddBuffer returns, so it would write WHDR_DONE to a
+        // stale address — making the capture loop spin forever without seeing WHDR_DONE.
         const int numBuffers = 2;
-        var bufs  = new nint[numBuffers];
-        var hdrs  = new WAVEHDR[numBuffers];
+        var dataPtrs = new nint[numBuffers];
+        var hdrPtrs  = new nint[numBuffers];
 
         for (int i = 0; i < numBuffers; i++)
         {
-            bufs[i] = Marshal.AllocHGlobal(bufferBytes);
-            hdrs[i] = new WAVEHDR { lpData = bufs[i], dwBufferLength = bufferBytes };
-            waveInPrepareHeader(hwi, ref hdrs[i], Marshal.SizeOf<WAVEHDR>());
-            waveInAddBuffer(hwi, ref hdrs[i], Marshal.SizeOf<WAVEHDR>());
+            dataPtrs[i] = Marshal.AllocHGlobal(bufferBytes);
+            hdrPtrs[i]  = Marshal.AllocHGlobal(hdrSize);
+            for (int b = 0; b < hdrSize; b++) Marshal.WriteByte(hdrPtrs[i], b, 0);
+            Marshal.StructureToPtr(new WAVEHDR { lpData = dataPtrs[i], dwBufferLength = bufferBytes }, hdrPtrs[i], false);
+            waveInPrepareHeader(hwi, hdrPtrs[i], hdrSize);
+            waveInAddBuffer(hwi, hdrPtrs[i], hdrSize);
         }
 
         waveInStart(hwi);
@@ -137,21 +141,20 @@ internal static class MicrophoneFeature
             int idx = 0;
             while (_running)
             {
-                ref var hdr = ref hdrs[idx];
+                var hdr = Marshal.PtrToStructure<WAVEHDR>(hdrPtrs[idx]);
                 if ((hdr.dwFlags & WHDR_DONE) != 0)
                 {
                     int bytes = hdr.dwBytesRecorded > 0 ? hdr.dwBytesRecorded : bufferBytes;
                     var data  = new byte[bytes];
                     Marshal.Copy(hdr.lpData, data, 0, bytes);
 
-                    // Reset and re-add buffer
                     hdr.dwFlags &= ~WHDR_DONE;
                     hdr.dwBytesRecorded = 0;
-                    waveInUnprepareHeader(hwi, ref hdr, Marshal.SizeOf<WAVEHDR>());
-                    waveInPrepareHeader(hwi, ref hdr, Marshal.SizeOf<WAVEHDR>());
-                    waveInAddBuffer(hwi, ref hdr, Marshal.SizeOf<WAVEHDR>());
+                    Marshal.StructureToPtr(hdr, hdrPtrs[idx], false);
+                    waveInUnprepareHeader(hwi, hdrPtrs[idx], hdrSize);
+                    waveInPrepareHeader(hwi, hdrPtrs[idx], hdrSize);
+                    waveInAddBuffer(hwi, hdrPtrs[idx], hdrSize);
 
-                    // Send chunk
                     var payload = JsonSerializer.Serialize(
                         new MicDataStub { Data = Convert.ToBase64String(data) },
                         SeroJson.Default.MicDataStub);
@@ -171,8 +174,11 @@ internal static class MicrophoneFeature
             waveInReset(hwi);
             for (int i = 0; i < numBuffers; i++)
             {
-                waveInUnprepareHeader(hwi, ref hdrs[i], Marshal.SizeOf<WAVEHDR>());
-                Marshal.FreeHGlobal(bufs[i]);
+                var hdr = Marshal.PtrToStructure<WAVEHDR>(hdrPtrs[i]);
+                if ((hdr.dwFlags & WHDR_PREPARED) != 0)
+                    waveInUnprepareHeader(hwi, hdrPtrs[i], hdrSize);
+                Marshal.FreeHGlobal(hdrPtrs[i]);
+                Marshal.FreeHGlobal(dataPtrs[i]);
             }
             waveInClose(hwi);
         }

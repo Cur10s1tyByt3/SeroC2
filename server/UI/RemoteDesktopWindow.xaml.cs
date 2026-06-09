@@ -48,8 +48,11 @@ public partial class RemoteDesktopWindow : Window
 
         Title = $"Remote Desktop — {clientId}";
         SldQuality.Value = UiPrefs.GetInt("RdpQuality", 75);
+        TxtQuality.Text  = $"{(int)SldQuality.Value}";
+        SldScale.Value   = UiPrefs.GetInt("RdpScale", 100);
+        TxtScale.Text    = $"{(int)SldScale.Value}%";
         SldQuality.ValueChanged += (_, e) => { TxtQuality.Text = $"{(int)e.NewValue}"; _quality = (int)e.NewValue; UiPrefs.Set("RdpQuality", (int)e.NewValue); };
-        SldScale.ValueChanged   += (_, e) => TxtScale.Text   = $"{(int)e.NewValue}%";
+        SldScale.ValueChanged   += (_, e) => { TxtScale.Text = $"{(int)e.NewValue}%"; UiPrefs.Set("RdpScale", (int)e.NewValue); };
 
         // Reclaim keyboard focus on ImgFrame whenever focus leaves it.
         // Clicking the checkboxes in the status bar steals focus, which also

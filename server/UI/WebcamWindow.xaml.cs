@@ -31,7 +31,9 @@ public partial class WebcamWindow : Window
         TxtClientId.Text = $"[ {clientId} ]";
 
         SldQuality.Value     = UiPrefs.GetInt("WcamQuality", 20);
+        TxtQuality.Text      = $"{(int)SldQuality.Value}";
         SldFps.Value         = UiPrefs.GetInt("WcamFps", 20);
+        TxtFpsVal.Text       = $"{(int)SldFps.Value}";
         CmbResolution.SelectedIndex = UiPrefs.GetInt("WcamRes", 0);
 
         SldQuality.ValueChanged += (_, e) => { TxtQuality.Text = $"{(int)e.NewValue}"; UiPrefs.Set("WcamQuality", (int)e.NewValue); };
