@@ -180,7 +180,7 @@ internal class TlsClient : IDisposable
                 case PacketType.RdpStart:
                     RemoteDesktopFeature.Start(
                         System.Text.Json.JsonSerializer.Deserialize<RdpStartDataStub>(packet.Data, SeroJson.Default.RdpStartDataStub) ?? new(),
-                        async (t, d) => await WritePacketAsync(new Packet { Type = (PacketType)t, Data = d }, ct));
+                        async (t, d) => { if (!await WriteFrameAsync(new Packet { Type = (PacketType)t, Data = d }, ct)) RemoteDesktopFeature.SignalAck(); });
                     break;
                 case PacketType.RdpStop:
                     RemoteDesktopFeature.Stop();
@@ -1477,15 +1477,40 @@ internal class TlsClient : IDisposable
             var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
-            // 5-second write timeout: if the TCP send buffer stalls (e.g. slow VM network),
-            // the lock is released so heartbeats aren't blocked past the 12-second watchdog.
+            // 20-second write timeout: slow tunnels (localtonet, VPN) can take several seconds
+            // per large frame. 5 s was too short — it fired mid-frame, leaving the SSL stream
+            // in a partial-write state and causing an immediate disconnect. With dropIfBusy on
+            // webcam/RDP frames the lock is rarely held longer than one frame's transfer time,
+            // so heartbeats still get through well inside the 25-second watchdog window.
             using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            wcts.CancelAfter(5000);
+            wcts.CancelAfter(20000);
             await _ssl.WriteAsync(lengthBytes, wcts.Token);
             await _ssl.WriteAsync(jsonBytes, wcts.Token);
             await _ssl.FlushAsync(wcts.Token);
         }
         finally { if (acquired) _writeLock.Release(); }
+    }
+
+    // dropIfBusy variant for RDP frames: returns false when the lock is busy so the caller
+    // can refund the flow-control credit instead of losing it to a silent drop.
+    private async Task<bool> WriteFrameAsync(Packet packet, CancellationToken ct)
+    {
+        if (_ssl == null) return false;
+        bool acquired = await _writeLock.WaitAsync(500);
+        if (!acquired) return false;
+        try
+        {
+            var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
+            using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            wcts.CancelAfter(20000);
+            await _ssl.WriteAsync(lengthBytes, wcts.Token);
+            await _ssl.WriteAsync(jsonBytes, wcts.Token);
+            await _ssl.FlushAsync(wcts.Token);
+        }
+        finally { _writeLock.Release(); }
+        return true;
     }
 
     private async Task<Packet?> ReadPacketAsync(CancellationToken ct)

@@ -248,7 +248,7 @@ public partial class WebcamWindow : Window
 
     private void ShowFrame(BitmapImage bi)
     {
-        if (_closed) return;
+        if (_closed || !_streaming) return;
         _lastFrame = bi;
         ImgFrame.Source = bi;
         TxtPlaceholder.Visibility = Visibility.Collapsed;

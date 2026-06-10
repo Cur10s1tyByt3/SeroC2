@@ -196,8 +196,20 @@ public partial class ProcessManagerWindow : Window
                                   || p.Pid.ToString().Contains(_filter));
 
         var list = _treeMode ? BuildTree(source.ToList()) : source.ToList();
+
+        // Replacing ItemsSource resets sort state; save and restore so user-chosen
+        // sort column and direction survive the 2-second auto-refresh cycle.
+        var savedSorts  = GridProcs.Items.SortDescriptions
+            .Select(sd => new SortDescription(sd.PropertyName, sd.Direction)).ToList();
+        var savedArrows = GridProcs.Columns.Select(c => c.SortDirection).ToList();
+
         _view = new ObservableCollection<ProcEntryVM>(list);
         GridProcs.ItemsSource = _view;
+
+        foreach (var sd in savedSorts)
+            GridProcs.Items.SortDescriptions.Add(sd);
+        for (int i = 0; i < GridProcs.Columns.Count && i < savedArrows.Count; i++)
+            GridProcs.Columns[i].SortDirection = savedArrows[i];
     }
 
     // Build DFS-ordered tree with depth levels for visual indentation.
