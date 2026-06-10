@@ -251,7 +251,7 @@ public partial class RemoteDesktopWindow : Window
                 var blockList = blocksEl.EnumerateArray().ToList();
                 var decoded   = new System.Collections.Concurrent.ConcurrentBag<(int X, int Y, int W, int H, byte[] Pixels, int Stride)>();
                 Parallel.ForEach(blockList,
-                    new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                     block =>
                     {
                         try
@@ -285,14 +285,21 @@ public partial class RemoteDesktopWindow : Window
     {
         try
         {
-            using var skBmp = SKBitmap.Decode(jpegBytes);
-            if (skBmp == null) return null;
-            if (skBmp.ColorType != SKColorType.Bgra8888)
+            int stride  = expectedW * 4;
+            var pixels  = new byte[stride * expectedH];
+            var info    = new SKImageInfo(expectedW, expectedH, SKColorType.Bgra8888, SKAlphaType.Opaque);
+            // Pin both arrays — wrap JPEG without copying, decode straight into pixels buffer
+            var jpHandle = GCHandle.Alloc(jpegBytes, GCHandleType.Pinned);
+            var pxHandle = GCHandle.Alloc(pixels,    GCHandleType.Pinned);
+            try
             {
-                using var converted = skBmp.Copy(SKColorType.Bgra8888);
-                return converted?.Bytes;
+                using var skData = SKData.Create(jpHandle.AddrOfPinnedObject(), jpegBytes.Length);
+                using var codec  = SKCodec.Create(skData);
+                if (codec == null) return null;
+                var res = codec.GetPixels(info, pxHandle.AddrOfPinnedObject());
+                return res == SKCodecResult.Success ? pixels : null;
             }
-            return skBmp.Bytes;
+            finally { jpHandle.Free(); pxHandle.Free(); }
         }
         catch { return null; }
     }
