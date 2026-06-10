@@ -136,11 +136,10 @@ public static class NotificationService
 
     private static void ShowBalloon(string title, string text, ToolTipIcon _)
     {
-        if (_trayIcon == null) return;
-        // Temporarily set tray icon to serofondtransparent so Windows uses it in the notification
-        var orig = _trayIcon.Icon;
-        if (_seroIcon != null) _trayIcon.Icon = _seroIcon;
-        _trayIcon.ShowBalloonTip(3000, title, text, ToolTipIcon.None);
-        if (_seroIcon != null) _trayIcon.Icon = orig;
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            var popup = new NotificationPopup(title, text);
+            popup.Show();
+        });
     }
 }

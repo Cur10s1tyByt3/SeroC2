@@ -1,0 +1,103 @@
+<Window x:Class="SeroServer.UI.NotificationPopup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ShowActivated="False" Topmost="True"
+        Width="320" SizeToContent="Height"
+        RenderTransformOrigin="0.5,1">
+
+    <Window.RenderTransform>
+        <TranslateTransform x:Name="SlideTransform" Y="20"/>
+    </Window.RenderTransform>
+
+    <Window.Resources>
+        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#4A85F5" Offset="0"/>
+            <GradientStop Color="#7C5CE8" Offset="1"/>
+        </LinearGradientBrush>
+    </Window.Resources>
+
+    <!-- Drop shadow via outer border -->
+    <Border Margin="8" CornerRadius="10"
+            Background="#F0090B16"
+            BorderThickness="1">
+        <Border.BorderBrush>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#554A85F5" Offset="0"/>
+                <GradientStop Color="#337C5CE8" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.BorderBrush>
+        <Border.Effect>
+            <DropShadowEffect Color="#4A85F5" BlurRadius="18" ShadowDepth="0" Opacity="0.22"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="3"/>
+            </Grid.RowDefinitions>
+
+            <!-- Content row -->
+            <Grid Grid.Row="0" Margin="14,12,14,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo with radial glow -->
+                <Grid Grid.Column="0" Width="44" Height="44" Margin="0,0,12,0" VerticalAlignment="Center">
+                    <Ellipse>
+                        <Ellipse.Fill>
+                            <RadialGradientBrush>
+                                <GradientStop Color="#3B4A85F5" Offset="0.3"/>
+                                <GradientStop Color="#1A7C5CE8" Offset="0.7"/>
+                                <GradientStop Color="Transparent" Offset="1"/>
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <Image Source="/serofondtransparent.png"
+                           Width="34" Height="34"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           Opacity="0.92"/>
+                </Grid>
+
+                <!-- Text -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtTitle"
+                               FontSize="12" FontWeight="SemiBold" FontFamily="Segoe UI"
+                               Margin="0,0,0,3"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#8AB4F8" Offset="0"/>
+                                <GradientStop Color="#B09EFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
+                    <TextBlock x:Name="TxtBody"
+                               FontSize="11" FontFamily="Consolas"
+                               Foreground="#7A8BAA"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Progress bar (depletes left to right) -->
+            <Grid Grid.Row="1">
+                <Rectangle RadiusX="0" RadiusY="0" Height="3"
+                           HorizontalAlignment="Stretch"
+                           Fill="#12FFFFFF"/>
+                <Rectangle x:Name="ProgressBar" RadiusX="0" RadiusY="0" Height="3"
+                           HorizontalAlignment="Left"
+                           Width="304">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#4A85F5" Offset="0"/>
+                            <GradientStop Color="#7C5CE8" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
