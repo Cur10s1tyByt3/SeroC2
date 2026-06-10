@@ -156,6 +156,7 @@ public partial class ProcessManagerWindow : Window
         {
             var totalRam = d.TotalRamMb;
             var stubPid  = d.StubPid;
+            // Phase 1: build VM list without icons so the grid appears instantly.
             var vms = d.Processes.Select(p => new ProcEntryVM
             {
                 Pid        = p.Pid,
@@ -170,7 +171,6 @@ public partial class ProcessManagerWindow : Window
                 RemoteIps  = p.RemoteIps,
                 IsClient   = stubPid > 0 && p.Pid == stubPid,
                 NetKbps    = p.NetKbps,
-                IconImage  = GetIcon(p.ExePath)
             }).ToList();
 
             Dispatcher.BeginInvoke(() =>
@@ -184,6 +184,18 @@ public partial class ProcessManagerWindow : Window
                 TxtCount.Text = $"({vms.Count})";
                 TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {vms.Count} processes";
             });
+
+            // Phase 2: load icons in background, push each one to its VM as it arrives.
+            // Cached icons (subsequent refreshes) return instantly from _iconCache.
+            foreach (var vm in vms)
+            {
+                var icon = GetIcon(vm.ExePath);
+                if (icon != null)
+                {
+                    var capture = vm;
+                    Dispatcher.BeginInvoke(() => capture.IconImage = icon);
+                }
+            }
         });
     }
 
@@ -314,26 +326,24 @@ public partial class ProcessManagerWindow : Window
         var key = string.IsNullOrEmpty(path) ? "__generic__" : path;
         if (_iconCache.TryGetValue(key, out var cached)) return cached;
 
+        // SHGetFileInfo (USEFILEATTRIBUTES) + CreateBitmapSourceFromHIcon + Freeze() are
+        // safe on background threads — no Dispatcher.Invoke needed, which was causing
+        // 150+ synchronous UI-thread round-trips and making the window slow to populate.
         BitmapSource? result = null;
-        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        try
         {
-            try
+            if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
             {
-                // Try exact path first (works for C:\Windows\* paths that exist on server)
-                if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
+                using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                if (icon != null)
                 {
-                    using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                    if (icon != null)
-                    {
-                        result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                        result?.Freeze();
-                        return;
-                    }
+                    result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                        icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    result?.Freeze();
                 }
-
-                // Fallback: SHGetFileInfo with USEFILEATTRIBUTES — no file needed on server.
-                // For .exe files returns a generic application icon when file doesn't exist locally.
+            }
+            if (result == null)
+            {
                 var sfi = new SHFILEINFO();
                 var fakePath = string.IsNullOrEmpty(path) ? "unknown.exe"
                     : (System.IO.Path.GetExtension(path).Length > 0 ? System.IO.Path.GetFileName(path) : path + ".exe");
@@ -347,8 +357,8 @@ public partial class ProcessManagerWindow : Window
                     DestroyIcon(sfi.hIcon);
                 }
             }
-            catch { }
-        });
+        }
+        catch { }
 
         _iconCache[key] = result;
         return result;
