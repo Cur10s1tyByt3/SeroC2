@@ -3716,6 +3716,7 @@ Read-Host 'Press Enter to close'
 
     private void Log(string msg)
     {
+        if (TxtLogs == null) return; // called before XAML init completes
         var entry = $"[{DateTime.Now:HH:mm:ss}] {msg}";
         _logLineCount++;
 
