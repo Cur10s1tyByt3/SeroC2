@@ -1488,7 +1488,7 @@
                                       HorizontalScrollBarVisibility="Disabled"
                                       SizeChanged="ScreenScroll_SizeChanged"
                                       Loaded="ScreenScroll_Loaded">
-                            <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="96,72" VerticalAlignment="Top"/>
+                            <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="72,8" VerticalAlignment="Top"/>
                         </ScrollViewer>
                     </DockPanel>
                 </TabItem>

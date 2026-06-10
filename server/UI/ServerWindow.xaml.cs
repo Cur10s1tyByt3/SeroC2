@@ -419,6 +419,8 @@ public partial class ServerWindow : Window
             _onlineClients.Clear();
             _onlineById.Clear();
             UpdateClientCount();
+            ScreenPanel.Children.Clear();
+            _screenTiles.Clear();
             TxtStatusLeft.Text = "SɆⱤØ RAT";
             TxtStatusLeft.Foreground = new SolidColorBrush(Color.FromRgb(0x2E, 0x30, 0x48));
             Log("[*] Server stopped.");
@@ -4156,7 +4158,7 @@ Read-Host 'Press Enter to close'
     private void ScreenScroll_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         var sv = (System.Windows.Controls.ScrollViewer)sender;
-        double avail = sv.ViewportWidth - 8 - 192; // 192 = 2×96px side margin (room for 1.45x scale overflow)
+        double avail = sv.ViewportWidth - 8 - 144; // 144 = 2×72px side margin (room for 1.45x scale overflow)
         if (avail <= 0) return;
 
         int cols = Math.Max(2, (int)(avail / 220));
