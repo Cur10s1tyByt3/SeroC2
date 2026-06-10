@@ -4034,10 +4034,10 @@ Read-Host 'Press Enter to close'
         {
             Text = displayName,
             Foreground = new SolidColorBrush(Color.FromRgb(0xCC, 0xD8, 0xFF)),
-            FontSize = 11,
+            FontSize = 10,
             Margin = new Thickness(6, 3, 6, 0),
-            TextTrimming = System.Windows.TextTrimming.CharacterEllipsis,
-            TextWrapping = System.Windows.TextWrapping.NoWrap
+            TextTrimming = System.Windows.TextTrimming.None,
+            TextWrapping = System.Windows.TextWrapping.Wrap
         };
 
         var lblId = new TextBlock
@@ -4047,7 +4047,7 @@ Read-Host 'Press Enter to close'
             FontSize = 9,
             FontFamily = new System.Windows.Media.FontFamily("Consolas"),
             Margin = new Thickness(6, 1, 6, 4),
-            TextTrimming = System.Windows.TextTrimming.CharacterEllipsis,
+            TextTrimming = System.Windows.TextTrimming.None,
             TextWrapping = System.Windows.TextWrapping.NoWrap
         };
 
@@ -4148,7 +4148,7 @@ Read-Host 'Press Enter to close'
     private void ScreenScroll_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         var sv = (System.Windows.Controls.ScrollViewer)sender;
-        double avail = sv.ViewportWidth - 8 - 128; // 128 = 2×64px side margin (room for scale animation)
+        double avail = sv.ViewportWidth - 8 - 192; // 192 = 2×96px side margin (room for 1.45x scale overflow)
         if (avail <= 0) return;
 
         int cols = Math.Max(2, (int)(avail / 220));
