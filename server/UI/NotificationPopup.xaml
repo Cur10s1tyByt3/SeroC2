@@ -3,12 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" ShowActivated="False" Topmost="True"
-        Width="320" SizeToContent="Height"
-        RenderTransformOrigin="0.5,1">
-
-    <Window.RenderTransform>
-        <TranslateTransform x:Name="SlideTransform" Y="20"/>
-    </Window.RenderTransform>
+        Width="320" SizeToContent="Height">
 
     <Window.Resources>
         <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,0">

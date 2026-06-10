@@ -23,9 +23,10 @@ public partial class NotificationPopup : Window
 
     private void OnLoaded(object s, RoutedEventArgs e)
     {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right  - Width  - 16;
-        Top  = area.Bottom - Height - 16;
+        var area     = SystemParameters.WorkArea;
+        double finalTop = area.Bottom - Height - 16;
+        Left = area.Right - Width - 16;
+        Top  = finalTop + SlideInPx; // start slightly below
 
         lock (_active)
         {
@@ -34,13 +35,20 @@ public partial class NotificationPopup : Window
             _active.Add(this);
         }
 
-        // Slide up + fade in
+        // Fade in
         Opacity = 0;
         var easeOut = new QuadraticEase { EasingMode = EasingMode.EaseOut };
         BeginAnimation(OpacityProperty,
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(FadeInMs)) { EasingFunction = easeOut });
-        SlideTransform.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
-            new DoubleAnimation(SlideInPx, 0, TimeSpan.FromMilliseconds(FadeInMs + 40)) { EasingFunction = easeOut });
+
+        // Slide up via Top storyboard (RenderTransform is invalid on Window)
+        var sbSlide = new Storyboard();
+        var slideAnim = new DoubleAnimation(finalTop + SlideInPx, finalTop, TimeSpan.FromMilliseconds(FadeInMs + 40))
+            { EasingFunction = easeOut };
+        Storyboard.SetTarget(slideAnim, this);
+        Storyboard.SetTargetProperty(slideAnim, new PropertyPath(TopProperty));
+        sbSlide.Children.Add(slideAnim);
+        sbSlide.Begin();
 
         // Progress bar depletes linearly
         ProgressBar.BeginAnimation(WidthProperty,
