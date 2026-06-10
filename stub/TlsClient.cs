@@ -1477,16 +1477,14 @@ internal class TlsClient : IDisposable
             var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
-            // 20-second write timeout: slow tunnels (localtonet, VPN) can take several seconds
-            // per large frame. 5 s was too short — it fired mid-frame, leaving the SSL stream
-            // in a partial-write state and causing an immediate disconnect. With dropIfBusy on
-            // webcam/RDP frames the lock is rarely held longer than one frame's transfer time,
-            // so heartbeats still get through well inside the 25-second watchdog window.
-            using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            wcts.CancelAfter(20000);
-            await _ssl.WriteAsync(lengthBytes, wcts.Token);
-            await _ssl.WriteAsync(jsonBytes, wcts.Token);
-            await _ssl.FlushAsync(wcts.Token);
+            // No artificial write timeout — dropIfBusy already handles congestion by
+            // dropping frames when the lock is busy. A timeout firing mid-WriteAsync
+            // corrupts the SSL stream on slow tunnels (localtonet/VPN) and causes
+            // disconnect. TCP itself reports a dead connection via IOException; the
+            // session CT handles intentional shutdown.
+            await _ssl.WriteAsync(lengthBytes, ct);
+            await _ssl.WriteAsync(jsonBytes, ct);
+            await _ssl.FlushAsync(ct);
         }
         finally { if (acquired) _writeLock.Release(); }
     }
@@ -1503,11 +1501,9 @@ internal class TlsClient : IDisposable
             var json = JsonSerializer.Serialize(packet, SeroJson.Default.Packet);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             var lengthBytes = BitConverter.GetBytes(jsonBytes.Length);
-            using var wcts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            wcts.CancelAfter(20000);
-            await _ssl.WriteAsync(lengthBytes, wcts.Token);
-            await _ssl.WriteAsync(jsonBytes, wcts.Token);
-            await _ssl.FlushAsync(wcts.Token);
+            await _ssl.WriteAsync(lengthBytes, ct);
+            await _ssl.WriteAsync(jsonBytes, ct);
+            await _ssl.FlushAsync(ct);
         }
         finally { _writeLock.Release(); }
         return true;
