@@ -4145,6 +4145,14 @@ Read-Host 'Press Enter to close'
         _screenBorders[client.Id] = border;
     }
 
+    private void ScreenScroll_Loaded(object sender, RoutedEventArgs e)
+    {
+        // SizeChanged fires with ViewportWidth=0 during the first layout pass and exits early.
+        // Re-run after the layout is settled so tiles get their correct initial sizing.
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
+            () => ScreenScroll_SizeChanged(sender, null!));
+    }
+
     private void ScreenScroll_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         var sv = (System.Windows.Controls.ScrollViewer)sender;

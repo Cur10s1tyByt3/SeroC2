@@ -1486,7 +1486,8 @@
                         <ScrollViewer x:Name="ScreenScroll"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
-                                      SizeChanged="ScreenScroll_SizeChanged">
+                                      SizeChanged="ScreenScroll_SizeChanged"
+                                      Loaded="ScreenScroll_Loaded">
                             <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="96,72" VerticalAlignment="Top"/>
                         </ScrollViewer>
                     </DockPanel>
