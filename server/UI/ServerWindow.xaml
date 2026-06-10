@@ -1499,13 +1499,15 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="≋" Foreground="#606880" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
                             <TextBlock Text="Logs"/>
-                            <!-- Badge: shows unseen log count when tab is not focused -->
-                            <Border x:Name="LogBadge" Background="#EF4444" CornerRadius="7"
-                                    Padding="4,1" Margin="5,0,0,0"
-                                    Visibility="Hidden" VerticalAlignment="Center">
-                                <TextBlock x:Name="LogBadgeTxt" Text="0" Foreground="White"
-                                           FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
-                            </Border>
+                            <!-- Canvas size=0 so badge floats above without affecting tab width -->
+                            <Canvas Width="0" Height="0" VerticalAlignment="Center">
+                                <Border x:Name="LogBadge" Background="#EF4444" CornerRadius="7"
+                                        Padding="4,1" Canvas.Left="4" Canvas.Top="-8"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="LogBadgeTxt" Text="0" Foreground="White"
+                                               FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
+                                </Border>
+                            </Canvas>
                         </StackPanel>
                     </TabItem.Header>
                     <Border Margin="8" Padding="4" CornerRadius="8"
