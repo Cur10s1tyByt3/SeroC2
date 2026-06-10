@@ -1414,6 +1414,19 @@
                             <CheckBox x:Name="SettingsNotifySound" Content="Sound notifications" Style="{StaticResource SChk}" Margin="0,0,0,24"
                                       Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
 
+                            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
+                            <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
+                                      Style="{StaticResource SChk}" IsChecked="True" Margin="0,0,0,4"
+                                      Checked="SettingsDevLogs_Changed" Unchecked="SettingsDevLogs_Changed" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock x:Name="TxtDevLogsPath" Text="" Foreground="#404878"
+                                           FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                <Button Content="Open folder" Margin="10,0,0,0" Height="22" Padding="8,0"
+                                        Style="{StaticResource SBtn}" Click="OpenDiagLogsFolder_Click"/>
+                            </StackPanel>
+                            <TextBlock Text="Logs rotate: 5 files × 5 MB — no screenshots or credentials are ever written."
+                                       Foreground="#404060" FontSize="10" Margin="0,0,0,20"/>
+
                             <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
                             <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,24"
                                       Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
@@ -1475,7 +1488,7 @@
                             <TextBlock Text="Logs"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <Border Margin="8" Padding="12" CornerRadius="8"
+                    <Border Margin="8" Padding="4" CornerRadius="8"
                             Background="#D0111222" BorderThickness="1">
                         <Border.BorderBrush>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -1483,10 +1496,23 @@
                                 <GradientStop Color="#121E2038" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.BorderBrush>
-                        <ScrollViewer x:Name="LogScroller" VerticalScrollBarVisibility="Auto">
-                            <TextBlock x:Name="TxtLogs" Foreground="#606880"
-                                       FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" />
-                        </ScrollViewer>
+                        <!-- RichTextBox: supports coloured runs AND text selection/copy -->
+                        <RichTextBox x:Name="TxtLogs"
+                                     Background="Transparent" BorderThickness="0"
+                                     FontFamily="Consolas" FontSize="11"
+                                     IsReadOnly="True" IsDocumentEnabled="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Disabled"
+                                     Padding="8,6"
+                                     SelectionBrush="#404878" CaretBrush="Transparent">
+                            <RichTextBox.Resources>
+                                <!-- Remove the default 4px paragraph spacing -->
+                                <Style TargetType="Paragraph">
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="LineHeight" Value="16"/>
+                                </Style>
+                            </RichTextBox.Resources>
+                        </RichTextBox>
                     </Border>
                 </TabItem>
 

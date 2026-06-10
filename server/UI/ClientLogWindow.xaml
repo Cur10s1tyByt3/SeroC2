@@ -35,16 +35,23 @@
                 </Grid>
             </Border>
 
-            <!-- Log Entries -->
+            <!-- Log Entries — RichTextBox for colour-coded + selectable log text -->
             <Border Grid.Row="1" Background="#0CFFFFFF" Margin="10,8,10,10"
                     CornerRadius="8" BorderBrush="#18FFFFFF" BorderThickness="1">
-                <TextBox x:Name="TxtLog" Foreground="{StaticResource TextBrush}"
-                         Background="Transparent" BorderThickness="0"
-                         FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"
-                         IsReadOnly="True" IsReadOnlyCaretVisible="True"
-                         VerticalScrollBarVisibility="Auto"
-                         Padding="10" AcceptsReturn="True"
-                         SelectionBrush="#404878" CaretBrush="Transparent"/></Border>
+                <RichTextBox x:Name="TxtLog" Background="Transparent" BorderThickness="0"
+                             FontFamily="Consolas" FontSize="11"
+                             IsReadOnly="True" IsDocumentEnabled="True"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled"
+                             Padding="10" SelectionBrush="#404878" CaretBrush="Transparent">
+                    <RichTextBox.Resources>
+                        <Style TargetType="Paragraph">
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="LineHeight" Value="16"/>
+                        </Style>
+                    </RichTextBox.Resources>
+                </RichTextBox>
+            </Border>
         </Grid>
     </Border>
 </Window>

@@ -1,30 +1,59 @@
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using SeroServer.Data;
 
 namespace SeroServer.UI;
 
 public partial class ClientLogWindow : Window
 {
+    private static readonly Brush _brError   = Frozen(0xEF, 0x44, 0x44);
+    private static readonly Brush _brConnect = Frozen(0x4A, 0xDE, 0x80);
+    private static readonly Brush _brDisconn = Frozen(0xF9, 0xA8, 0x25);
+    private static readonly Brush _brHeader  = Frozen(0x60, 0xA5, 0xFA);
+    private static readonly Brush _brDefault = Frozen(0xB8, 0xC0, 0xD8);
+    private static readonly Brush _brDim     = Frozen(0x60, 0x68, 0x80);
+
+    private static Brush Frozen(byte r, byte g, byte b)
+    {
+        var b2 = new SolidColorBrush(Color.FromRgb(r, g, b));
+        b2.Freeze();
+        return b2;
+    }
+
     public ClientLogWindow(ClientRecord record)
     {
         InitializeComponent();
         TxtTitle.Text = $"— {record.LastUsername}@{record.LastIP} ({record.Hwid[..8]}...)";
 
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"HWID:      {record.Hwid}");
-        sb.AppendLine($"Tag:       {(string.IsNullOrEmpty(record.Tag) ? "(none)" : record.Tag)}");
-        sb.AppendLine($"First Seen: {record.FirstSeen:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine($"Last Seen:  {record.LastSeen:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine(new string('─', 50));
-        sb.AppendLine();
+        var para = new Paragraph { Margin = new Thickness(0) };
+        TxtLog.Document.Blocks.Clear();
+        TxtLog.Document.Blocks.Add(para);
+
+        void Add(string text, Brush brush) =>
+            para.Inlines.Add(new Run(text) { Foreground = brush });
+
+        Add($"HWID:       {record.Hwid}\n",       _brHeader);
+        Add($"Tag:        {(string.IsNullOrEmpty(record.Tag) ? "(none)" : record.Tag)}\n", _brDim);
+        Add($"First Seen: {record.FirstSeen:yyyy-MM-dd HH:mm:ss}\n", _brDim);
+        Add($"Last Seen:  {record.LastSeen:yyyy-MM-dd HH:mm:ss}\n",  _brDim);
+        Add(new string('─', 50) + "\n\n", _brDim);
 
         foreach (var entry in record.ActivityLog.AsEnumerable().Reverse().Take(200))
         {
-            sb.AppendLine($"[{entry.Time:yyyy-MM-dd HH:mm:ss}] {entry.Action}");
+            var line = $"[{entry.Time:yyyy-MM-dd HH:mm:ss}] {entry.Action}\n";
+            var brush = entry.Action.Contains("connect", StringComparison.OrdinalIgnoreCase)
+                            && !entry.Action.Contains("disconnect", StringComparison.OrdinalIgnoreCase)
+                ? _brConnect
+                : entry.Action.Contains("disconnect", StringComparison.OrdinalIgnoreCase) ? _brDisconn
+                : entry.Action.Contains("error",  StringComparison.OrdinalIgnoreCase)
+                  || entry.Action.Contains("fail", StringComparison.OrdinalIgnoreCase) ? _brError
+                : _brDefault;
+            Add(line, brush);
         }
 
-        TxtLog.Text = sb.ToString();
+        TxtLog.ScrollToEnd();
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
