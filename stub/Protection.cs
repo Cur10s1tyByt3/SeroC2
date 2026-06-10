@@ -1221,7 +1221,6 @@ internal static partial class Protection
         "sandbox", "virus", "malware", "sample",
         "currentuser", "analyst", "tequilaboomboom",
         "sand box", "maltest", "plmsqjvtest",
-        "bruno", "fred", "maria", "janusz",
     ];
 
     // ISO 3166-1 alpha-2 codes of blacklisted regions
