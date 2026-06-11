@@ -221,12 +221,14 @@ internal class TlsClient : IDisposable
                     break;
 
                 case PacketType.RdpStart:
-                    RemoteDesktopFeature.Start(
-                        System.Text.Json.JsonSerializer.Deserialize<RdpStartDataStub>(packet.Data, SeroJson.Default.RdpStartDataStub) ?? new(),
-                        async (t, d) => { if (!await WriteFrameAsync(new Packet { Type = (PacketType)t, Data = d }, ct)) RemoteDesktopFeature.SignalAck(); });
+                {
+                    var rdpCfg = System.Text.Json.JsonSerializer.Deserialize<RdpStartDataStub>(packet.Data, SeroJson.Default.RdpStartDataStub) ?? new();
+                    _ = Task.Run(() => RemoteDesktopFeature.Start(rdpCfg,
+                        async (t, d) => { if (!await WriteFrameAsync(new Packet { Type = (PacketType)t, Data = d }, ct)) RemoteDesktopFeature.SignalAck(); }));
                     break;
+                }
                 case PacketType.RdpStop:
-                    RemoteDesktopFeature.Stop();
+                    _ = Task.Run(() => RemoteDesktopFeature.Stop());
                     break;
                 case PacketType.RdpFrameAck:
                     RemoteDesktopFeature.SignalAck();

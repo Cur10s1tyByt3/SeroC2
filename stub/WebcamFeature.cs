@@ -528,6 +528,18 @@ internal static class WebcamFeature
         catch { }
         finally
         {
+            // Unregister callback BEFORE stopping graph — prevents DirectShow worker thread
+            // from calling SgCb_BufferCB after cbVtbl/cbObj are freed (use-after-free crash).
+            if (pGrabIF != IntPtr.Zero && cbObj != IntPtr.Zero)
+            {
+                try
+                {
+                    var unsetCbFn = Marshal.GetDelegateForFunctionPointer<SetCallback_Del>(
+                        Marshal.ReadIntPtr(Marshal.ReadIntPtr(pGrabIF), 9 * IntPtr.Size));
+                    unsetCbFn(pGrabIF, IntPtr.Zero, 1);
+                }
+                catch { }
+            }
             if (pMediaCtrl != IntPtr.Zero)
             {
                 try

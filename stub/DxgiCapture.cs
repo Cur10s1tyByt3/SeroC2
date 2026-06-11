@@ -119,6 +119,10 @@ internal static class DxgiCapture
         if (hr < 0) { int m = _monIdx; Release(); TryInit(m); return null; } // ACCESS_LOST / mode change
         _frameHeld = true;
 
+        // Some drivers return S_OK for mouse-only updates with a null resource pointer.
+        // Calling ComQI on a null pointer crashes the process via AccessViolationException.
+        if (res == 0) { ReleaseFrame(); _frameHeld = false; return null; }
+
         try
         {
             nint tex = ComQI(res, IID_ID3D11Texture2D);
@@ -178,6 +182,7 @@ internal static class DxgiCapture
 
     static nint ComQI(nint p, in Guid iid)
     {
+        if (p == 0) return 0;
         nint r = 0;
         // IUnknown::QueryInterface (slot 0)
         unsafe { fixed (Guid* g = &iid) ((delegate* unmanaged[Stdcall]<nint, Guid*, nint*, int>)VtPtr(p, 0))(p, g, &r); }
