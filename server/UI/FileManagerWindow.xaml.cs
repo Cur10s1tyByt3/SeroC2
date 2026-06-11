@@ -35,25 +35,34 @@ public partial class FileManagerWindow : Window
         _server.RegisterHandler(clientId, PacketType.FmHashResult,  pkt => { _pendingHash?.TrySetResult(pkt.Data); });
         _server.RegisterHandler(clientId, PacketType.FmAck,         pkt => { _pendingAck?.TrySetResult(pkt.Data); });
 
-        // WMF pipeline teardown (Source = null) can block the UI thread for ~1s.
-        // Fix: hide the window immediately so the user sees an instant close, then do
-        // the slow WMF cleanup in a Background-priority dispatch before the real Close().
+        // WMF pipeline teardown (Source = null) blocks the UI thread for several seconds.
+        // Fix: Stop() playback (fast), hide the window immediately, close for real on the
+        // next Normal-priority tick, then retry temp-file deletion on a background thread
+        // once GC finalises the MediaElement and WMF releases the file lock.
         bool _wmfCleanupDone = false;
         Closing += (s, e) =>
         {
             if (_wmfCleanupDone) return;
             e.Cancel = true;
             _wmfCleanupDone = true;
+            try { PreviewVideo.Stop(); } catch { }
             Hide();
             var tmp = _previewTempFile;
             _previewTempFile = null;
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
-            {
-                PreviewVideo.Stop();
-                PreviewVideo.Source = null;
-                if (tmp != null) try { System.IO.File.Delete(tmp); } catch { }
-                Close();
-            });
+            // Close on next pump tick — no Source=null so UI thread never blocks
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, () => Close());
+            // Delete temp file on a background thread once WMF releases the lock
+            if (tmp != null)
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(600);
+                    GC.Collect(); GC.WaitForPendingFinalizers();
+                    for (int i = 0; i < 40; i++)
+                    {
+                        try { System.IO.File.Delete(tmp); return; } catch { }
+                        await Task.Delay(250);
+                    }
+                });
         };
         Closed += (_, _) =>
         {
@@ -665,12 +674,7 @@ public partial class FileManagerWindow : Window
         Height = Math.Max(MinHeight, Height + e.VerticalChange);
     }
 
-    private void Close_Click(object s, RoutedEventArgs e)
-    {
-        if (_previewTempFile != null)
-            try { System.IO.File.Delete(_previewTempFile); } catch { }
-        Close();
-    }
+    private void Close_Click(object s, RoutedEventArgs e) => Close();
 }
 
 public class FileEntryVM
