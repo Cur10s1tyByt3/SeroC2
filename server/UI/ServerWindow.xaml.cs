@@ -664,6 +664,93 @@ public partial class ServerWindow : Window
             : $"{uptime.Minutes}m {uptime.Seconds:D2}s";
     }
 
+    private void DashChart_SizeChanged(object sender, SizeChangedEventArgs e) => DrawActivityChart();
+
+    private void DrawActivityChart()
+    {
+        double w = DashChart.ActualWidth;
+        double h = DashChart.ActualHeight;
+        if (w <= 0 || h <= 0) return;
+
+        // Build 24 hourly buckets from AllClients activity logs
+        var now    = DateTime.UtcNow;
+        var counts = new int[24];
+        foreach (var rec in _store.AllClients.Values)
+        {
+            lock (rec.ActivityLog)
+            {
+                foreach (var e in rec.ActivityLog)
+                {
+                    var age = (now - e.Time).TotalHours;
+                    if (age < 0 || age >= 24) continue;
+                    if (e.Action.StartsWith("Connected", StringComparison.OrdinalIgnoreCase))
+                        counts[23 - (int)age]++;
+                }
+            }
+        }
+
+        int peak = Math.Max(1, counts.Max());
+
+        // Remove previous dynamic children (keep Polyline and Polygon which are declared in XAML)
+        for (int i = DashChart.Children.Count - 1; i >= 0; i--)
+        {
+            var child = DashChart.Children[i];
+            if (child is System.Windows.Shapes.Line || child is TextBlock) DashChart.Children.RemoveAt(i);
+        }
+
+        // Horizontal grid lines
+        var gridBrush = new SolidColorBrush(Color.FromArgb(0x18, 0x4A, 0x85, 0xF5));
+        for (int g = 1; g <= 3; g++)
+        {
+            double y = h * g / 4.0;
+            var gl = new System.Windows.Shapes.Line
+            {
+                X1 = 0, X2 = w, Y1 = y, Y2 = y,
+                Stroke = gridBrush, StrokeThickness = 1,
+            };
+            DashChart.Children.Add(gl);
+        }
+
+        // Build point collection
+        double padL = 4, padR = 4, padT = 8, padB = 20;
+        double chartW = w - padL - padR;
+        double chartH = h - padT - padB;
+        double step   = chartW / 23.0;
+
+        var linePoints = new System.Windows.Media.PointCollection();
+        var fillPoints = new System.Windows.Media.PointCollection();
+
+        for (int i = 0; i < 24; i++)
+        {
+            double x = padL + i * step;
+            double y = padT + chartH - (counts[i] / (double)peak) * chartH;
+            linePoints.Add(new System.Windows.Point(x, y));
+            fillPoints.Add(new System.Windows.Point(x, y));
+        }
+        // Close fill polygon at bottom corners
+        fillPoints.Add(new System.Windows.Point(padL + 23 * step, padT + chartH));
+        fillPoints.Add(new System.Windows.Point(padL, padT + chartH));
+
+        DashChartLine.Points = linePoints;
+        DashChartFill.Points = fillPoints;
+
+        // Hour labels every 6h: -18h, -12h, -6h, now
+        var labelBrush = new SolidColorBrush(Color.FromArgb(0x60, 0x80, 0x90, 0xB4));
+        foreach (int idx in new[] { 0, 6, 12, 18, 23 })
+        {
+            double x = padL + idx * step;
+            var label = new TextBlock
+            {
+                Text       = idx == 23 ? "now" : $"-{23 - idx}h",
+                Foreground = labelBrush,
+                FontSize   = 8,
+            };
+            Canvas.SetLeft(label, x - 8);
+            Canvas.SetTop(label,  h - padB + 3);
+            DashChart.Children.Add(label);
+        }
+    }
+
     private void AnimateCounter(TextBlock tb, int to)
     {
         if (!int.TryParse(tb.Text, out int from) || from == to) { tb.Text = to.ToString(); return; }
@@ -687,10 +774,32 @@ public partial class ServerWindow : Window
     private void RefreshDashboard()
     {
         var online = _server?.ConnectedClients.Count ?? 0;
-        var total = _store.AllClients.Count;
+        var total  = _store.AllClients.Count;
 
         AnimateCounter(DashOnline, online);
-        AnimateCounter(DashTotal, total);
+        AnimateCounter(DashTotal,  total);
+
+        // ── Stat pills (from currently online clients) ──────────────────────
+        var clients = _server?.ConnectedClients.Values.ToList() ?? [];
+        int n = clients.Count;
+        if (n > 0)
+        {
+            int win11   = clients.Count(c => c.OS.Contains("11"));
+            int win10   = clients.Count(c => c.OS.Contains("10") && !c.OS.Contains("11"));
+            int cam     = clients.Count(c => c.CameraStatus.Equals("Yes", StringComparison.OrdinalIgnoreCase));
+            int admin   = clients.Count(c => c.IsAdmin);
+            DashWin11.Text  = $"{win11 * 100 / n}%";
+            DashWin10.Text  = $"{win10 * 100 / n}%";
+            DashWebcam.Text = $"{cam   * 100 / n}%";
+            DashAdmin.Text  = $"{admin * 100 / n}%";
+        }
+        else
+        {
+            DashWin11.Text = DashWin10.Text = DashWebcam.Text = DashAdmin.Text = "—";
+        }
+
+        // ── 24h activity chart ──────────────────────────────────────────────
+        DrawActivityChart();
 
         UpdateClientCount();
 

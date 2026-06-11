@@ -222,7 +222,9 @@ public class TlsServer
             tcp.Close();
             return;
         }
-        if (IsRateLimited(ip))
+        // Loopback is always a local tunnel proxy (localtonet, ngrok, etc.) — exempt from rate limiting.
+        bool isLoopback = ip is "127.0.0.1" or "::1" or "localhost";
+        if (!isLoopback && IsRateLimited(ip))
         {
             Log($"[RATE] {ip} rate-limited ({MaxConnPerMinute} connections/min exceeded).");
             tcp.Close();

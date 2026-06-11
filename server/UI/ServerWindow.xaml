@@ -453,8 +453,9 @@
                             </LinearGradientBrush>
                         </Border.BorderBrush>
                         <StackPanel>
-                            <TextBlock Text="OVERVIEW" Style="{StaticResource SLabel}" Margin="0,0,0,20" />
-                            <UniformGrid Columns="3">
+                            <TextBlock Text="OVERVIEW" Style="{StaticResource SLabel}" Margin="0,0,0,16" />
+                            <!-- Row 1: main counters -->
+                            <UniformGrid Columns="3" Margin="0,0,0,12">
                                 <Border Background="#0A0D1A" CornerRadius="7" Padding="0,20"
                                         Margin="0,0,10,0" BorderThickness="1">
                                     <Border.BorderBrush>
@@ -504,6 +505,70 @@
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
+
+                            <!-- Row 2: stat pills -->
+                            <UniformGrid Columns="4" Margin="0,0,0,20">
+                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
+                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
+                                    <StackPanel>
+                                        <TextBlock Text="WIN 11" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="DashWin11" Text="—" Foreground="#4A85F5"
+                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
+                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
+                                    <StackPanel>
+                                        <TextBlock Text="WIN 10" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="DashWin10" Text="—" Foreground="#60A0FF"
+                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
+                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
+                                    <StackPanel>
+                                        <TextBlock Text="WEBCAM" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="DashWebcam" Text="—" Foreground="#F59E0B"
+                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
+                                        BorderThickness="1" BorderBrush="#1A1E36">
+                                    <StackPanel>
+                                        <TextBlock Text="ADMIN" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="DashAdmin" Text="—" Foreground="#EF4444"
+                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <!-- 24h activity chart -->
+                            <TextBlock Text="CONNECTIONS — LAST 24H" Style="{StaticResource SLabel}" Margin="0,0,0,10"/>
+                            <Border Background="#07080F" CornerRadius="7" BorderThickness="1" BorderBrush="#1A1E36"
+                                    Height="110" ClipToBounds="True">
+                                <Canvas x:Name="DashChart" Background="Transparent" SizeChanged="DashChart_SizeChanged">
+                                    <!-- Grid lines drawn in code-behind -->
+                                    <Polyline x:Name="DashChartLine" StrokeThickness="2" StrokeLineJoin="Round"
+                                              Panel.ZIndex="2">
+                                        <Polyline.Stroke>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#4A85F5" Offset="0"/>
+                                                <GradientStop Color="#7C5CE8" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Polyline.Stroke>
+                                    </Polyline>
+                                    <!-- Fill under the line -->
+                                    <Polygon x:Name="DashChartFill" Panel.ZIndex="1">
+                                        <Polygon.Fill>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#304A85F5" Offset="0"/>
+                                                <GradientStop Color="#004A85F5" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Polygon.Fill>
+                                    </Polygon>
+                                    <!-- Hour labels drawn in code-behind -->
+                                </Canvas>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </TabItem>
@@ -1423,7 +1488,7 @@
                                         Style="{StaticResource SGreenBtn}" FontSize="10"
                                         Click="SettingsApplyDiscordRPC_Click" />
                             </StackPanel>
-                            <CheckBox x:Name="SettingsNotifySound" Content="Sound notifications" Style="{StaticResource SChk}" Margin="0,0,0,24"
+                            <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,24"
                                       Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
 
                             <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
