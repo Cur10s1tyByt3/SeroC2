@@ -4244,26 +4244,13 @@ Read-Host 'Press Enter to close'
         border.MouseLeftButtonDown += (_, e) =>
         {
             e.Handled = true;
-            if (e.ClickCount == 2)
+            if (_server?.ConnectedClients.ContainsKey(capturedId) != true) return;
+            OpenFeatureWindow<RemoteDesktopWindow>(capturedId, () =>
             {
-                // Double-click → full RDP window
-                ScreenPopupOverlay.Visibility = Visibility.Collapsed;
-                if (_server?.ConnectedClients.ContainsKey(capturedId) != true) return;
-                var win = new RemoteDesktopWindow(_server!, capturedId);
-                win.Owner = this;
-                win.Show();
-            }
-            else
-            {
-                // Single click → popup overlay with live screenshot
-                if (!_screenTiles.TryGetValue(capturedId, out var tileImg) || tileImg.Source == null) return;
-                ScreenPopupImage.Source = tileImg.Source;
-                var name = !string.IsNullOrEmpty(capturedClient.Tag) ? capturedClient.Tag
-                    : $"{capturedClient.Username}@{capturedClient.MachineName}".Trim('@');
-                ScreenPopupTitle.Text = name;
-                ScreenPopupSub.Text   = capturedId;
-                ScreenPopupOverlay.Visibility = Visibility.Visible;
-            }
+                var w = new RemoteDesktopWindow(_server!, capturedId);
+                w.Owner = this;
+                return w;
+            });
         };
 
         ScreenPanel.Children.Add(border);
@@ -4316,10 +4303,6 @@ Read-Host 'Press Enter to close'
                     bmp.Freeze();
                     if (_screenTiles.TryGetValue(clientId, out var img))
                         img.Source = bmp;
-                    // Keep popup live if it's showing this client
-                    if (ScreenPopupOverlay.Visibility == Visibility.Visible
-                        && ScreenPopupSub.Text == clientId)
-                        ScreenPopupImage.Source = bmp;
                 }
                 catch { }
             });
@@ -4549,6 +4532,10 @@ Read-Host 'Press Enter to close'
         // Clear log badge when user switches to the Logs tab
         if (ReferenceEquals(ti, LogsTabItem))
             LogsTab_Selected();
+
+        // Auto-stop screen streaming when navigating away from the Screen tab
+        if (!ReferenceEquals(ti, ScreenTabItem) && _screenTimer != null)
+            ScreenStop_Click(this, null!);
 
         // Re-run tile sizing when switching to Screen tab — viewport may have changed
         // while a different tab was active (SizeChanged fires with stale size on hidden tabs).

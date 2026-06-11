@@ -341,6 +341,31 @@
                                Foreground="#1E2038" FontSize="11" FontFamily="Segoe UI"
                                HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
+
+                <!-- ── Profile clone progress overlay ─────────────────── -->
+                <Grid x:Name="ProfileProgressOverlay" Visibility="Collapsed"
+                      Background="#B2000000" IsHitTestVisible="False">
+                    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="#141628" BorderBrush="#2A3460" BorderThickness="1"
+                            CornerRadius="8" Padding="32,22" MinWidth="260">
+                        <StackPanel>
+                            <TextBlock x:Name="ProfileProgressLabel"
+                                       Text="Cloning profile..."
+                                       Foreground="#8090C0" FontSize="11" FontFamily="Segoe UI"
+                                       FontWeight="SemiBold" HorizontalAlignment="Center"
+                                       Margin="0,0,0,12"/>
+                            <ProgressBar x:Name="ProfileProgressBar"
+                                         Minimum="0" Maximum="100" Value="0"
+                                         Height="6" Width="200"
+                                         Background="#1E2038" BorderThickness="0"
+                                         Foreground="#4A85F5"/>
+                            <TextBlock x:Name="ProfileProgressPct"
+                                       Text="0%"
+                                       Foreground="#404878" FontSize="10" FontFamily="Segoe UI Mono"
+                                       HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Grid>
 
         </DockPanel>

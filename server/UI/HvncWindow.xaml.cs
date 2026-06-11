@@ -53,12 +53,15 @@ public partial class HvncWindow : Window
 
         _server.RegisterHandler(clientId, PacketType.HvncFrame,
             pkt => OnHvncFrame(clientId, pkt.Data));
+        _server.RegisterHandler(clientId, PacketType.HvncProgress,
+            pkt => OnHvncProgress(pkt.Data));
         _server.ClientDisconnected += OnClientDisconnected;
         Closed += (_, _) =>
         {
             _closed = true;
             _clipTimer?.Stop(); _clipTimer = null;
             _server.UnregisterHandler(clientId, PacketType.HvncFrame);
+            _server.UnregisterHandler(clientId, PacketType.HvncProgress);
             _server.ClientDisconnected -= OnClientDisconnected;
             if (_streaming) SendStop();
         };
@@ -246,6 +249,24 @@ public partial class HvncWindow : Window
             });
         }
         catch { SendAck(); }
+    }
+
+    private void OnHvncProgress(string json)
+    {
+        if (_closed) return;
+        try
+        {
+            var p = Newtonsoft.Json.JsonConvert.DeserializeObject<HvncProgressData>(json);
+            if (p == null) return;
+            Dispatcher.BeginInvoke(() =>
+            {
+                ProfileProgressBar.Value   = p.Pct;
+                ProfileProgressPct.Text    = $"{p.Pct}%";
+                ProfileProgressLabel.Text  = string.IsNullOrEmpty(p.Label) ? "Cloning profile..." : p.Label;
+                ProfileProgressOverlay.Visibility = p.Pct >= 100 ? Visibility.Collapsed : Visibility.Visible;
+            });
+        }
+        catch { }
     }
 
     private void ShowFrame(BitmapImage bi)

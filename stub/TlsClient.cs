@@ -1757,6 +1757,7 @@ internal enum PacketType
     HvncInput     = 104,
     HvncExec      = 105,
     HvncClipboard = 106,
+    HvncProgress  = 107,
 
     TcpGetList             = 110,
     TcpListResult          = 111,
@@ -1977,6 +1978,12 @@ internal class HvncClipboardDataStub
     public string Text { get; set; } = string.Empty;
 }
 
+internal class HvncProgressDataStub
+{
+    public int    Pct   { get; set; }
+    public string Label { get; set; } = string.Empty;
+}
+
 // ── JSON Source Generator (NativeAOT compatible) ────
 
 [JsonSerializable(typeof(Packet))]
@@ -1994,6 +2001,7 @@ internal class HvncClipboardDataStub
 [JsonSerializable(typeof(HvncInputDataStub))]
 [JsonSerializable(typeof(HvncExecDataStub))]
 [JsonSerializable(typeof(HvncClipboardDataStub))]
+[JsonSerializable(typeof(HvncProgressDataStub))]
 // TCP Manager
 [JsonSerializable(typeof(TcpEntryStub))]
 [JsonSerializable(typeof(TcpListResultStub))]
