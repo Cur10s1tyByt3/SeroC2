@@ -1519,6 +1519,12 @@ public partial class ServerWindow : Window
 
         System.Windows.Data.CollectionViewSource.GetDefaultView(_onlineClients)?.Refresh();
         RefreshAllClients();
+
+        // CollectionView.Refresh() clears DataGrid selection — restore it
+        GridClients.UnselectAll();
+        foreach (var c in clients)
+            GridClients.SelectedItems.Add(c);
+
         TxtStatusBar.Text = $"Tag set on {clients.Count} client(s).";
     }
 
