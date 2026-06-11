@@ -17,6 +17,20 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
+        <!-- Flat progress bar used in dashboard OS breakdown -->
+        <Style x:Key="FlatBar" TargetType="ProgressBar">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="2" ClipToBounds="True">
+                            <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="2" HorizontalAlignment="Left"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="DataGridRow">
             <Setter Property="Background"      Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -486,7 +500,7 @@
                             <TextBlock Text="Dashboard"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <Border Margin="8" Padding="24" CornerRadius="8"
+                    <Border Margin="8" Padding="24,20" CornerRadius="8"
                             Background="#D0111222" BorderThickness="1">
                         <Border.BorderBrush>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -494,124 +508,213 @@
                                 <GradientStop Color="#121E2038" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.BorderBrush>
-                        <StackPanel>
-                            <TextBlock Text="OVERVIEW" Style="{StaticResource SLabel}" Margin="0,0,0,16" />
-                            <!-- Row 1: main counters -->
-                            <UniformGrid Columns="3" Margin="0,0,0,12">
-                                <Border Background="#0A0D1A" CornerRadius="7" Padding="0,20"
-                                        Margin="0,0,10,0" BorderThickness="1">
-                                    <Border.BorderBrush>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Color="#4022C55E" Offset="0"/>
-                                            <GradientStop Color="#0A22C55E" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.BorderBrush>
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="ONLINE" Foreground="#8090B4" FontSize="10"
-                                                   FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="DashOnline" Text="0" Foreground="#22C55E"
-                                                   FontSize="38" FontWeight="Bold"
-                                                   Margin="0,8,0,0" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#0A0D1A" CornerRadius="7" Padding="0,20"
-                                        Margin="0,0,10,0" BorderThickness="1">
-                                    <Border.BorderBrush>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Color="#404A85F5" Offset="0"/>
-                                            <GradientStop Color="#0A4A85F5" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.BorderBrush>
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="TOTAL SEEN" Foreground="#8090B4" FontSize="10"
-                                                   FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="DashTotal" Text="0" Foreground="#4A85F5"
-                                                   FontSize="38" FontWeight="Bold"
-                                                   Margin="0,8,0,0" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#0A0D1A" CornerRadius="7" Padding="0,20"
-                                        BorderThickness="1">
-                                    <Border.BorderBrush>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Color="#407C5CE8" Offset="0"/>
-                                            <GradientStop Color="#0A7C5CE8" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.BorderBrush>
-                                    <StackPanel HorizontalAlignment="Center">
-                                        <TextBlock Text="UPTIME" Foreground="#8090B4" FontSize="10"
-                                                   FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="DashUptime" Text="--" Foreground="#7C5CE8"
-                                                   FontSize="28" FontWeight="Bold"
-                                                   Margin="0,12,0,0" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel>
 
-                            <!-- Row 2: stat pills -->
-                            <UniformGrid Columns="4" Margin="0,0,0,20">
-                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
-                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
-                                    <StackPanel>
-                                        <TextBlock Text="WIN 11" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="DashWin11" Text="—" Foreground="#4A85F5"
-                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                <!-- Header -->
+                                <Grid Margin="0,0,0,16">
+                                    <TextBlock Text="OVERVIEW" Style="{StaticResource SLabel}" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <TextBlock Text="Updated " Foreground="#2C3450" FontSize="9" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="DashLastUpdated" Text="—" Foreground="#404868" FontSize="9" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                </Border>
-                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
-                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
-                                    <StackPanel>
-                                        <TextBlock Text="WIN 10" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="DashWin10" Text="—" Foreground="#60A0FF"
-                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
-                                        Margin="0,0,8,0" BorderThickness="1" BorderBrush="#1A1E36">
-                                    <StackPanel>
-                                        <TextBlock Text="WEBCAM" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="DashWebcam" Text="—" Foreground="#F59E0B"
-                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="#0A0D1A" CornerRadius="6" Padding="12,10"
-                                        BorderThickness="1" BorderBrush="#1A1E36">
-                                    <StackPanel>
-                                        <TextBlock Text="ADMIN" Foreground="#8090B4" FontSize="9" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="DashAdmin" Text="—" Foreground="#EF4444"
-                                                   FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                            </UniformGrid>
+                                </Grid>
 
-                            <!-- 24h activity chart -->
-                            <TextBlock Text="CONNECTIONS — LAST 24H" Style="{StaticResource SLabel}" Margin="0,0,0,10"/>
-                            <Border Background="#07080F" CornerRadius="7" BorderThickness="1" BorderBrush="#1A1E36"
-                                    Height="110" ClipToBounds="True">
-                                <Canvas x:Name="DashChart" Background="Transparent" SizeChanged="DashChart_SizeChanged">
-                                    <!-- Grid lines drawn in code-behind -->
-                                    <Polyline x:Name="DashChartLine" StrokeThickness="2" StrokeLineJoin="Round"
-                                              Panel.ZIndex="2">
-                                        <Polyline.Stroke>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                <GradientStop Color="#4A85F5" Offset="0"/>
-                                                <GradientStop Color="#7C5CE8" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Polyline.Stroke>
-                                    </Polyline>
-                                    <!-- Fill under the line -->
-                                    <Polygon x:Name="DashChartFill" Panel.ZIndex="1">
-                                        <Polygon.Fill>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                <GradientStop Color="#304A85F5" Offset="0"/>
-                                                <GradientStop Color="#004A85F5" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Polygon.Fill>
-                                    </Polygon>
-                                    <!-- Hour labels drawn in code-behind -->
-                                </Canvas>
-                            </Border>
-                        </StackPanel>
+                                <!-- Row 1: 4 stat cards -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- ONLINE -->
+                                    <Border Grid.Column="0" CornerRadius="8" Margin="0,0,9,0" ClipToBounds="True" Background="#0A0D1A">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Rectangle Grid.Column="0" Fill="#22C55E"/>
+                                            <StackPanel Grid.Column="1" Margin="14,15,12,15">
+                                                <TextBlock Text="ONLINE" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="DashOnline" Text="0" Foreground="#22C55E" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
+                                                <TextBlock Text="connected now" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- TOTAL SEEN -->
+                                    <Border Grid.Column="1" CornerRadius="8" Margin="0,0,9,0" ClipToBounds="True" Background="#0A0D1A">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Rectangle Grid.Column="0" Fill="#4A85F5"/>
+                                            <StackPanel Grid.Column="1" Margin="14,15,12,15">
+                                                <TextBlock Text="TOTAL SEEN" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="DashTotal" Text="0" Foreground="#4A85F5" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
+                                                <TextBlock Text="unique clients" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- NEW 24H -->
+                                    <Border Grid.Column="2" CornerRadius="8" Margin="0,0,9,0" ClipToBounds="True" Background="#0A0D1A">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Rectangle Grid.Column="0" Fill="#F59E0B"/>
+                                            <StackPanel Grid.Column="1" Margin="14,15,12,15">
+                                                <TextBlock Text="NEW 24H" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="DashNew24h" Text="0" Foreground="#F59E0B" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
+                                                <TextBlock Text="connections today" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- UPTIME -->
+                                    <Border Grid.Column="3" CornerRadius="8" ClipToBounds="True" Background="#0A0D1A">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Rectangle Grid.Column="0" Fill="#7C5CE8"/>
+                                            <StackPanel Grid.Column="1" Margin="14,15,12,15">
+                                                <TextBlock Text="UPTIME" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="DashUptime" Text="--" Foreground="#7C5CE8" FontSize="20" FontWeight="Bold" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                                <TextBlock Text="server running" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Row 2: chart + OS breakdown -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3*"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="2*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Activity chart -->
+                                    <Border Grid.Column="0" Background="#07080F" CornerRadius="8"
+                                            BorderThickness="1" BorderBrush="#1A1E36" ClipToBounds="True">
+                                        <StackPanel>
+                                            <Grid Margin="14,11,14,8">
+                                                <TextBlock Text="CONNECTIONS — LAST 24H" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <TextBlock Text="peak " Foreground="#2C3450" FontSize="9"/>
+                                                    <TextBlock x:Name="DashPeak" Text="—" Foreground="#4A85F5" FontSize="9" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <Canvas x:Name="DashChart" Background="Transparent" Height="148" SizeChanged="DashChart_SizeChanged">
+                                                <Polyline x:Name="DashChartLine" StrokeThickness="2" StrokeLineJoin="Round" Panel.ZIndex="2">
+                                                    <Polyline.Stroke>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                            <GradientStop Color="#4A85F5" Offset="0"/>
+                                                            <GradientStop Color="#7C5CE8" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Polyline.Stroke>
+                                                </Polyline>
+                                                <Polygon x:Name="DashChartFill" Panel.ZIndex="1">
+                                                    <Polygon.Fill>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                            <GradientStop Color="#304A85F5" Offset="0"/>
+                                                            <GradientStop Color="#004A85F5" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Polygon.Fill>
+                                                </Polygon>
+                                            </Canvas>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- OS Breakdown -->
+                                    <Border Grid.Column="2" Background="#0A0D1A" CornerRadius="8"
+                                            BorderThickness="1" BorderBrush="#1A1E36" Padding="16,14">
+                                        <StackPanel>
+                                            <TextBlock Text="OS BREAKDOWN" Foreground="#506070" FontSize="9" FontWeight="SemiBold" Margin="0,0,0,14"/>
+
+                                            <Grid Margin="0,0,0,11">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="38"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="WIN 11" Foreground="#506070" FontSize="9" VerticalAlignment="Center"/>
+                                                <ProgressBar Grid.Column="1" x:Name="DashOsWin11Bar" Minimum="0" Maximum="100" Value="0"
+                                                             Height="4" Margin="8,0" Style="{StaticResource FlatBar}"
+                                                             Foreground="#4A85F5" Background="#13172A"/>
+                                                <TextBlock Grid.Column="2" x:Name="DashWin11" Text="—" Foreground="#4A85F5"
+                                                           FontSize="11" FontWeight="SemiBold" TextAlignment="Right"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,0,0,11">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="38"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="WIN 10" Foreground="#506070" FontSize="9" VerticalAlignment="Center"/>
+                                                <ProgressBar Grid.Column="1" x:Name="DashOsWin10Bar" Minimum="0" Maximum="100" Value="0"
+                                                             Height="4" Margin="8,0" Style="{StaticResource FlatBar}"
+                                                             Foreground="#60A0FF" Background="#13172A"/>
+                                                <TextBlock Grid.Column="2" x:Name="DashWin10" Text="—" Foreground="#60A0FF"
+                                                           FontSize="11" FontWeight="SemiBold" TextAlignment="Right"/>
+                                            </Grid>
+
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="38"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="OTHER" Foreground="#506070" FontSize="9" VerticalAlignment="Center"/>
+                                                <ProgressBar Grid.Column="1" x:Name="DashOsOtherBar" Minimum="0" Maximum="100" Value="0"
+                                                             Height="4" Margin="8,0" Style="{StaticResource FlatBar}"
+                                                             Foreground="#7080A0" Background="#13172A"/>
+                                                <TextBlock Grid.Column="2" x:Name="DashOsOther" Text="—" Foreground="#7080A0"
+                                                           FontSize="11" FontWeight="SemiBold" TextAlignment="Right"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Row 3: mini stat pills -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
+                                            Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
+                                        <StackPanel>
+                                            <TextBlock Text="WEBCAM" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="DashWebcam" Text="—" Foreground="#F59E0B" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                                            <TextBlock Text="w/ camera" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="1" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
+                                            Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
+                                        <StackPanel>
+                                            <TextBlock Text="ADMIN" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="DashAdmin" Text="—" Foreground="#EF4444" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                                            <TextBlock Text="elevated" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
+                                            Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
+                                        <StackPanel>
+                                            <TextBlock Text="TAGGED" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="DashTagged" Text="0" Foreground="#C8991A" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                                            <TextBlock Text="marked clients" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="3" Background="#0A0D1A" CornerRadius="8"
+                                            Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
+                                        <StackPanel>
+                                            <TextBlock Text="TOP COUNTRY" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="DashTopCountry" Text="—" Foreground="#DDE0F0" FontSize="16" FontWeight="Bold" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock Text="by connections" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                            </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </TabItem>
 

