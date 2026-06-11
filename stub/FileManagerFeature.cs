@@ -52,7 +52,9 @@ internal static class FileManagerFeature
                         IsDir = true,
                         Size = 0,
                         Modified = d.LastWriteTime.ToString("yyyy-MM-dd HH:mm"),
-                        IsHidden = d.Attributes.HasFlag(FileAttributes.Hidden)
+                        IsHidden = d.Attributes.HasFlag(FileAttributes.Hidden),
+                        Created = d.CreationTime.ToString("yyyy-MM-dd HH:mm"),
+                        Attributes = (int)d.Attributes,
                     });
                 }
                 catch { }
@@ -69,7 +71,9 @@ internal static class FileManagerFeature
                         IsDir = false,
                         Size = f.Length,
                         Modified = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm"),
-                        IsHidden = f.Attributes.HasFlag(FileAttributes.Hidden)
+                        IsHidden = f.Attributes.HasFlag(FileAttributes.Hidden),
+                        Created = f.CreationTime.ToString("yyyy-MM-dd HH:mm"),
+                        Attributes = (int)f.Attributes,
                     });
                 }
                 catch { }
@@ -206,6 +210,19 @@ internal static class FileManagerFeature
         }
     }
 
+    internal static string SetAttributes(string path, int attributes)
+    {
+        try
+        {
+            File.SetAttributes(path, (FileAttributes)attributes);
+            return Serialize(new FmAckDataStub { Path = path, Success = true });
+        }
+        catch (Exception ex)
+        {
+            return Serialize(new FmAckDataStub { Path = path, Error = ex.Message });
+        }
+    }
+
     private static string ResolvePath(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return "";
@@ -223,7 +240,7 @@ internal static class FileManagerFeature
     private static string Serialize(FmHashResultStub v)   => JsonSerializer.Serialize(v, SeroJson.Default.FmHashResultStub);
 }
 
-internal class FmEntryStub        { public string Name { get; set; } = ""; public bool IsDir { get; set; } public long Size { get; set; } public string Modified { get; set; } = ""; public bool IsHidden { get; set; } }
+internal class FmEntryStub        { public string Name { get; set; } = ""; public bool IsDir { get; set; } public long Size { get; set; } public string Modified { get; set; } = ""; public bool IsHidden { get; set; } public string Created { get; set; } = ""; public int Attributes { get; set; } }
 internal class FmListResultStub   { public string Path { get; set; } = ""; public List<FmEntryStub> Entries { get; set; } = []; public string Error { get; set; } = ""; }
 internal class FmDownloadDataStub { public string Path { get; set; } = ""; }
 internal class FmFileDataResultStub { public string Path { get; set; } = ""; public string Data { get; set; } = ""; public string Error { get; set; } = ""; }
@@ -236,3 +253,4 @@ internal class FmHashDataStub     { public string Path { get; set; } = ""; }
 internal class FmHashResultStub   { public string Path { get; set; } = ""; public string Hash { get; set; } = ""; public string Error { get; set; } = ""; }
 internal class FmAckDataStub      { public string Path { get; set; } = ""; public bool Success { get; set; } public string Error { get; set; } = ""; }
 internal class FmShowHideDataStub { public string Path { get; set; } = ""; public bool Hide { get; set; } }
+internal class FmSetAttrDataStub  { public string Path { get; set; } = ""; public int Attributes { get; set; } }

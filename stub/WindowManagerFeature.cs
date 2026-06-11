@@ -22,9 +22,39 @@ internal static class WindowManagerFeature
     [DllImport("user32.dll")] private static extern bool PostMessageW(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, IntPtr lpdwProcessId);
     [DllImport("user32.dll")] private static extern nint SendMessage(IntPtr hwnd, uint msg, nint wParam, nint lParam);
+    [DllImport("user32.dll")] private static extern nint GetClassLongPtrW(IntPtr hwnd, int nIndex);
+    [DllImport("ntdll.dll")]  private static extern int  NtSuspendProcess(IntPtr hProcess);
+    [DllImport("ntdll.dll")]  private static extern int  NtResumeProcess(IntPtr hProcess);
+    [DllImport("kernel32.dll")] private static extern IntPtr OpenProcess(uint dwAccess, bool bInherit, uint dwPid);
+    [DllImport("kernel32.dll")] private static extern bool   CloseHandle(IntPtr h);
 
-    // icon extraction via process exe
+    private const uint PROCESS_SUSPEND_RESUME = 0x0800;
+    private const uint WM_GETICON  = 0x007F;
+    private const int  GCL_HICONSM = -34;
+    private const int  GCL_HICON   = -14;
+
+    // icon extraction: try window-level icon first, fall back to exe icon
     private static readonly ConcurrentDictionary<string, string> _iconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private static string GetWindowIconB64(IntPtr hwnd, uint pid)
+    {
+        // WM_GETICON returns a handle owned by the window — do NOT destroy it
+        nint hIcon = SendMessage(hwnd, WM_GETICON, 2, 0); // ICON_SMALL2
+        if (hIcon == 0) hIcon = SendMessage(hwnd, WM_GETICON, 0, 0); // ICON_SMALL
+        if (hIcon == 0) hIcon = SendMessage(hwnd, WM_GETICON, 1, 0); // ICON_BIG
+        if (hIcon == 0) hIcon = GetClassLongPtrW(hwnd, GCL_HICONSM);
+        if (hIcon == 0) hIcon = GetClassLongPtrW(hwnd, GCL_HICON);
+        if (hIcon != 0)
+        {
+            try
+            {
+                var b64 = StubIconHelper.HIconToPngBase64(hIcon, 16);
+                if (!string.IsNullOrEmpty(b64)) return b64;
+            }
+            catch { }
+        }
+        return GetExeIcon(pid);
+    }
 
     private static string GetExeIcon(uint pid)
     {
@@ -88,9 +118,9 @@ internal static class WindowManagerFeature
             EnumWindows(cb, IntPtr.Zero); // fallback
         }
 
-        // Second pass: load icons (cached per exe path, safe to fail per entry)
+        // Second pass: load icons (window-level icon first, then exe icon fallback)
         foreach (var w in wins)
-            w.IconB64 = GetExeIcon((uint)w.Pid);
+            w.IconB64 = GetWindowIconB64(new IntPtr(w.Handle), (uint)w.Pid);
 
         return JsonSerializer.Serialize(new WinListResultStub { Windows = wins }, SeroJson.Default.WinListResultStub);
     }
@@ -112,6 +142,19 @@ internal static class WindowManagerFeature
                 case "kill":
                     GetWindowThreadProcessId(hwnd, out uint pid);
                     if (pid > 0) System.Diagnostics.Process.GetProcessById((int)pid).Kill();
+                    break;
+                case "freeze":
+                case "unfreeze":
+                    GetWindowThreadProcessId(hwnd, out uint fpid);
+                    if (fpid > 0)
+                    {
+                        var hProc = OpenProcess(PROCESS_SUSPEND_RESUME, false, fpid);
+                        if (hProc != IntPtr.Zero)
+                        {
+                            try { if (action == "freeze") NtSuspendProcess(hProc); else NtResumeProcess(hProc); }
+                            finally { CloseHandle(hProc); }
+                        }
+                    }
                     break;
             }
         }

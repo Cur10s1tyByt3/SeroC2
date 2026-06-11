@@ -71,6 +71,8 @@ public partial class WindowManagerWindow : Window
     private void BtnMaximize_Click2(object s, RoutedEventArgs e) => SendAction("maximize");
     private void BtnClose_Click2  (object s, RoutedEventArgs e) => SendAction("close");
     private void BtnKill_Click    (object s, RoutedEventArgs e) => SendAction("kill");
+    private void BtnFreeze_Click  (object s, RoutedEventArgs e) => SendAction("freeze");
+    private void BtnUnfreeze_Click(object s, RoutedEventArgs e) => SendAction("unfreeze");
 
     private void Window_MouseLeftButtonDown(object s, System.Windows.Input.MouseButtonEventArgs e)
     { if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed && WindowState != WindowState.Maximized) DragMove(); }

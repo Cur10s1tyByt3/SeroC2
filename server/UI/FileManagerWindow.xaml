@@ -316,6 +316,7 @@
                         <Separator Background="#1E2038"/>
                         <MenuItem Header="# Hash (SHA-256)"      Click="Hash_Click">         <MenuItem.Icon><TextBlock Text="#" Foreground="#cba6f7" FontSize="11" FontFamily="Consolas"/></MenuItem.Icon></MenuItem>
                         <MenuItem Header="👁 Show / Hide"        Click="ShowHide_Click">     <MenuItem.Icon><TextBlock Text="👁" FontSize="11"/></MenuItem.Icon></MenuItem>
+                        <MenuItem Header="⚙ Set Attributes"     Click="SetAttr_Click">      <MenuItem.Icon><TextBlock Text="⚙" Foreground="#f9e2af" FontSize="11"/></MenuItem.Icon></MenuItem>
                         <MenuItem Header="🖼 Set as Wallpaper"   Click="Wallpaper_Click">    <MenuItem.Icon><TextBlock Text="🖼" FontSize="11"/></MenuItem.Icon></MenuItem>
                         <MenuItem Header="🎵 Play Music"         Click="PlayMusic_Click">    <MenuItem.Icon><TextBlock Text="🎵" FontSize="11"/></MenuItem.Icon></MenuItem>
                         <MenuItem Header="📦 7-Zip (compress)"  Click="Zip_Click">          <MenuItem.Icon><TextBlock Text="📦" FontSize="11"/></MenuItem.Icon></MenuItem>
@@ -336,9 +337,11 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Type"     Binding="{Binding TypeDisplay}" Width="70"  CanUserSort="True" SortMemberPath="TypeDisplay" CanUserResize="True"/>
-                    <DataGridTextColumn Header="Size"     Binding="{Binding SizeDisplay}" Width="80"  CanUserSort="True" SortMemberPath="SizeRaw"    CanUserResize="True"/>
-                    <DataGridTextColumn Header="Modified" Binding="{Binding Modified}"    Width="130" CanUserSort="True" SortMemberPath="Modified"   CanUserResize="False"/>
+                    <DataGridTextColumn Header="Type"       Binding="{Binding TypeDisplay}"  Width="70"  CanUserSort="True" SortMemberPath="TypeDisplay" CanUserResize="True"/>
+                    <DataGridTextColumn Header="Size"       Binding="{Binding SizeDisplay}"  Width="80"  CanUserSort="True" SortMemberPath="SizeRaw"    CanUserResize="True"/>
+                    <DataGridTextColumn Header="Modified"   Binding="{Binding Modified}"     Width="130" CanUserSort="True" SortMemberPath="Modified"   CanUserResize="True"/>
+                    <DataGridTextColumn Header="Created"    Binding="{Binding Created}"      Width="130" CanUserSort="True" SortMemberPath="Created"    CanUserResize="True"/>
+                    <DataGridTextColumn Header="Attr"       Binding="{Binding AttribDisplay}" Width="50"  CanUserSort="False" CanUserResize="True"/>
                 </DataGrid.Columns>
             </DataGrid>
 

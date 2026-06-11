@@ -85,7 +85,7 @@ internal static class StubIconHelper
         catch { return ""; }
     }
 
-    private static unsafe string HIconToPngBase64(nint hIcon, int size)
+    internal static unsafe string HIconToPngBase64(nint hIcon, int size)
     {
         nint hdcScreen = GetDC(0);
         if (hdcScreen == 0) return "";

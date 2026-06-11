@@ -295,6 +295,74 @@ public partial class FileManagerWindow : Window
         await Navigate(_currentPath);
     }
 
+    private async void SetAttr_Click(object s, RoutedEventArgs e)
+    {
+        if (GridFiles.SelectedItem is not FileEntryVM row || row.IsDir) return;
+        var path = Path.Combine(_currentPath, row.Name);
+        var current = (System.IO.FileAttributes)row.AttributesRaw;
+        var newAttrs = ShowAttrDialog(row.Name, current);
+        if (newAttrs == null) return;
+        _pendingAck = new TaskCompletionSource<string>();
+        await _server.SendToClient(_clientId, new Packet
+        {
+            Type = PacketType.FmSetAttr,
+            Data = JsonConvert.SerializeObject(new FmSetAttrData { Path = path, Attributes = (int)newAttrs.Value })
+        });
+        try { await _pendingAck.Task.WaitAsync(TimeSpan.FromSeconds(10)); } catch { }
+        finally { _pendingAck = null; }
+        await Navigate(_currentPath);
+    }
+
+    private static System.IO.FileAttributes? ShowAttrDialog(string fileName, System.IO.FileAttributes current)
+    {
+        var dlg = new Window
+        {
+            Title = "Set Attributes", Width = 280, Height = 200,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            ResizeMode = ResizeMode.NoResize,
+            Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(12, 13, 24))
+        };
+        var sp = new System.Windows.Controls.StackPanel { Margin = new Thickness(16) };
+        sp.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = fileName, Foreground = System.Windows.Media.Brushes.Gray,
+            FontSize = 10, Margin = new Thickness(0, 0, 0, 10),
+            TextTrimming = System.Windows.TextTrimming.CharacterEllipsis
+        });
+        System.IO.FileAttributes[] flags = [
+            System.IO.FileAttributes.ReadOnly,
+            System.IO.FileAttributes.Hidden,
+            System.IO.FileAttributes.System,
+            System.IO.FileAttributes.Archive,
+        ];
+        var boxes = new List<System.Windows.Controls.CheckBox>();
+        foreach (var f in flags)
+        {
+            var cb = new System.Windows.Controls.CheckBox
+            {
+                Content = f.ToString(),
+                IsChecked = current.HasFlag(f),
+                Foreground = System.Windows.Media.Brushes.White,
+                Margin = new Thickness(0, 2, 0, 2),
+            };
+            sp.Children.Add(cb);
+            boxes.Add(cb);
+        }
+        var ok = new System.Windows.Controls.Button
+        {
+            Content = "Apply", Width = 70, HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 10, 0, 0), Padding = new Thickness(10, 4, 10, 4)
+        };
+        ok.Click += (_, _) => { dlg.DialogResult = true; };
+        sp.Children.Add(ok);
+        dlg.Content = sp;
+        if (dlg.ShowDialog() != true) return null;
+        System.IO.FileAttributes result = 0;
+        for (int i = 0; i < flags.Length; i++)
+            if (boxes[i].IsChecked == true) result |= flags[i];
+        return result;
+    }
+
     private async void Wallpaper_Click(object s, RoutedEventArgs e)
     {
         if (GridFiles.SelectedItem is not FileEntryVM row || row.IsDir) return;
@@ -607,14 +675,17 @@ public partial class FileManagerWindow : Window
 
 public class FileEntryVM
 {
-    public System.Windows.Media.ImageSource? IconImage   { get; }
-    public string Name        { get; }
-    public bool   IsDir       { get; }
-    public bool   IsHidden    { get; }
-    public long   SizeRaw     { get; }
-    public string SizeDisplay { get; }
-    public string Modified    { get; }
-    public string TypeDisplay { get; }
+    public System.Windows.Media.ImageSource? IconImage    { get; }
+    public string Name         { get; }
+    public bool   IsDir        { get; }
+    public bool   IsHidden     { get; }
+    public long   SizeRaw      { get; }
+    public string SizeDisplay  { get; }
+    public string Modified     { get; }
+    public string Created      { get; }
+    public string TypeDisplay  { get; }
+    public string AttribDisplay { get; }
+    public int    AttributesRaw { get; }
 
     public FileEntryVM(FmEntry e)
     {
@@ -622,6 +693,8 @@ public class FileEntryVM
         IsDir    = e.IsDir;
         IsHidden = e.IsHidden;
         Modified = e.Modified;
+        Created  = e.Created;
+        AttributesRaw = e.Attributes;
         SizeRaw  = e.IsDir ? -1 : e.Size;
         IconImage = (e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
             ? ShellIcon.GetDrive(e.Name.TrimEnd('\\', '/') + "\\")
@@ -642,6 +715,14 @@ public class FileEntryVM
                         : bytes < 1024L*1024*1024 ? $"{bytes / (1024.0*1024):F1} MB"
                         : $"{bytes / (1024.0*1024*1024):F1} GB";
         }
+
+        var attrs = (System.IO.FileAttributes)e.Attributes;
+        var parts = new System.Text.StringBuilder(4);
+        if (attrs.HasFlag(System.IO.FileAttributes.ReadOnly)) parts.Append('R');
+        if (attrs.HasFlag(System.IO.FileAttributes.Hidden))   parts.Append('H');
+        if (attrs.HasFlag(System.IO.FileAttributes.System))   parts.Append('S');
+        if (attrs.HasFlag(System.IO.FileAttributes.Archive))  parts.Append('A');
+        AttribDisplay = parts.Length > 0 ? parts.ToString() : "—";
     }
 }
 

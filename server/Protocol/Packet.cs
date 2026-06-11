@@ -81,6 +81,7 @@ public enum PacketType
     FmHashResult = 140,  // client→server: {Path, Hash, Error}
     FmAck        = 141,  // client→server: {Path, Success, Error}
     FmShowHide   = 142,  // server→client: toggle hidden attr {Path, Hide}
+    FmSetAttr    = 143,  // server→client: set file attributes {Path, Attributes}
 
     // Microphone
     MicGetDevices    = 150,  // server→client: request device list
@@ -396,11 +397,13 @@ public class StartupDeleteData     { public string Name { get; set; } = string.E
 public class FmListData       { public string Path { get; set; } = string.Empty; }
 public class FmEntry
 {
-    public string Name     { get; set; } = string.Empty;
-    public bool   IsDir    { get; set; }
-    public long   Size     { get; set; }
-    public string Modified { get; set; } = string.Empty;
-    public bool   IsHidden { get; set; }
+    public string Name       { get; set; } = string.Empty;
+    public bool   IsDir      { get; set; }
+    public long   Size       { get; set; }
+    public string Modified   { get; set; } = string.Empty;
+    public bool   IsHidden   { get; set; }
+    public string Created    { get; set; } = string.Empty;
+    public int    Attributes { get; set; }
 }
 public class FmListResultData { public string Path { get; set; } = string.Empty; public List<FmEntry> Entries { get; set; } = []; public string Error { get; set; } = string.Empty; }
 public class FmDownloadData   { public string Path { get; set; } = string.Empty; }
@@ -414,6 +417,7 @@ public class FmHashData       { public string Path { get; set; } = string.Empty;
 public class FmHashResultData { public string Path { get; set; } = string.Empty; public string Hash { get; set; } = string.Empty; public string Error { get; set; } = string.Empty; }
 public class FmAckData        { public string Path { get; set; } = string.Empty; public bool Success { get; set; } public string Error { get; set; } = string.Empty; }
 public class FmShowHideData   { public string Path { get; set; } = string.Empty; public bool Hide { get; set; } }
+public class FmSetAttrData    { public string Path { get; set; } = string.Empty; public int Attributes { get; set; } }
 
 // ── Microphone ────────────────────────────────────────
 public class MicDevice           { public int Index { get; set; } public string Name { get; set; } = string.Empty; }

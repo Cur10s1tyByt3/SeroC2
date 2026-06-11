@@ -36,7 +36,7 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Foreground"      Value="#DDE0F0" />
             <Style.Triggers>
-                <!-- Tagged rows: warm amber tint background (evaluated first, overridden below when needed) -->
+                <!-- Tagged rows: amber tint + amber left accent — evaluated first so selection overrides it -->
                 <DataTrigger Binding="{Binding HasTag}" Value="True">
                     <Setter Property="Background">
                         <Setter.Value>
@@ -46,23 +46,25 @@
                             </LinearGradientBrush>
                         </Setter.Value>
                     </Setter>
+                    <Setter Property="BorderBrush"     Value="#C8991A"/>
+                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
                 </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#0F1525" />
                 </Trigger>
+                <!-- Selection triggers are LAST so they always win over the tag amber border -->
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background">
                         <Setter.Value>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#1A3D80" Offset="0"/>
-                                <GradientStop Color="#0E1E40" Offset="0.45"/>
-                                <GradientStop Color="#080D1A" Offset="1"/>
+                                <GradientStop Color="#1E4598" Offset="0"/>
+                                <GradientStop Color="#0E2050" Offset="1"/>
                             </LinearGradientBrush>
                         </Setter.Value>
                     </Setter>
                     <Setter Property="Foreground"      Value="#FFFFFF" />
-                    <Setter Property="BorderBrush"     Value="#5A96FF" />
-                    <Setter Property="BorderThickness" Value="3,1,1,1" />
+                    <Setter Property="BorderBrush"     Value="#6AABFF" />
+                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </Trigger>
                 <MultiTrigger>
                     <MultiTrigger.Conditions>
@@ -72,20 +74,14 @@
                     <Setter Property="Background">
                         <Setter.Value>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#224A96" Offset="0"/>
-                                <GradientStop Color="#11224A" Offset="0.45"/>
-                                <GradientStop Color="#0A0F20" Offset="1"/>
+                                <GradientStop Color="#2654B8" Offset="0"/>
+                                <GradientStop Color="#112666" Offset="1"/>
                             </LinearGradientBrush>
                         </Setter.Value>
                     </Setter>
-                    <Setter Property="BorderBrush"     Value="#7AB0FF" />
-                    <Setter Property="BorderThickness" Value="3,1,1,1" />
+                    <Setter Property="BorderBrush"     Value="#88C0FF" />
+                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </MultiTrigger>
-                <!-- Tagged rows: gold left accent border — evaluated LAST so it overrides selection border -->
-                <DataTrigger Binding="{Binding HasTag}" Value="True">
-                    <Setter Property="BorderBrush"     Value="#C8991A"/>
-                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
-                </DataTrigger>
             </Style.Triggers>
         </Style>
 
