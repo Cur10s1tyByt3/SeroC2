@@ -158,10 +158,7 @@ internal static class RemoteDesktopFeature
     private static byte[]? _pixBuf0, _pixBuf1;
     private static bool     _pixBufSlot;
 
-    // Cached JPEG encoder params — avoids AllocHGlobal/FreeHGlobal on every block encode
-    private static int   _epLastQuality = -1;
-    private static nint  _epQualityPtr;
-    private static nint  _epParamsPtr;
+    // Encoder params are now allocated per-call in GdipBitmapToJpeg (see comment there).
 
     private static string _lastClip = "";
 
@@ -179,7 +176,7 @@ internal static class RemoteDesktopFeature
         _monitors = EnumMonitors();
 
         _pixBufSlot = false;
-        Interlocked.Exchange(ref _pendingRequests, 8); // 8 credits: deeper pipeline — ACK fires before blit so credits cycle fast on LAN
+        Interlocked.Exchange(ref _pendingRequests, 3); // 3 credits: limits in-flight frames so slow tunnels (localtonet) don't saturate the TCP buffer
         _running = true;
         _thread = new Thread(CaptureLoop)
         {
@@ -438,10 +435,6 @@ internal static class RemoteDesktopFeature
 
         int effectiveQ = changedCount < totalBlocks * 15 / 100 ? 95 : _cfg.Quality;
 
-        // Prime the encoder-params cache before the parallel section so every thread
-        // sees _epLastQuality == effectiveQ and returns immediately (no state mutation).
-        EnsureEncoderParams(effectiveQ);
-
         var encoded = new byte[]?[changedBlocks.Count];
         System.Threading.Tasks.Parallel.For(0, changedBlocks.Count,
             new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
@@ -512,20 +505,26 @@ internal static class RemoteDesktopFeature
     // ── JPEG via GDI+ (file-based, no COM IStream) ────────────────────────────
 
     // Encode GDI+ bitmap to JPEG entirely in memory via SHCreateMemStream.
-    // Zero disk I/O — dramatically faster than the file-based approach.
-    // Uses raw IStream* vtable dispatch, no COM marshaling needed.
+    // Encoder params are allocated locally per-call so this method is safe to call
+    // from concurrent threads (RDP Parallel.For + webcam STA thread) with different
+    // quality values — no shared mutable state, no use-after-free on _epParamsPtr.
     internal static byte[]? GdipBitmapToJpeg(nint bmp, int quality)
     {
         nint pStream = SHCreateMemStream(0, 0);
         if (pStream == 0) return null;
+        nint qPtr = 0, epsPtr = 0;
         try
         {
-            // Use cached encoder params — avoids AllocHGlobal/FreeHGlobal on every block
-            EnsureEncoderParams(quality);
+            long q = Math.Clamp(quality, 1, 100);
+            qPtr = Marshal.AllocHGlobal(sizeof(long));
+            Marshal.WriteInt64(qPtr, q);
+            var ep  = new EncoderParam  { Guid = EncQuality, Count = 1, Type = 4, Value = qPtr };
+            var eps = new EncoderParams { Count = 1, Param = ep };
+            epsPtr = Marshal.AllocHGlobal(Marshal.SizeOf<EncoderParams>());
+            Marshal.StructureToPtr(eps, epsPtr, false);
 
             var clsid = JpegClsid;
-            int status = GdipSaveImageToStream(bmp, pStream, ref clsid, _epParamsPtr);
-            if (status != 0) return null;
+            if (GdipSaveImageToStream(bmp, pStream, ref clsid, epsPtr) != 0) return null;
 
             // IStream vtable: [0]=QI [1]=AddRef [2]=Release [3]=Read [4]=Write [5]=Seek
             nint vtbl  = Marshal.ReadIntPtr(pStream);
@@ -544,7 +543,6 @@ internal static class RemoteDesktopFeature
 
             if (streamLen <= 0) return null;
 
-            // Read all bytes from the stream
             byte[] data = new byte[(int)streamLen];
             unsafe { fixed (byte* p = data) readFn(pStream, (nint)p, (uint)streamLen, out _); }
             return data;
@@ -552,6 +550,8 @@ internal static class RemoteDesktopFeature
         catch { return null; }
         finally
         {
+            if (qPtr   != 0) Marshal.FreeHGlobal(qPtr);
+            if (epsPtr != 0) Marshal.FreeHGlobal(epsPtr);
             // Release the IStream COM object
             nint vtbl   = Marshal.ReadIntPtr(pStream);
             var releaseFn = Marshal.GetDelegateForFunctionPointer<VtRelease>(
@@ -647,22 +647,6 @@ internal static class RemoteDesktopFeature
         ref byte[]? slot = ref _pixBufSlot ? ref _pixBuf1 : ref _pixBuf0;
         if (slot == null || slot.Length < size) slot = new byte[size];
         return slot;
-    }
-
-    // Keeps a single allocated encoder-params block, reallocated only when quality changes
-    private static void EnsureEncoderParams(int quality)
-    {
-        if (_epLastQuality == quality) return;
-        if (_epQualityPtr != 0) { Marshal.FreeHGlobal(_epQualityPtr); _epQualityPtr = 0; }
-        if (_epParamsPtr  != 0) { Marshal.FreeHGlobal(_epParamsPtr);  _epParamsPtr  = 0; }
-        long q = Math.Clamp(quality, 1, 100);
-        _epQualityPtr = Marshal.AllocHGlobal(sizeof(long));
-        Marshal.WriteInt64(_epQualityPtr, q);
-        var ep  = new EncoderParam  { Guid = EncQuality, Count = 1, Type = 4, Value = _epQualityPtr };
-        var eps = new EncoderParams { Count = 1, Param = ep };
-        _epParamsPtr = Marshal.AllocHGlobal(Marshal.SizeOf<EncoderParams>());
-        Marshal.StructureToPtr(eps, _epParamsPtr, false);
-        _epLastQuality = quality;
     }
 
     private static void EnsureGdiplus()
