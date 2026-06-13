@@ -556,6 +556,7 @@ SeroC2/
 ## 👤 Contributors
 
 - **SeroSkiid** — Lead developer
+- **GiggleHacks** — Contributor (UI improvements, webcam enhancements, performance fixes, two-level write pipeline)
 - **Hydra48** — Original RunPE C++ implementation ([process-hollowing-24h2](https://github.com/hydra48/process-hollowing-24h2)), converted to C#/NativeAOT by SeroSkiid
 
 ---
