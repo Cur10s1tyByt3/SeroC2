@@ -90,12 +90,16 @@ public partial class WebcamWindow : Window
 
     private void BtnMenu_Click(object sender, RoutedEventArgs e)
     {
-        var mainWindow = Application.Current.Windows.OfType<ServerWindow>().FirstOrDefault();
-        if (mainWindow == null) return;
-        var menu = FeatureContextMenu.Build(_server, _clientId, mainWindow, "WebcamWindow");
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
+        if (sender is System.Windows.Controls.Button btn)
+        {
+            var mainWindow = Application.Current.Windows.OfType<ServerWindow>().FirstOrDefault();
+            if (mainWindow == null) return;
+            var menu = FeatureContextMenu.Build(_server, _clientId, mainWindow, "WebcamWindow");
+            btn.ContextMenu = menu;
+            menu.PlacementTarget = btn;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
     }
 
     // ── Streaming state ───────────────────────────────────────────────────────
@@ -175,12 +179,16 @@ public partial class WebcamWindow : Window
             })
         });
         SetStreamingState(true);
+        ServerWindow.ReportGlobalActivity("Webcam started", _clientId, "running");
+        ServerWindow.LogGlobal($"[WEBCAM] Webcam stream started on client {_clientId}.");
     }
 
     private void SendStop()
     {
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.WcamStop, Data = "{}" });
         SetStreamingState(false);
+        ServerWindow.ReportGlobalActivity("Webcam stopped", _clientId, "complete");
+        ServerWindow.LogGlobal($"[WEBCAM] Webcam stream stopped on client {_clientId}.");
     }
 
     // ── Incoming ──────────────────────────────────────────────────────────────
