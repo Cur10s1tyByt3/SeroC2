@@ -1,4 +1,4 @@
-﻿<Window x:Class="SeroServer.UI.ServerWindow"
+<Window x:Class="SeroServer.UI.ServerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SɆⱤØ RAT"
@@ -33,7 +33,8 @@
 
         <Style TargetType="DataGridRow">
             <Setter Property="Background"      Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderThickness" Value="4,1,1,1" />
+            <Setter Property="BorderBrush"     Value="Transparent" />
             <Setter Property="Foreground"      Value="#DDE0F0" />
             <Style.Triggers>
                 <!-- Tagged rows: amber tint + amber left accent — evaluated first so selection overrides it -->
@@ -47,7 +48,6 @@
                         </Setter.Value>
                     </Setter>
                     <Setter Property="BorderBrush"     Value="#C8991A"/>
-                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
                 </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#0F1525" />
@@ -64,7 +64,6 @@
                     </Setter>
                     <Setter Property="Foreground"      Value="#FFFFFF" />
                     <Setter Property="BorderBrush"     Value="#6AABFF" />
-                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </Trigger>
                 <MultiTrigger>
                     <MultiTrigger.Conditions>
@@ -80,7 +79,6 @@
                         </Setter.Value>
                     </Setter>
                     <Setter Property="BorderBrush"     Value="#88C0FF" />
-                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </MultiTrigger>
             </Style.Triggers>
         </Style>
@@ -290,7 +288,7 @@
                                     </LinearGradientBrush>
                                 </Run.Foreground>
                             </Run>
-                            <Run Text=" v1.3.1" Foreground="#C8922A" FontSize="10" FontWeight="Normal"/>
+                            <Run x:Name="TxtVersionNumber" Text=" v1.4.0" Foreground="#C8922A" FontSize="10" FontWeight="Normal"/>
                         </TextBlock>
                     </StackPanel>
 
@@ -363,31 +361,8 @@
                             VerticalAlignment="Center" HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0">
-                                <Ellipse x:Name="ServerPulse" Stroke="#EF4444" StrokeThickness="1.2"
-                                         Fill="Transparent" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                                    <Ellipse.RenderTransform>
-                                        <ScaleTransform x:Name="PulseScale"/>
-                                    </Ellipse.RenderTransform>
-                                </Ellipse>
                                 <Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="#EF4444"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Grid.Triggers>
-                                    <EventTrigger RoutedEvent="Grid.Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard RepeatBehavior="Forever">
-                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
-                                                                 Storyboard.TargetProperty="ScaleX"
-                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
-                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
-                                                                 Storyboard.TargetProperty="ScaleY"
-                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
-                                                <DoubleAnimation Storyboard.TargetName="ServerPulse"
-                                                                 Storyboard.TargetProperty="Opacity"
-                                                                 From="0.65" To="0.0" Duration="0:0:1.4"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Grid.Triggers>
                             </Grid>
                             <TextBlock x:Name="TxtServerStatus" Text="Stopped"
                                        Foreground="#606880" FontSize="12" />
@@ -741,12 +716,30 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="30" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="⌕" FontSize="16"
+                                    <Button Grid.Column="0" x:Name="BtnGridSettings" Content="⚙" FontSize="16"
+                                            Foreground="#606880" Cursor="Hand" Click="BtnGridSettings_Click" ToolTip="Grid Settings &amp; Filters">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" Background="Transparent" Padding="10,0">
+                                                    <TextBlock x:Name="tb" Text="{TemplateBinding Content}" FontSize="16" Foreground="{TemplateBinding Foreground}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="tb" Property="Foreground" Value="#4A85F5"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Grid.Column="1" Text="⌕" FontSize="16"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="#606880" />
-                                    <TextBox Grid.Column="1" x:Name="TxtSearch"
+                                    <TextBox Grid.Column="2" x:Name="TxtSearch"
                                              Background="Transparent" Foreground="#DDE0F0"
                                              BorderThickness="0" Padding="0,9"
                                              FontSize="12" CaretBrush="#4A85F5" SelectionBrush="#4A85F5"
@@ -772,12 +765,17 @@
                                             </ControlTemplate>
                                         </TextBox.Template>
                                     </TextBox>
+                                    <Border Grid.Column="3" x:Name="BorderSelectedCount" Background="#151A35" BorderBrush="#253560" BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="0,0,16,0" VerticalAlignment="Center" Visibility="Collapsed">
+                                        <TextBlock x:Name="TxtSelectedCount" Foreground="#4A85F5" FontSize="11" FontFamily="Segoe UI" FontWeight="Bold" VerticalAlignment="Center" />
+                                    </Border>
                                 </Grid>
                             </Border>
 
                             <DataGrid Grid.Row="1" x:Name="GridClients"
                                       AutoGenerateColumns="False" IsReadOnly="True"
                                       PreviewKeyDown="GridClients_PreviewKeyDown"
+                                      Sorting="GridClients_Sorting"
+                                      SelectionChanged="GridClients_SelectionChanged"
                                       Background="Transparent" Foreground="#DDE0F0"
                                       BorderThickness="0" RowBackground="Transparent"
                                       AlternatingRowBackground="#07101428"
@@ -1680,83 +1678,6 @@
                     </Border>
                 </TabItem>
 
-                <!-- ── Settings ── -->
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="⚙" Foreground="#606880" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Settings"/>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Border Margin="8" CornerRadius="8"
-                            Background="#D0111222" BorderThickness="1">
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#283040FF" Offset="0"/>
-                                <GradientStop Color="#121E2038" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel MaxWidth="520" HorizontalAlignment="Center" Margin="32,32,32,32">
-                            <TextBlock Text="SERVER LIMITS" Style="{StaticResource SLabel}" />
-                            <TextBlock Text="MAX CONNECTED CLIENTS" Style="{StaticResource SFieldLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBox x:Name="SettingsMaxClients" Style="{StaticResource STxt}" Text="1000" Width="120" />
-                                <Button Content="APPLY" Height="28" Margin="8,0,0,0" Padding="12,0"
-                                        Style="{StaticResource SGreenBtn}" FontSize="10"
-                                        Click="SettingsApplyMaxClients_Click" />
-                            </StackPanel>
-                            <TextBlock Text="Rejects new connections when this limit is reached." Foreground="#606880" FontSize="11" Margin="0,0,0,24" />
-
-                            <TextBlock Text="INTEGRATIONS" Style="{StaticResource SLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
-                                <CheckBox x:Name="SettingsDiscordRPC" Content="Discord Rich Presence" Style="{StaticResource SChk}" VerticalAlignment="Center" />
-                                <Button Content="APPLY" Height="22" Margin="12,0,0,0" Padding="10,0"
-                                        Style="{StaticResource SGreenBtn}" FontSize="10"
-                                        Click="SettingsApplyDiscordRPC_Click" />
-                            </StackPanel>
-                            <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,8"
-                                      Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
-                            <CheckBox x:Name="SettingsLogsBadge" Content="Show unread badge on Logs tab" Style="{StaticResource SChk}" Margin="0,0,0,24"
-                                      IsChecked="True"
-                                      Checked="SettingsLogsBadge_Changed" Unchecked="SettingsLogsBadge_Changed" />
-
-                            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
-                            <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
-                                      Style="{StaticResource SChk}" IsChecked="True" Margin="0,0,0,4"
-                                      Checked="SettingsDevLogs_Changed" Unchecked="SettingsDevLogs_Changed" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock x:Name="TxtDevLogsPath" Text="" Foreground="#404878"
-                                           FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                <Button Content="Open folder" Margin="10,0,0,0" Height="22" Padding="8,0"
-                                        Style="{StaticResource SBtn}" Click="OpenDiagLogsFolder_Click"/>
-                            </StackPanel>
-                            <TextBlock Text="Logs rotate: 5 files × 5 MB — no screenshots or credentials are ever written."
-                                       Foreground="#404060" FontSize="10" Margin="0,0,0,20"/>
-
-                            <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
-                            <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,8"
-                                      Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
-                            <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
-                                      Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
-                            <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
-
-                            <TextBlock Text="PORT CHECKER" Style="{StaticResource SLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBox x:Name="SettingsCheckIP"   Style="{StaticResource STxt}" Width="160" Text="127.0.0.1" />
-                                <TextBlock Text=":" Foreground="#606880" FontSize="16" VerticalAlignment="Center" Margin="8,0" />
-                                <TextBox x:Name="SettingsCheckPort" Style="{StaticResource STxt}" Width="64" Text="7777" />
-                                <Button Content="CHECK" Height="32" Margin="10,0,0,0" Style="{StaticResource SGreenBtn}" Click="CheckPort_Click" />
-                                <Button Content="GET IP" Height="32" Margin="8,0,0,0"  Style="{StaticResource SBtn}"      Click="GetMyIP_Click" />
-                            </StackPanel>
-                            <TextBlock x:Name="TxtPortResult" Text="" Foreground="#606880" FontSize="12" Margin="0,4,0,24" />
-
-                        </StackPanel>
-                        </ScrollViewer>
-                    </Border>
-                </TabItem>
-
                 <!-- ── Screen ── -->
                 <TabItem x:Name="ScreenTabItem">
                     <TabItem.Header>
@@ -1790,51 +1711,6 @@
                             <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="72,36,72,36" VerticalAlignment="Top"/>
                         </ScrollViewer>
                     </DockPanel>
-                </TabItem>
-
-                <!-- ── Logs ── -->
-                <TabItem x:Name="LogsTabItem">
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="≋" Foreground="#606880" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Logs"/>
-                            <!-- Canvas size=0 so badge floats above without affecting tab width -->
-                            <Canvas Width="0" Height="0" VerticalAlignment="Center">
-                                <Border x:Name="LogBadge" Background="#EF4444" CornerRadius="7"
-                                        Padding="4,1" Canvas.Left="4" Canvas.Top="-8"
-                                        Visibility="Collapsed">
-                                    <TextBlock x:Name="LogBadgeTxt" Text="0" Foreground="White"
-                                               FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
-                                </Border>
-                            </Canvas>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Border Margin="8" Padding="4" CornerRadius="8"
-                            Background="#D0111222" BorderThickness="1">
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#283040FF" Offset="0"/>
-                                <GradientStop Color="#121E2038" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <!-- RichTextBox: supports coloured runs AND text selection/copy -->
-                        <RichTextBox x:Name="TxtLogs"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontFamily="Consolas" FontSize="11"
-                                     IsReadOnly="True" IsDocumentEnabled="True"
-                                     VerticalScrollBarVisibility="Auto"
-                                     HorizontalScrollBarVisibility="Disabled"
-                                     Padding="8,6"
-                                     SelectionBrush="#404878" CaretBrush="Transparent">
-                            <RichTextBox.Resources>
-                                <!-- Remove the default 4px paragraph spacing -->
-                                <Style TargetType="Paragraph">
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="LineHeight" Value="16"/>
-                                </Style>
-                            </RichTextBox.Resources>
-                        </RichTextBox>
-                    </Border>
                 </TabItem>
 
                 <!-- ── Crypto Clipper ── -->
@@ -2114,6 +1990,323 @@
                     </DockPanel>
                 </TabItem>
 
+                <!-- ── Logs ── -->
+                <TabItem x:Name="LogsTabItem">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="≋" Foreground="#606880" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Logs"/>
+                            <!-- Canvas size=0 so badge floats above without affecting tab width -->
+                            <Canvas Width="0" Height="0" VerticalAlignment="Center">
+                                <Border x:Name="LogBadge" Background="#EF4444" CornerRadius="7"
+                                        Padding="4,1" Canvas.Left="4" Canvas.Top="-8"
+                                        Visibility="Collapsed">
+                                    <TextBlock x:Name="LogBadgeTxt" Text="0" Foreground="White"
+                                               FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
+                                </Border>
+                            </Canvas>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Margin="8" Padding="4" CornerRadius="8"
+                            Background="#D0111222" BorderThickness="1">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#283040FF" Offset="0"/>
+                                <GradientStop Color="#121E2038" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" Margin="6,4,6,8">
+                                <TextBlock Text="SYSTEM EVENT LOGS" Foreground="#606880" FontSize="11" FontWeight="Bold" FontFamily="Segoe UI" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <CheckBox x:Name="LogsTabBadgeToggle" Content="Enable Unread Badge" Style="{StaticResource SChk}" VerticalAlignment="Center" Margin="0,0,16,0" Checked="LogsTabBadgeToggle_Changed" Unchecked="LogsTabBadgeToggle_Changed" IsChecked="False"/>
+                                    <Button Content="CLEAR" Height="22" Padding="10,0" Style="{StaticResource SBtn}" FontSize="10" FontWeight="SemiBold" Click="ClearLogs_Click"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- RichTextBox: supports coloured runs AND text selection/copy -->
+                            <RichTextBox x:Name="TxtLogs"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontFamily="Consolas" FontSize="11"
+                                         IsReadOnly="True" IsDocumentEnabled="True"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Disabled"
+                                         Padding="8,6"
+                                         SelectionBrush="#404878" CaretBrush="Transparent">
+                                <RichTextBox.Resources>
+                                    <!-- Remove the default 4px paragraph spacing -->
+                                    <Style TargetType="Paragraph">
+                                        <Setter Property="Margin" Value="0"/>
+                                        <Setter Property="LineHeight" Value="16"/>
+                                    </Style>
+                                </RichTextBox.Resources>
+                            </RichTextBox>
+                        </DockPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- ── Settings ── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="⚙" Foreground="#606880" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Settings"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Margin="8" CornerRadius="8"
+                            Background="#D0111222" BorderThickness="1">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#283040FF" Offset="0"/>
+                                <GradientStop Color="#121E2038" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <Grid Margin="24" MaxWidth="1050" HorizontalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="340"/>
+                                    <ColumnDefinition Width="40"/>
+                                    <ColumnDefinition Width="*" MinWidth="440"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left Column: Settings -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="SERVER LIMITS" Style="{StaticResource SLabel}" />
+                                    <TextBlock Text="MAX CONNECTED CLIENTS" Style="{StaticResource SFieldLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBox x:Name="SettingsMaxClients" Style="{StaticResource STxt}" Text="1000" Width="120" />
+                                        <Button Content="APPLY" Height="28" Margin="8,0,0,0" Padding="12,0"
+                                                Style="{StaticResource SGreenBtn}" FontSize="10"
+                                                Click="SettingsApplyMaxClients_Click" />
+                                    </StackPanel>
+                                    <TextBlock Text="Rejects new connections when this limit is reached." Foreground="#606880" FontSize="11" Margin="0,0,0,24" />
+
+                                    <TextBlock Text="INTEGRATIONS" Style="{StaticResource SLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                                        <CheckBox x:Name="SettingsDiscordRPC" Content="Discord Rich Presence" Style="{StaticResource SChk}" VerticalAlignment="Center" />
+                                        <Button Content="APPLY" Height="22" Margin="12,0,0,0" Padding="10,0"
+                                                Style="{StaticResource SGreenBtn}" FontSize="10"
+                                                Click="SettingsApplyDiscordRPC_Click" />
+                                    </StackPanel>
+                                    <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
+                                    <CheckBox x:Name="SettingsLogsBadge" Content="Show unread badge on Logs tab" Style="{StaticResource SChk}" Margin="0,0,0,24"
+                                              IsChecked="False"
+                                              Checked="SettingsLogsBadge_Changed" Unchecked="SettingsLogsBadge_Changed" />
+
+                                    <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
+                                    <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
+                                              Style="{StaticResource SChk}" IsChecked="True" Margin="0,0,0,4"
+                                              Checked="SettingsDevLogs_Changed" Unchecked="SettingsDevLogs_Changed" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock x:Name="TxtDevLogsPath" Text="" Foreground="#404878"
+                                                   FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                        <Button Content="Open folder" Margin="10,0,0,0" Height="22" Padding="8,0"
+                                                Style="{StaticResource SBtn}" Click="OpenDiagLogsFolder_Click"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Logs rotate: 5 files × 5 MB — no screenshots or credentials are ever written."
+                                               Foreground="#404060" FontSize="10" Margin="0,0,0,20"/>
+
+                                    <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
+                                    <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
+                                    <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
+                                              Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
+                                    <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
+
+                                    <TextBlock Text="PORT CHECKER" Style="{StaticResource SLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBox x:Name="SettingsCheckIP"   Style="{StaticResource STxt}" Width="160" Text="127.0.0.1" />
+                                        <TextBlock Text=":" Foreground="#606880" FontSize="16" VerticalAlignment="Center" Margin="8,0" />
+                                        <TextBox x:Name="SettingsCheckPort" Style="{StaticResource STxt}" Width="64" Text="7777" />
+                                        <Button Content="CHECK" Height="32" Margin="10,0,0,0" Style="{StaticResource SGreenBtn}" Click="CheckPort_Click" />
+                                        <Button Content="GET IP" Height="32" Margin="8,0,0,0"  Style="{StaticResource SBtn}"      Click="GetMyIP_Click" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtPortResult" Text="" Foreground="#606880" FontSize="12" Margin="0,4,0,24" />
+                                </StackPanel>
+
+                                <!-- Right Column: Sound Preferences -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="SOUND PREFERENCES" Style="{StaticResource SLabel}" />
+                                    <Border Background="#0C0D1E" BorderBrush="#1C1E30" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,24">
+                                        <StackPanel>
+                                            <!-- Header Row -->
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="EVENT / ACTION" Foreground="#4A5270" FontSize="10" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="STATUS" Foreground="#4A5270" FontSize="10" FontWeight="Bold" Margin="4,0,0,0"/>
+                                                <TextBlock Grid.Column="2" Text="PREVIEW" Foreground="#4A5270" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            
+                                            <Rectangle Height="1" Fill="#16182E" Margin="0,0,0,8"/>
+
+                                            <!-- Sound Rows -->
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🚀  Intro / Logo Animation" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Intro" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="Intro.wav" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔔  Server Startup" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Startup" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="01_startup_chime.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📴  Server Shutdown" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Shutdown" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="04_shutdown_gentle_descent.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🖥️  Client Connected" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Connected" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="34_device_connected.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="✨  New Client (First Seen)" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_NewClient" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="40_8bit_power_up.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔌  Client Disconnected" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Disconnected" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="35_device_disconnected.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="✅  Build Success" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_BuildSuccess" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="11_success_bright.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="❌  Build Error" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_BuildError" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="13_error_buzz.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🪙  Clipper Intercept" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Clipper" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="41_8bit_coin_collect.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📬  Keylogger Logs Received" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Keylogger" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="45_mail_chime.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔍  AutoTask Completed" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_AutoTask" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="20_scan_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📥  File Downloaded" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Download" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="26_download_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📤  File Uploaded" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Upload" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="27_upload_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🗑️  File Deleted" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_FileDelete" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="23_file_deletion.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                </TabItem>
+
                 <!-- ── About ── -->
                 <TabItem>
                     <TabItem.Header>
@@ -2308,8 +2501,6 @@
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-
-
             </TabControl>
 
             <!-- ── Status bar ─────────────────────────────────────── -->
