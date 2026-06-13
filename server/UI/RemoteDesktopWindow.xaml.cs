@@ -178,12 +178,14 @@ public partial class RemoteDesktopWindow : Window
             Clipboard = ChkClipboard.IsChecked == true,
         });
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RdpStart, Data = data });
+        ServerWindow.ReportGlobalActivity("Remote desktop started", _clientId, "running");
         SetStreamingState(true);
     }
 
     private void SendStop()
     {
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RdpStop, Data = "{}" });
+        ServerWindow.ReportGlobalActivity("Remote desktop stopped", _clientId, "complete");
         SetStreamingState(false);
     }
 

@@ -377,6 +377,7 @@ public partial class ProcessManagerWindow : Window
         foreach (var vm in sel)
             _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcKill, Data = JsonConvert.SerializeObject(new ProcKillData { Pid = vm.Pid }) });
         TxtStatus.Text = sel.Count == 1 ? $"Kill → PID {sel[0].Pid} ({sel[0].Name})" : $"Kill → {sel.Count} processes";
+        ServerWindow.ReportGlobalActivity("Kill process", sel.Count == 1 ? sel[0].Name : $"{sel.Count} processes", "running");
     }
 
     private void BtnSuspend_Click(object s, RoutedEventArgs e)

@@ -74,6 +74,7 @@ public partial class RemoteShellWindow : Window
             TxtOutput.Text = "";
         TxtOutput.AppendText($"\n> {cmd}");
         TxtCommand.Clear();
+        ServerWindow.ReportGlobalActivity("Remote command", cmd.Length > 20 ? cmd[..20] + "..." : cmd, "running");
 
         var packet = new Packet
         {

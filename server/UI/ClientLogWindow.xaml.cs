@@ -36,13 +36,13 @@ public partial class ClientLogWindow : Window
 
         Add($"HWID:       {record.Hwid}\n",       _brHeader);
         Add($"Tag:        {(string.IsNullOrEmpty(record.Tag) ? "(none)" : record.Tag)}\n", _brDim);
-        Add($"First Seen: {record.FirstSeen:yyyy-MM-dd HH:mm:ss}\n", _brDim);
-        Add($"Last Seen:  {record.LastSeen:yyyy-MM-dd HH:mm:ss}\n",  _brDim);
+        Add($"First Seen: {record.FirstSeen:yyyy-MM-dd h:mm:ss tt}\n", _brDim);
+        Add($"Last Seen:  {record.LastSeen:yyyy-MM-dd h:mm:ss tt}\n",  _brDim);
         Add(new string('─', 50) + "\n\n", _brDim);
 
         foreach (var entry in record.ActivityLog.AsEnumerable().Reverse().Take(200))
         {
-            var line = $"[{entry.Time:yyyy-MM-dd HH:mm:ss}] {entry.Action}\n";
+            var line = $"[{entry.Time:yyyy-MM-dd h:mm:ss tt}] {entry.Action}\n";
             var brush = entry.Action.Contains("connect", StringComparison.OrdinalIgnoreCase)
                             && !entry.Action.Contains("disconnect", StringComparison.OrdinalIgnoreCase)
                 ? _brConnect

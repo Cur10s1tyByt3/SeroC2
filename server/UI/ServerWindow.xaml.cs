@@ -63,17 +63,25 @@ public partial class ServerWindow : Window
     // Activity panel — tracks recent operations for the bottom status area
     private readonly List<ActivityEntry> _recentActivity = [];
     private record ActivityEntry(string Action, string Target, string Status, DateTime Time);
+
+    public static void ReportGlobalActivity(string action, string target, string status)
+    {
+        if (Application.Current?.MainWindow is ServerWindow main)
+            main.Dispatcher.BeginInvoke(() => main.AddActivity(action, target, status));
+    }
+
     private void AddActivity(string action, string target, string status)
     {
         var entry = new ActivityEntry(action, target, status, DateTime.Now);
         _recentActivity.Add(entry);
-        if (_recentActivity.Count > 8)
+        if (_recentActivity.Count > 15) // Keep more items for multi-line
             _recentActivity.RemoveAt(0);
         RefreshActivityFeed();
     }
     private static readonly Brush _brushActivityRunning = MakeBrush(0x38, 0xBD, 0xF8); // sky blue
     private static readonly Brush _brushActivityComplete = MakeBrush(0x4A, 0xDE, 0x80); // green
     private static readonly Brush _brushActivityFailed = MakeBrush(0xF8, 0x71, 0x71); // red
+
     private void SetStatus(string text, string? activityAction = null, string? activityTarget = null, string? activityStatus = null)
     {
         if (TxtStatusBar != null) TxtStatusBar.Text = text;
@@ -83,17 +91,29 @@ public partial class ServerWindow : Window
 
     private void RefreshActivityFeed()
     {
-        if (TxtActivityFeed == null) return;
-        var parts = new List<string>();
+        if (ActivityFeedPanel == null) return;
+        ActivityFeedPanel.Children.Clear();
         foreach (var a in _recentActivity)
         {
-            var icon = a.Status == "running" ? "⋯" : a.Status == "failed" ? "✗" : "✓";
-            var time = a.Time.ToString("h:mm");
-            parts.Add($"{icon} {a.Action} {a.Target}  {time}");
+            var icon = a.Status == "running" ? "⋯ " : a.Status == "failed" ? "✗ " : "✓ ";
+            var brush = a.Status == "running" ? _brushActivityRunning : a.Status == "failed" ? _brushActivityFailed : _brushActivityComplete;
+            var time = a.Time.ToString("h:mm:ss tt");
+            
+            var tb = new TextBlock 
+            { 
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"), 
+                FontSize = 10,
+                Margin = new Thickness(2, 1, 0, 1)
+            };
+            
+            tb.Inlines.Add(new System.Windows.Documents.Run(time + "  ") { Foreground = _brushLogTime });
+            tb.Inlines.Add(new System.Windows.Documents.Run(icon) { Foreground = brush });
+            tb.Inlines.Add(new System.Windows.Documents.Run(a.Action + " ") { Foreground = _brushLogDefault });
+            if (!string.IsNullOrEmpty(a.Target))
+                tb.Inlines.Add(new System.Windows.Documents.Run(a.Target) { Foreground = _brushLogIP });
+
+            ActivityFeedPanel.Children.Add(tb);
         }
-        TxtActivityFeed.Text = parts.Count > 0
-            ? string.Join("   ", parts)
-            : "";
     }
 
     // Coloured log brushes (frozen = thread-safe, allocated once)
@@ -476,8 +496,7 @@ public partial class ServerWindow : Window
             UpdateClientCount();
             ScreenPanel.Children.Clear();
             _screenTiles.Clear();
-            TxtStatusLeft.Text = "SɆⱤØ";
-            TxtStatusLeft.Foreground = new SolidColorBrush(Color.FromRgb(0x2E, 0x30, 0x48));
+            // Status is now handled by the Activity Panel
             Log("[*] Server stopped.");
         }
         else
@@ -570,8 +589,7 @@ public partial class ServerWindow : Window
                 BtnStartStop.Style = (Style)FindResource("SRedBtn");
                 _dashTimer.Start();
                 _uptimeTimer.Start();
-                TxtStatusLeft.Text = $"SɆⱤØ  ·  Listening on :{port}";
-                TxtStatusLeft.Foreground = (Brush)FindResource("GreenBrush");
+                // Status is now handled by the Activity Panel
 
                 // Discord RPC
                 if (SettingsDiscordRPC.IsChecked == true)
@@ -4239,9 +4257,12 @@ Read-Host 'Press Enter to close'
         TxtLogs.ScrollToEnd();
     }
 
-    private static readonly System.Text.RegularExpressions.Regex _ipRegex = new(
-        @"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
-        System.Text.RegularExpressions.RegexOptions.Compiled);
+    private static readonly System.Text.RegularExpressions.Regex _logTokenRegex = new(
+        @"(?<ip>\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)|(?<event>\b(?:connected|disconnected|failed|success|error)\b)|(?<client>\b(?:Client|client)\s+[A-Za-z0-9_-]+)|(?<user>\b[A-Za-z0-9_.-]+(?=@))",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly Brush _brushLogEvent = MakeBrush(0x60, 0xA5, 0xFA); // Blue
+    private static readonly Brush _brushLogClient = MakeBrush(0xA7, 0x8B, 0xFA); // Purple
+    private static readonly Brush _brushLogUser = MakeBrush(0x34, 0xD3, 0x99); // Emerald
 
     private IEnumerable<(string text, Brush brush)> TokenizeLogEntry(string msg)
     {
@@ -4319,13 +4340,20 @@ Read-Host 'Press Enter to close'
             body = body[3..];
         }
 
-        // Extract IP addresses from the remaining body and color them
+        // Extract tokens (IP, Event, Client ID, Username) from the remaining body and color them
         int lastIdx = 0;
-        foreach (System.Text.RegularExpressions.Match match in _ipRegex.Matches(body))
+        foreach (System.Text.RegularExpressions.Match match in _logTokenRegex.Matches(body))
         {
             if (match.Index > lastIdx)
                 yield return (body[lastIdx..match.Index], bodyBrush);
-            yield return (match.Value, _brushLogIP);
+
+            Brush tokenBrush = bodyBrush;
+            if (match.Groups["ip"].Success) tokenBrush = _brushLogIP;
+            else if (match.Groups["event"].Success) tokenBrush = _brushLogEvent;
+            else if (match.Groups["client"].Success) tokenBrush = _brushLogClient;
+            else if (match.Groups["user"].Success) tokenBrush = _brushLogUser;
+
+            yield return (match.Value, tokenBrush);
             lastIdx = match.Index + match.Length;
         }
         if (lastIdx < body.Length)
