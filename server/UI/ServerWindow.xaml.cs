@@ -318,7 +318,7 @@ public partial class ServerWindow : Window
             RefreshAllClients();
             LoadConfig();
             LoadSoundPreferences();
-            NotificationService.Initialize(SettingsNotifySound.IsChecked == true);
+            NotificationService.Initialize(SettingsNotifySound.IsChecked == true, SettingsNotifyVisual.IsChecked == true);
             // Initialize default host if empty
             if (BldHosts.Items.Count == 0)
                 BldHosts.Items.Add("127.0.0.1");
@@ -2163,6 +2163,7 @@ public partial class ServerWindow : Window
             if (cfg.TryGetValue("MaxClients", out var mc) && !string.IsNullOrEmpty(mc)) SettingsMaxClients.Text = mc;
             if (cfg.TryGetValue("DiscordRPC", out v)) SettingsDiscordRPC.IsChecked = v == "1";
             if (cfg.TryGetValue("NotifySound",  out v)) SettingsNotifySound.IsChecked  = v == "1";
+            if (cfg.TryGetValue("NotifyVisual", out v)) SettingsNotifyVisual.IsChecked = v == "1";
             if (cfg.TryGetValue("HideLogo", out v) && v == "1")
             {
                 SettingsHideLogo.IsChecked = true;
@@ -2232,6 +2233,7 @@ public partial class ServerWindow : Window
                 ["MaxClients"] = SettingsMaxClients.Text.Trim(),
                 ["DiscordRPC"] = SettingsDiscordRPC.IsChecked == true ? "1" : "0",
                 ["NotifySound"] = SettingsNotifySound.IsChecked == true ? "1" : "0",
+                ["NotifyVisual"] = SettingsNotifyVisual.IsChecked == true ? "1" : "0",
                 ["HideLogo"] = SettingsHideLogo.IsChecked == true ? "1" : "0",
                 ["BlockCapture"] = SettingsBlockCapture.IsChecked == true ? "1" : "0",
                 ["TelegramEnabled"] = BldTelegramEnabled.IsChecked == true ? "1" : "0",
@@ -3630,9 +3632,9 @@ Read-Host 'Press Enter to close'
         }
     }
 
-    private void SettingsNotifySound_Changed(object sender, RoutedEventArgs e)
+    private void SettingsNotify_Changed(object sender, RoutedEventArgs e)
     {
-        NotificationService.SetEnabled(SettingsNotifySound.IsChecked == true);
+        NotificationService.SetEnabled(SettingsNotifySound.IsChecked == true, SettingsNotifyVisual.IsChecked == true);
         SaveConfig();
     }
 

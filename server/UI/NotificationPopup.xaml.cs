@@ -5,7 +5,7 @@ namespace SeroServer.UI;
 
 public partial class NotificationPopup : Window
 {
-    private const double DisplayMs = 3800;
+    private const double DisplayMs = 2000;
     private const double FadeInMs  = 200;
     private const double FadeOutMs = 280;
     private const double SlideInPx = 20;
@@ -52,7 +52,7 @@ public partial class NotificationPopup : Window
 
         // Progress bar depletes linearly
         ProgressBar.BeginAnimation(WidthProperty,
-            new DoubleAnimation(304, 0, TimeSpan.FromMilliseconds(DisplayMs)));
+            new DoubleAnimation(264, 0, TimeSpan.FromMilliseconds(DisplayMs)));
 
         var timer = new System.Windows.Threading.DispatcherTimer
             { Interval = TimeSpan.FromMilliseconds(DisplayMs) };

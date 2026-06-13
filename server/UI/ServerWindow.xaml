@@ -2202,8 +2202,12 @@
                                                 Style="{StaticResource SGreenBtn}" FontSize="10"
                                                 Click="SettingsApplyDiscordRPC_Click" />
                                     </StackPanel>
-                                    <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,24"
-                                              Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                                        <CheckBox x:Name="SettingsNotifySound" Content="Play notification sounds" Style="{StaticResource SChk}" Margin="0,0,16,0"
+                                                  Checked="SettingsNotify_Changed" Unchecked="SettingsNotify_Changed" />
+                                        <CheckBox x:Name="SettingsNotifyVisual" Content="Show visual popup alerts" Style="{StaticResource SChk}"
+                                                  Checked="SettingsNotify_Changed" Unchecked="SettingsNotify_Changed" />
+                                    </StackPanel>
 
                                     <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
                                     <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
