@@ -32,7 +32,7 @@ public partial class WebcamWindow : Window
         TxtQuality.Text      = $"{(int)SldQuality.Value}";
         SldFps.Value         = UiPrefs.GetInt("WcamFps", 20);
         TxtFpsVal.Text       = $"{(int)SldFps.Value}";
-        CmbResolution.SelectedIndex = UiPrefs.GetInt("WcamRes", 0);
+        CmbResolution.SelectedIndex = UiPrefs.GetInt("WcamRes", 4);
         ChkAutoStart.IsChecked = UiPrefs.GetInt("WcamAutoStart", 0) == 1;
 
         SldQuality.ValueChanged += (_, e) => { TxtQuality.Text = $"{(int)e.NewValue}"; UiPrefs.Set("WcamQuality", (int)e.NewValue); };
@@ -310,6 +310,22 @@ public partial class WebcamWindow : Window
     private void TitleBar_Drag(object s, MouseButtonEventArgs e)
     {
         if (WindowState == WindowState.Normal) DragMove();
+    }
+
+    private void BtnRemoteDesktop_Click(object s, RoutedEventArgs e)
+    {
+        var mainWin = Application.Current.MainWindow as ServerWindow;
+        if (mainWin == null) return;
+
+        mainWin.OpenFeatureWindow<RemoteDesktopWindow>(_clientId, () =>
+        {
+            var area = SystemParameters.WorkArea;
+            const int margin = 40;
+            var w = new RemoteDesktopWindow(_server, _clientId);
+            w.Left = area.Left + margin;
+            w.Top  = area.Top  + margin;
+            return w;
+        });
     }
 
     private void ResizeGrip_DragDelta(object s, DragDeltaEventArgs e)

@@ -124,8 +124,12 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                    <!-- Right: FPS pill + fullscreen + close -->
+                    <!-- Right: RDP button + FPS pill + fullscreen + close -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="BtnRemoteDesktop" ToolTip="Open Remote Desktop" Width="28" Height="26" Margin="0,0,8,0"
+                                Background="#0F1020" BorderBrush="#1E2038" BorderThickness="1"
+                                Foreground="#606880" FontSize="13" Cursor="Hand" Padding="0"
+                                Click="BtnRemoteDesktop_Click" Content="🖥"/>
                         <Border Margin="0,0,12,0" Padding="8,3" CornerRadius="3"
                                 Background="#0A0C18" BorderBrush="#1E2038" BorderThickness="1">
                             <TextBlock x:Name="TxtFps" Text="— fps" Foreground="#404878"
@@ -252,9 +256,9 @@
             <Grid>
                 <Rectangle Fill="#020306"/>
                 <Image x:Name="ImgFrame"
-                       Stretch="UniformToFill"
-                       HorizontalAlignment="Stretch"
-                       VerticalAlignment="Stretch"/>
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
 
                 <!-- Placeholder shown before streaming starts -->
                 <TextBlock x:Name="TxtPlaceholder"

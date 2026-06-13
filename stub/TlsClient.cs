@@ -45,9 +45,33 @@ internal class TlsClient : IDisposable
         try
         {
             var ip = (await _ipHttp.GetStringAsync("https://api.ipify.org?format=text")).Trim();
-            return System.Net.IPAddress.TryParse(ip, out _) ? ip : string.Empty;
+            if (System.Net.IPAddress.TryParse(ip, out _)) return ip;
         }
-        catch { return string.Empty; }
+        catch { }
+
+        // Fallback to local network IP when offline or ipify is blocked
+        try
+        {
+            foreach (var netInterface in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (netInterface.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
+                    netInterface.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
+                {
+                    var props = netInterface.GetIPProperties();
+                    foreach (var addr in props.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                            !System.Net.IPAddress.IsLoopback(addr.Address))
+                        {
+                            return addr.Address.ToString();
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
+        return string.Empty;
     }
 
     public TlsClient(string host, int port)
@@ -1981,6 +2005,7 @@ internal class WcamStartDataStub
     public int DeviceIndex { get; set; } = 0;
     public int Quality { get; set; } = 55;
     public int Fps { get; set; } = 15;
+    public int MaxHeight { get; set; } = 0;
 }
 
 internal class HvncStartDataStub

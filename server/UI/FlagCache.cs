@@ -28,6 +28,26 @@ internal static class FlagCache
             return;
         }
 
+        if (key == "lan" || key == "loc")
+        {
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    var text = key == "lan" ? "LAN" : "LOC";
+                    var color = key == "lan" ? System.Windows.Media.Colors.MediumSeaGreen : System.Windows.Media.Colors.SlateGray;
+                    var bmp = GenerateBadge(text, color);
+                    if (bmp != null)
+                    {
+                        _mem[key] = bmp;
+                        client.FlagImage = bmp;
+                    }
+                }
+                catch { }
+            });
+            return;
+        }
+
         _ = Task.Run(async () =>
         {
             var img = await DownloadAsync(key);
@@ -35,6 +55,44 @@ internal static class FlagCache
             if (img != null)
                 Application.Current?.Dispatcher.BeginInvoke(() => client.FlagImage = img);
         });
+    }
+
+    private static BitmapImage? GenerateBadge(string text, System.Windows.Media.Color color)
+    {
+        try
+        {
+            var visual = new System.Windows.Media.DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                dc.DrawRoundedRectangle(new System.Windows.Media.SolidColorBrush(color), null, new Rect(0, 0, 28, 20), 3, 3);
+                var ft = new System.Windows.Media.FormattedText(
+                    text,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Windows.FlowDirection.LeftToRight,
+                    new System.Windows.Media.Typeface(new System.Windows.Media.FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                    10,
+                    System.Windows.Media.Brushes.White,
+                    1.0);
+                dc.DrawText(ft, new Point((28 - ft.Width) / 2, (20 - ft.Height) / 2));
+            }
+            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(28, 20, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            rtb.Render(visual);
+
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+            using var ms = new MemoryStream();
+            encoder.Save(ms);
+            ms.Position = 0;
+
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.StreamSource = ms;
+            img.EndInit();
+            img.Freeze();
+            return img;
+        }
+        catch { return null; }
     }
 
     private static async Task<BitmapImage?> DownloadAsync(string key)

@@ -292,13 +292,10 @@ public class TlsServer
                     : $"{prefix}-{Guid.NewGuid().ToString("N")[..8]}";
             }
 
-            // Prefer client-reported public IP over socket address so tunneled connections
-            // (localtonet, ngrok, Cloudflare Tunnel, etc.) show the real endpoint.
             string displayIp = ip;
             if (!string.IsNullOrWhiteSpace(info.IP)
                 && System.Net.IPAddress.TryParse(info.IP, out var parsedIp)
-                && !System.Net.IPAddress.IsLoopback(parsedIp)
-                && !IsPrivateIp(parsedIp))
+                && !System.Net.IPAddress.IsLoopback(parsedIp))
             {
                 displayIp = info.IP;
             }
@@ -533,8 +530,8 @@ public class TlsServer
                          ip.StartsWith("172."));
 
         // Tunnel (localtonet, ngrok, etc.) or LAN — never look up server's own IP
-        if (isTunnel) return ("Localhost", "");
-        if (isLan)    return ("LAN", "");
+        if (isTunnel) return ("Localhost", "loc");
+        if (isLan)    return ("LAN", "lan");
 
         // Fast path — already cached
         if (_countryCache.TryGetValue(ip, out var cached))

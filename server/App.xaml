@@ -209,6 +209,54 @@
             </Setter>
         </Style>
 
+        <!-- ── Settings CheckBox ──────────────────────────────── -->
+        <Style x:Key="SettingsChk" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#DDE0F0" />
+            <Setter Property="FontSize"   Value="12" />
+            <Setter Property="Margin"     Value="0,0,0,8" />
+            <Setter Property="Cursor"     Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="box" Width="18" Height="18"
+                                    Background="#0D0E1A" BorderBrush="#4E5875"
+                                    BorderThickness="2" CornerRadius="4"
+                                    VerticalAlignment="Center" SnapsToDevicePixels="True">
+                                <Path x:Name="chk" Data="M3,8.5 L7,12.5 L15,4.5"
+                                      Stroke="#22C55E" StrokeThickness="2.5"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Visibility="Collapsed"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="chk" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="box" Property="BorderBrush" Value="#22C55E"/>
+                                <Setter TargetName="box" Property="Background"  Value="#0E241B"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="box" Property="BorderBrush" Value="#89B4FA"/>
+                                <Setter TargetName="box" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#89B4FA" Opacity="0.5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.38"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ── Section label ──────────────────────────────────── -->
         <Style x:Key="SLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#A0AAC8" />
