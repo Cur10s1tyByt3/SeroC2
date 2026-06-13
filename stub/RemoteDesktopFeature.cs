@@ -138,7 +138,7 @@ internal static class RemoteDesktopFeature
 
     // ── State ─────────────────────────────────────────────────────────────────
 
-    private static readonly AutoResetEvent _frameReqEvent = new(false);
+    private static readonly SemaphoreSlim _frameReqWake = new(0);
     private static volatile int _pendingRequests;
 
     private static volatile bool _running;
@@ -188,7 +188,7 @@ internal static class RemoteDesktopFeature
     public static void Stop()
     {
         _running = false;
-        _frameReqEvent.Set();
+        _frameReqWake.Release();
         _thread?.Join(2000);
         _thread = null;
         Interlocked.Exchange(ref _pendingRequests, 0);
@@ -197,7 +197,7 @@ internal static class RemoteDesktopFeature
     public static void SignalAck()
     {
         Interlocked.Add(ref _pendingRequests, 1);
-        _frameReqEvent.Set();
+        _frameReqWake.Release();
     }
 
     // ── Capture loop ──────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ internal static class RemoteDesktopFeature
                 // capacity and prevents the TCP send buffer from filling indefinitely.
                 if (_pendingRequests <= 0)
                 {
-                    _frameReqEvent.WaitOne(200);
+                    _frameReqWake.Wait(200);
                     if (!_running) break;
                     if (_pendingRequests <= 0) continue;
                 }
@@ -437,7 +437,7 @@ internal static class RemoteDesktopFeature
 
         var encoded = new byte[]?[changedBlocks.Count];
         System.Threading.Tasks.Parallel.For(0, changedBlocks.Count,
-            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2) },
             i =>
             {
                 var (bx, by, bw, bh) = changedBlocks[i];

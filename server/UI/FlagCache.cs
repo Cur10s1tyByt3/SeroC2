@@ -24,13 +24,13 @@ internal static class FlagCache
         if (_mem.TryGetValue(key, out var hit))
         {
             if (hit != null)
-                Application.Current?.Dispatcher.BeginInvoke(() => client.FlagImage = hit);
+                Application.Current?.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => client.FlagImage = hit);
             return;
         }
 
         if (key == "lan" || key == "loc")
         {
-            Application.Current?.Dispatcher.BeginInvoke(() =>
+            Application.Current?.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
             {
                 try
                 {
@@ -53,7 +53,7 @@ internal static class FlagCache
             var img = await DownloadAsync(key);
             _mem[key] = img;
             if (img != null)
-                Application.Current?.Dispatcher.BeginInvoke(() => client.FlagImage = img);
+                Application.Current?.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => client.FlagImage = img);
         });
     }
 

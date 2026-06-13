@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -20,6 +21,40 @@ public partial class PerformanceMonitorWindow : Window
     private readonly List<long>  _netRHistory = [];
     private const int MaxPoints = 60;
 
+    // Reusable poly cache per canvas (avoids per-tick allocation)
+    private sealed class SparklineCache
+    {
+        public Polygon? FillPoly;
+        public Polyline? LinePoly;
+        public double PrevW, PrevH;
+        public bool EnsureCreated(Canvas c, Color lineColor, Color fillColor)
+        {
+            if (FillPoly != null && LinePoly != null) return false;
+            FillPoly = new Polygon { Fill = new SolidColorBrush(Color.FromArgb(0x40, fillColor.R, fillColor.G, fillColor.B)), StrokeThickness = 0 };
+            LinePoly = new Polyline { Stroke = new SolidColorBrush(lineColor), StrokeThickness = 1.5 };
+            c.Children.Add(FillPoly);
+            c.Children.Add(LinePoly);
+            return true;
+        }
+    }
+    private sealed class DualSparklineCache
+    {
+        public Polyline? SentPoly, RecvPoly;
+        public double PrevW, PrevH;
+        public bool EnsureCreated(Canvas c, Color sentCol, Color recvCol)
+        {
+            if (SentPoly != null && RecvPoly != null) return false;
+            SentPoly = new Polyline { Stroke = new SolidColorBrush(sentCol), StrokeThickness = 1.5 };
+            RecvPoly = new Polyline { Stroke = new SolidColorBrush(recvCol), StrokeThickness = 1.5 };
+            c.Children.Add(SentPoly);
+            c.Children.Add(RecvPoly);
+            return true;
+        }
+    }
+
+    private readonly Dictionary<Canvas, SparklineCache> _sparkCaches = [];
+    private readonly Dictionary<Canvas, DualSparklineCache> _dualSparkCaches = [];
+
     public PerformanceMonitorWindow(TlsServer server, string clientId, string label)
     {
         InitializeComponent();
@@ -39,14 +74,14 @@ public partial class PerformanceMonitorWindow : Window
             Type = PacketType.PerfMonStart,
             Data = JsonConvert.SerializeObject(new PerfMonStartData { IntervalMs = 1000 })
         });
-        TxtStatus.Text = "Streaming at 1 s interval…";
+        TxtStatus.Text = "Streaming at 1 s interval";
     }
 
     private void OnPerfData(Packet pkt)
     {
         var d = JsonConvert.DeserializeObject<PerfMonData>(pkt.Data);
         if (d == null) return;
-        Dispatcher.BeginInvoke(() =>
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
             // CPU
             AddPoint(_cpuHistory, d.CpuUsage);
@@ -90,59 +125,73 @@ public partial class PerformanceMonitorWindow : Window
         bar.Width = Math.Max(0, parent.ActualWidth * fraction);
     }
 
-    private static void DrawSparkline(System.Windows.Controls.Canvas canvas, List<float> data, float max, Color lineColor, Color fillColor)
+    private void DrawSparkline(Canvas canvas, List<float> data, float max, Color lineColor, Color fillColor)
     {
-        canvas.Children.Clear();
         if (data.Count < 2) return;
 
         double w = canvas.ActualWidth;
         double h = canvas.ActualHeight;
         if (w < 2 || h < 2) return;
 
+        if (!_sparkCaches.TryGetValue(canvas, out var cache))
+        {
+            cache = new SparklineCache();
+            _sparkCaches[canvas] = cache;
+        }
+        cache.EnsureCreated(canvas, lineColor, fillColor);
+        cache.PrevW = w;
+        cache.PrevH = h;
+
         double step = w / (MaxPoints - 1);
-        var pts = new PointCollection();
+        var fillPts = cache.FillPoly!.Points;
+        var linePts = cache.LinePoly!.Points;
+        fillPts.Clear();
+        linePts.Clear();
+
+        fillPts.Add(new Point((MaxPoints - data.Count) * step, h));
         for (int i = 0; i < data.Count; i++)
         {
             double x = (MaxPoints - data.Count + i) * step;
             double y = h - (data[i] / max * h);
-            pts.Add(new Point(x, y));
+            fillPts.Add(new Point(x, y));
+            linePts.Add(new Point(x, y));
         }
-
-        // Fill polygon
-        var poly = new Polygon { Fill = new SolidColorBrush(Color.FromArgb(0x40, fillColor.R, fillColor.G, fillColor.B)), StrokeThickness = 0 };
-        poly.Points.Add(new Point((MaxPoints - data.Count) * step, h));
-        foreach (var p in pts) poly.Points.Add(p);
-        poly.Points.Add(new Point(pts.Last().X, h));
-        canvas.Children.Add(poly);
-
-        // Line
-        var poly2 = new Polyline { Stroke = new SolidColorBrush(lineColor), StrokeThickness = 1.5 };
-        foreach (var p in pts) poly2.Points.Add(p);
-        canvas.Children.Add(poly2);
+        fillPts.Add(new Point(linePts[^1].X, h));
     }
 
-    private static void DrawDualSparkline(System.Windows.Controls.Canvas canvas, List<long> sent, List<long> recv, float max)
+    private void DrawDualSparkline(Canvas canvas, List<long> sent, List<long> recv, float max)
     {
-        canvas.Children.Clear();
         double w = canvas.ActualWidth;
         double h = canvas.ActualHeight;
         if (w < 2 || h < 2 || sent.Count < 2) return;
 
+        if (!_dualSparkCaches.TryGetValue(canvas, out var cache))
+        {
+            cache = new DualSparklineCache();
+            _dualSparkCaches[canvas] = cache;
+        }
+        cache.EnsureCreated(canvas, Color.FromRgb(0x22, 0xC5, 0x5E), Color.FromRgb(0x4A, 0x85, 0xF5));
+        cache.PrevW = w;
+        cache.PrevH = h;
+
         double step = w / (MaxPoints - 1);
 
-        foreach (var (data, col) in new[] {
-            (sent, Color.FromRgb(0x22, 0xC5, 0x5E)),
-            (recv, Color.FromRgb(0x4A, 0x85, 0xF5)) })
+        var sentPts = cache.SentPoly!.Points;
+        sentPts.Clear();
+        for (int i = 0; i < sent.Count; i++)
         {
-            if (data.Count < 2) continue;
-            var line = new Polyline { Stroke = new SolidColorBrush(col), StrokeThickness = 1.5 };
-            for (int i = 0; i < data.Count; i++)
-            {
-                double x = (MaxPoints - data.Count + i) * step;
-                double y = h - (data[i] / max * h);
-                line.Points.Add(new Point(x, y));
-            }
-            canvas.Children.Add(line);
+            double x = (MaxPoints - sent.Count + i) * step;
+            double y = h - (sent[i] / max * h);
+            sentPts.Add(new Point(x, y));
+        }
+
+        var recvPts = cache.RecvPoly!.Points;
+        recvPts.Clear();
+        for (int i = 0; i < recv.Count; i++)
+        {
+            double x = (MaxPoints - recv.Count + i) * step;
+            double y = h - (recv[i] / max * h);
+            recvPts.Add(new Point(x, y));
         }
     }
 

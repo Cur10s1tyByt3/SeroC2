@@ -173,7 +173,7 @@ public partial class ProcessManagerWindow : Window
                 NetKbps    = p.NetKbps,
             }).ToList();
 
-            Dispatcher.BeginInvoke(() =>
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
             {
                 var selectedPid = (GridProcs.SelectedItem as ProcEntryVM)?.Pid;
                 _all.Clear();
@@ -193,7 +193,7 @@ public partial class ProcessManagerWindow : Window
                 if (icon != null)
                 {
                     var capture = vm;
-                    Dispatcher.BeginInvoke(() => capture.IconImage = icon);
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => capture.IconImage = icon);
                 }
             }
         });
