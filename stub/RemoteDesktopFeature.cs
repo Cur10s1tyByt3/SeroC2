@@ -380,9 +380,21 @@ internal static class RemoteDesktopFeature
             // GDI BitBlt fallback (always works: RDP sessions, headless, non-BGRA formats)
             dstW = Math.Max(1, srcW * scale / 100);
             dstH = Math.Max(1, srcH * scale / 100);
-            // Use alternating pre-allocated buffer — avoids 8 MB GC allocation per frame
-            pixels = AcquireCaptureBuffer(dstW * 4 * dstH);
-            if (!CaptureGdi(srcX, srcY, srcW, srcH, dstW, dstH, pixels)) return null;
+            int requiredLen = dstW * 4 * dstH;
+            if (_prevPixels == null || _prevPixels.Length < requiredLen || dstW != _prevW || dstH != _prevH)
+            {
+                pixels = System.Buffers.ArrayPool<byte>.Shared.Rent(requiredLen);
+            }
+            else
+            {
+                pixels = _prevPixels; // reuse buffer for GDI
+            }
+
+            if (!CaptureGdi(srcX, srcY, srcW, srcH, dstW, dstH, pixels))
+            {
+                if (pixels != _prevPixels) System.Buffers.ArrayPool<byte>.Shared.Return(pixels);
+                return null;
+            }
         }
 
         // ── Block-level diff vs previous frame ────────────────────────────────
@@ -417,6 +429,10 @@ internal static class RemoteDesktopFeature
         int totalBlocks  = bCols * bRows;
         int changedCount = changedBlocks.Count;
 
+        if (_prevPixels != null && _prevPixels != pixels)
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(_prevPixels);
+        }
         _prevPixels = pixels;
         _prevW = dstW; _prevH = dstH;
 

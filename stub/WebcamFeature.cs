@@ -548,21 +548,28 @@ internal static class WebcamFeature
                         if (outW < 1) outW = 1;
                     }
 
-                    byte[]? jpeg;
-                    if (outW != vidW || outH != vidH)
+                    byte[]? bgraBuffer = null;
+                    byte[]? jpeg = null;
+                    try
                     {
-                        // Downscale: convert raw → full-size GDI+ bitmap, then scale and encode
-                        jpeg = sgIsMjpg ? ScaleMjpeg(raw, outW, outH, _cfg.Quality)
-                            : sgIsYuy2 ? ScaleAndEncode(Yuy2ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality)
-                            : bpp == 4 ? ScaleAndEncode(Bgrx32ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality)
-                            : ScaleAndEncode(Rgb24ToBgra(raw, vidW, vidH), vidW, vidH, outW, outH, _cfg.Quality);
+                        if (outW != vidW || outH != vidH)
+                        {
+                            if (sgIsMjpg) jpeg = ScaleMjpeg(raw, outW, outH, _cfg.Quality);
+                            else if (sgIsYuy2) { bgraBuffer = Yuy2ToBgra(raw, vidW, vidH); jpeg = ScaleAndEncode(bgraBuffer, vidW, vidH, outW, outH, _cfg.Quality); }
+                            else if (bpp == 4) { bgraBuffer = Bgrx32ToBgra(raw, vidW, vidH); jpeg = ScaleAndEncode(bgraBuffer, vidW, vidH, outW, outH, _cfg.Quality); }
+                            else { bgraBuffer = Rgb24ToBgra(raw, vidW, vidH); jpeg = ScaleAndEncode(bgraBuffer, vidW, vidH, outW, outH, _cfg.Quality); }
+                        }
+                        else
+                        {
+                            if (sgIsMjpg) jpeg = raw;
+                            else if (sgIsYuy2) jpeg = Yuy2ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                            else if (bpp == 4) jpeg = Bgrx32ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                            else jpeg = Rgb24ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                        }
                     }
-                    else
+                    finally
                     {
-                        jpeg = sgIsMjpg ? raw
-                            : sgIsYuy2 ? Yuy2ToJpeg(raw, vidW, vidH, _cfg.Quality)
-                            : bpp == 4 ? Bgrx32ToJpeg(raw, vidW, vidH, _cfg.Quality)
-                            : Rgb24ToJpeg(raw, vidW, vidH, _cfg.Quality);
+                        if (bgraBuffer != null) System.Buffers.ArrayPool<byte>.Shared.Return(bgraBuffer);
                     }
 
                     if (jpeg == null || jpeg.Length == 0) continue;
@@ -764,7 +771,7 @@ internal static class WebcamFeature
     private static byte[] Yuy2ToBgra(byte[] raw, int w, int h)
     {
         int stride = w * 4;
-        var bgra = new byte[stride * h];
+        var bgra = System.Buffers.ArrayPool<byte>.Shared.Rent(stride * h);
         int yuyStride = w * 2;
         for (int row = 0; row < h; row++)
         {
@@ -788,7 +795,7 @@ internal static class WebcamFeature
     private static byte[] Bgrx32ToBgra(byte[] bgrx, int w, int h)
     {
         int stride = w * 4;
-        var bgra = new byte[stride * h];
+        var bgra = System.Buffers.ArrayPool<byte>.Shared.Rent(stride * h);
         for (int row = 0; row < h; row++)
         {
             int src = (h - 1 - row) * stride;
@@ -803,7 +810,7 @@ internal static class WebcamFeature
     {
         int bgraStride = w * 4;
         int srcStride  = w * 3;
-        var bgra = new byte[bgraStride * h];
+        var bgra = System.Buffers.ArrayPool<byte>.Shared.Rent(bgraStride * h);
         for (int row = 0; row < h; row++)
         {
             int srcRow = h - 1 - row;

@@ -3,7 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="UI/ServerWindow.xaml">
     <Application.Resources>
-
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/DarkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
         <!-- ── Palette ─────────────────────────────────────────── -->
         <Color x:Key="BgColor">#0C0D18</Color>
         <Color x:Key="SurfaceColor">#111222</Color>
@@ -686,5 +689,6 @@
             </Setter>
         </Style>
 
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

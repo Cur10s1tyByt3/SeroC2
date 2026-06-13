@@ -225,6 +225,7 @@ public partial class ServerWindow : Window
             view.Filter = ClientFilter;
             view.SortDescriptions.Add(new System.ComponentModel.SortDescription(
                 nameof(Data.ConnectedClient.HasTag), System.ComponentModel.ListSortDirection.Descending));
+            view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(Data.ConnectedClient.Country)));
             GridClients.ItemsSource = view;
             LoadColumnVisibility();
             RestoreGridColumnWidths();
