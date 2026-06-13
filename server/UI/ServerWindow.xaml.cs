@@ -74,13 +74,17 @@ public partial class ServerWindow : Window
     {
         var entry = new ActivityEntry(action, target, status, DateTime.Now);
         _recentActivity.Add(entry);
-        if (_recentActivity.Count > 15) // Keep more items for multi-line
+        if (_recentActivity.Count > 10) // Keep ~10 items
             _recentActivity.RemoveAt(0);
         RefreshActivityFeed();
     }
     private static readonly Brush _brushActivityRunning = MakeBrush(0x38, 0xBD, 0xF8); // sky blue
     private static readonly Brush _brushActivityComplete = MakeBrush(0x4A, 0xDE, 0x80); // green
     private static readonly Brush _brushActivityFailed = MakeBrush(0xF8, 0x71, 0x71); // red
+    private static readonly Brush _brushActivityUpload = MakeBrush(0xA7, 0x8B, 0xFA); // purple
+    private static readonly Brush _brushActivityDownload = MakeBrush(0x34, 0xD3, 0x99); // emerald
+    private static readonly Brush _brushActivityRdp = MakeBrush(0xFB, 0xBF, 0x24); // amber
+    private static readonly Brush _brushActivityCmd = MakeBrush(0xF4, 0x3F, 0x5E); // rose
 
     private void SetStatus(string text, string? activityAction = null, string? activityTarget = null, string? activityStatus = null)
     {
@@ -95,9 +99,23 @@ public partial class ServerWindow : Window
         ActivityFeedPanel.Children.Clear();
         foreach (var a in _recentActivity)
         {
-            var icon = a.Status == "running" ? "⋯ " : a.Status == "failed" ? "✗ " : "✓ ";
-            var brush = a.Status == "running" ? _brushActivityRunning : a.Status == "failed" ? _brushActivityFailed : _brushActivityComplete;
-            var time = a.Time.ToString("h:mm:ss tt");
+            var isRunning = a.Status == "running";
+            var isFailed = a.Status == "failed";
+            
+            var emoji = "⚡";
+            var actionColor = _brushLogDefault;
+            
+            if (a.Action.Contains("Upload", StringComparison.OrdinalIgnoreCase)) { emoji = "⬆️"; actionColor = _brushActivityUpload; }
+            else if (a.Action.Contains("Download", StringComparison.OrdinalIgnoreCase)) { emoji = "⬇️"; actionColor = _brushActivityDownload; }
+            else if (a.Action.Contains("desktop", StringComparison.OrdinalIgnoreCase)) { emoji = "🖥️"; actionColor = _brushActivityRdp; }
+            else if (a.Action.Contains("Kill", StringComparison.OrdinalIgnoreCase)) { emoji = "💀"; actionColor = _brushActivityCmd; }
+            else if (a.Action.Contains("command", StringComparison.OrdinalIgnoreCase)) { emoji = "⌨️"; actionColor = _brushActivityCmd; }
+
+            var icon = isRunning ? "⋯ " : isFailed ? "✗ " : "✓ ";
+            var brush = isRunning ? _brushActivityRunning : isFailed ? _brushActivityFailed : _brushActivityComplete;
+            
+            string timeFmt = (UiPrefs.GetInt("ShowSeconds", 0) == 1) ? "h:mm:ss tt" : "h:mm tt";
+            var time = a.Time.ToString(timeFmt);
             
             var tb = new TextBlock 
             { 
@@ -108,7 +126,7 @@ public partial class ServerWindow : Window
             
             tb.Inlines.Add(new System.Windows.Documents.Run(time + "  ") { Foreground = _brushLogTime });
             tb.Inlines.Add(new System.Windows.Documents.Run(icon) { Foreground = brush });
-            tb.Inlines.Add(new System.Windows.Documents.Run(a.Action + " ") { Foreground = _brushLogDefault });
+            tb.Inlines.Add(new System.Windows.Documents.Run(emoji + " " + a.Action + " ") { Foreground = actionColor });
             if (!string.IsNullOrEmpty(a.Target))
                 tb.Inlines.Add(new System.Windows.Documents.Run(a.Target) { Foreground = _brushLogIP });
 
@@ -2063,6 +2081,7 @@ public partial class ServerWindow : Window
                 SettingsHideLogo.IsChecked = true;
                 BgLogoImage.Visibility = Visibility.Collapsed;
             }
+            SettingsShowSeconds.IsChecked = UiPrefs.GetInt("ShowSeconds", 0) == 1;
             if (cfg.TryGetValue("BlockCapture", out v) && v == "1")
             {
                 SettingsBlockCapture.IsChecked = true;
@@ -3479,6 +3498,12 @@ Read-Host 'Press Enter to close'
         SaveConfig();
     }
 
+    private void SettingsShowSeconds_Changed(object sender, RoutedEventArgs e)
+    {
+        UiPrefs.Set("ShowSeconds", SettingsShowSeconds.IsChecked == true ? 1 : 0);
+        SaveConfig();
+    }
+
     private void LoadSoundPreferences()
     {
         SndChk_Intro.IsChecked = UiPrefs.GetInt("SndEnabled_Intro", 1) == 1;
@@ -4247,6 +4272,8 @@ Read-Host 'Press Enter to close'
             p.Inlines.Add(trimNote);
         }
 
+        bool isAtBottom = TxtLogs.VerticalOffset + TxtLogs.ViewportHeight >= TxtLogs.ExtentHeight - 10;
+
         var para = EnsureLogParagraph();
         foreach (var (text, brush) in TokenizeLogEntry(msg))
         {
@@ -4254,7 +4281,10 @@ Read-Host 'Press Enter to close'
             para.Inlines.Add(run);
         }
 
-        TxtLogs.ScrollToEnd();
+        if (isAtBottom || TxtLogs.ExtentHeight == 0)
+        {
+            TxtLogs.ScrollToEnd();
+        }
     }
 
     private static readonly System.Text.RegularExpressions.Regex _logTokenRegex = new(
@@ -4268,7 +4298,8 @@ Read-Host 'Press Enter to close'
     {
         // Timestamp part
         var now = DateTime.Now;
-        yield return ($"[{now:h:mm:ss tt}] ", _brushLogTime);
+        string timeFmt = (UiPrefs.GetInt("ShowSeconds", 0) == 1) ? "h:mm:ss tt" : "h:mm tt";
+        yield return ($"[{now.ToString(timeFmt)}] ", _brushLogTime);
 
         // Determine base brush for the message body
         var bodyBrush = GetLogBrush(msg);

@@ -2196,6 +2196,8 @@
                                     <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
                                     <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,8"
                                               Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
+                                    <CheckBox x:Name="SettingsShowSeconds" Content="Show seconds in timestamps" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsShowSeconds_Changed" Unchecked="SettingsShowSeconds_Changed" />
                                     <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
                                               Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
                                     <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
@@ -2617,7 +2619,7 @@
                                    HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
                     </Grid>
                     <!-- Bottom row: recent activity feed -->
-                    <Border Grid.Row="1" Background="#08101020" CornerRadius="3" Padding="2" BorderThickness="1" BorderBrush="#111E2038">
+                    <Border Grid.Row="1" Background="#0A0B10" CornerRadius="3" Padding="2" BorderThickness="1" BorderBrush="#111E2038">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel x:Name="ActivityFeedPanel" Margin="4"/>
                         </ScrollViewer>

