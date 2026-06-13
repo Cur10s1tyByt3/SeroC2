@@ -56,6 +56,23 @@ internal static class TcpManagerFeature
                 {
                     int count = Marshal.ReadInt32(buf);
                     int rowSize = Marshal.SizeOf<MIB_TCPROW_OWNER_PID>();
+
+                    // Collect unique PIDs first, then resolve names in one batch
+                    var pidSet = new HashSet<int>();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var row = Marshal.PtrToStructure<MIB_TCPROW_OWNER_PID>(buf + 4 + i * rowSize);
+                        pidSet.Add((int)row.dwOwningPid);
+                    }
+                    var procNames = new Dictionary<int, string>();
+                    try
+                    {
+                        foreach (var p in System.Diagnostics.Process.GetProcesses())
+                            if (pidSet.Contains(p.Id))
+                                procNames[p.Id] = p.ProcessName;
+                    }
+                    catch { }
+
                     for (int i = 0; i < count; i++)
                     {
                         var row = Marshal.PtrToStructure<MIB_TCPROW_OWNER_PID>(buf + 4 + i * rowSize);
@@ -65,13 +82,12 @@ internal static class TcpManagerFeature
                         var remotePort = PortFromDword(row.dwRemotePort);
                         var state = row.dwState < (uint)TcpStates.Length ? TcpStates[row.dwState] : $"{row.dwState}";
 
-                        string procName = "";
-                        try { using var p = System.Diagnostics.Process.GetProcessById((int)row.dwOwningPid); procName = p.ProcessName; } catch { }
+                        procNames.TryGetValue((int)row.dwOwningPid, out var procName);
 
                         entries.Add(new TcpEntryStub
                         {
                             Pid = (int)row.dwOwningPid,
-                            ProcessName = procName,
+                            ProcessName = procName ?? "",
                             LocalAddr = $"{localIp}:{localPort}",
                             RemoteAddr = row.dwState == 2 /*LISTEN*/ ? "*:*" : $"{remoteIp}:{remotePort}",
                             State = state

@@ -1,4 +1,4 @@
-﻿<Window x:Class="SeroServer.UI.DeviceManagerWindow"
+<Window x:Class="SeroServer.UI.DeviceManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Device Manager" Width="860" Height="520" MinWidth="640" MinHeight="360"
@@ -40,6 +40,9 @@
                       HeadersVisibility="Column" FontFamily="Segoe UI" FontSize="12"
                       SelectionMode="Single" CanUserAddRows="False"
                       VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      EnableColumnVirtualization="True"
+                      ScrollViewer.CanContentScroll="True"
                       ColumnHeaderStyle="{StaticResource SColHeader}">
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
@@ -73,9 +76,12 @@
                 </DataGrid.CellStyle>
                 <DataGrid.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="✖ Uninstall" Click="BtnUninstall_Click"/>
+                        <MenuItem Header="&#x1F5D1; Uninstall"   Click="BtnUninstall_Click"/>
                         <Separator/>
-                        <MenuItem Header="⟳ Refresh"   Click="BtnRefresh_Click"/>
+                        <MenuItem Header="Copy Name"     Click="GridDevs_CopyName_Click"/>
+                        <MenuItem Header="Copy Device ID" Click="GridDevs_CopyId_Click"/>
+                        <Separator/>
+                        <MenuItem Header="&#x1F504; Refresh"     Click="BtnRefresh_Click"/>
                     </ContextMenu>
                 </DataGrid.ContextMenu>
                 <DataGrid.Columns>

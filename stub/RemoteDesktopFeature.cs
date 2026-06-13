@@ -138,7 +138,7 @@ internal static class RemoteDesktopFeature
 
     // ── State ─────────────────────────────────────────────────────────────────
 
-    private static readonly AutoResetEvent _frameReqEvent = new(false);
+    private static readonly SemaphoreSlim _frameReqWake = new(0);
     private static volatile int _pendingRequests;
 
     private static volatile bool _running;
@@ -188,7 +188,7 @@ internal static class RemoteDesktopFeature
     public static void Stop()
     {
         _running = false;
-        _frameReqEvent.Set();
+        _frameReqWake.Release();
         _thread?.Join(2000);
         _thread = null;
         Interlocked.Exchange(ref _pendingRequests, 0);
@@ -197,7 +197,7 @@ internal static class RemoteDesktopFeature
     public static void SignalAck()
     {
         Interlocked.Add(ref _pendingRequests, 1);
-        _frameReqEvent.Set();
+        _frameReqWake.Release();
     }
 
     // ── Capture loop ──────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ internal static class RemoteDesktopFeature
                 // capacity and prevents the TCP send buffer from filling indefinitely.
                 if (_pendingRequests <= 0)
                 {
-                    _frameReqEvent.WaitOne(200);
+                    _frameReqWake.Wait(200);
                     if (!_running) break;
                     if (_pendingRequests <= 0) continue;
                 }
@@ -380,9 +380,21 @@ internal static class RemoteDesktopFeature
             // GDI BitBlt fallback (always works: RDP sessions, headless, non-BGRA formats)
             dstW = Math.Max(1, srcW * scale / 100);
             dstH = Math.Max(1, srcH * scale / 100);
-            // Use alternating pre-allocated buffer — avoids 8 MB GC allocation per frame
-            pixels = AcquireCaptureBuffer(dstW * 4 * dstH);
-            if (!CaptureGdi(srcX, srcY, srcW, srcH, dstW, dstH, pixels)) return null;
+            int requiredLen = dstW * 4 * dstH;
+            if (_prevPixels == null || _prevPixels.Length < requiredLen || dstW != _prevW || dstH != _prevH)
+            {
+                pixels = System.Buffers.ArrayPool<byte>.Shared.Rent(requiredLen);
+            }
+            else
+            {
+                pixels = _prevPixels; // reuse buffer for GDI
+            }
+
+            if (!CaptureGdi(srcX, srcY, srcW, srcH, dstW, dstH, pixels))
+            {
+                if (pixels != _prevPixels) System.Buffers.ArrayPool<byte>.Shared.Return(pixels);
+                return null;
+            }
         }
 
         // ── Block-level diff vs previous frame ────────────────────────────────
@@ -417,6 +429,10 @@ internal static class RemoteDesktopFeature
         int totalBlocks  = bCols * bRows;
         int changedCount = changedBlocks.Count;
 
+        if (_prevPixels != null && _prevPixels != pixels)
+        {
+            System.Buffers.ArrayPool<byte>.Shared.Return(_prevPixels);
+        }
         _prevPixels = pixels;
         _prevW = dstW; _prevH = dstH;
 
@@ -437,7 +453,7 @@ internal static class RemoteDesktopFeature
 
         var encoded = new byte[]?[changedBlocks.Count];
         System.Threading.Tasks.Parallel.For(0, changedBlocks.Count,
-            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2) },
             i =>
             {
                 var (bx, by, bw, bh) = changedBlocks[i];

@@ -33,10 +33,6 @@ internal static class InstalledAppsFeature
                             var name = sub.GetValue("DisplayName")?.ToString() ?? "";
                             if (string.IsNullOrWhiteSpace(name)) continue;
                             if (!seen.Add(name)) continue;
-                            var dispIcon = sub.GetValue("DisplayIcon")?.ToString() ?? "";
-                            // DisplayIcon may be "path.exe,0" — strip the comma index
-                            var iconPath = dispIcon.Contains(',') ? dispIcon[..dispIcon.LastIndexOf(',')] : dispIcon;
-                            iconPath = iconPath.Trim('"');
                             apps.Add(new InstalledAppStub
                             {
                                 Name            = name,
@@ -44,8 +40,7 @@ internal static class InstalledAppsFeature
                                 Publisher       = sub.GetValue("Publisher")?.ToString() ?? "",
                                 InstallDate     = sub.GetValue("InstallDate")?.ToString() ?? "",
                                 UninstallString = sub.GetValue("UninstallString")?.ToString() ?? "",
-                                IconB64         = (string.IsNullOrEmpty(iconPath) ? "" : StubIconHelper.ExtractExeIcon(iconPath))
-                                                  is { Length: > 0 } ico ? ico : StubIconHelper.GetGenericExeIcon()
+                                IconB64         = ""
                             });
                         }
                         catch { }
@@ -57,6 +52,40 @@ internal static class InstalledAppsFeature
 
         apps.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
         return JsonSerializer.Serialize(new InstalledListResultStub { Apps = apps }, SeroJson.Default.InstalledListResultStub);
+    }
+
+    internal static string GetIcon(string appName)
+    {
+        if (string.IsNullOrWhiteSpace(appName)) return "";
+        foreach (var path in _regPaths)
+        {
+            foreach (var hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
+            {
+                try
+                {
+                    using var key = hive.OpenSubKey(path);
+                    if (key == null) continue;
+                    foreach (var subName in key.GetSubKeyNames())
+                    {
+                        try
+                        {
+                            using var sub = key.OpenSubKey(subName);
+                            if (sub == null) continue;
+                            var name = sub.GetValue("DisplayName")?.ToString() ?? "";
+                            if (!string.Equals(name, appName, StringComparison.OrdinalIgnoreCase)) continue;
+                            var dispIcon = sub.GetValue("DisplayIcon")?.ToString() ?? "";
+                            var iconPath = dispIcon.Contains(',') ? dispIcon[..dispIcon.LastIndexOf(',')] : dispIcon;
+                            iconPath = iconPath.Trim('"');
+                            var ico = string.IsNullOrEmpty(iconPath) ? "" : StubIconHelper.ExtractExeIcon(iconPath);
+                            return ico.Length > 0 ? ico : StubIconHelper.GetGenericExeIcon();
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+            }
+        }
+        return StubIconHelper.GetGenericExeIcon();
     }
 
     internal static void Uninstall(string uninstallString)

@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SkiaSharp;
+using System.ComponentModel;
+using SeroServer.Data;
 using SeroServer.Net;
 using SeroServer.Protocol;
 
@@ -56,6 +58,7 @@ public partial class RemoteDesktopWindow : Window
         SldQuality.ValueChanged += (_, e) => { TxtQuality.Text = $"{(int)e.NewValue}"; _quality = (int)e.NewValue; UiPrefs.Set("RdpQuality", (int)e.NewValue); };
         SldScale.ValueChanged   += (_, e) => { TxtScale.Text = $"{(int)e.NewValue}%"; UiPrefs.Set("RdpScale", (int)e.NewValue); };
 
+
         // Checkboxes always start unchecked — user enables manually each session
 
         // Reclaim keyboard focus on ImgFrame whenever focus leaves it.
@@ -90,11 +93,21 @@ public partial class RemoteDesktopWindow : Window
             _server.UnregisterHandler(clientId, PacketType.RdpFrame);
             _server.UnregisterHandler(clientId, PacketType.RdpClipboard);
             _server.ClientDisconnected -= OnClientDisconnected;
+            if (_server.ConnectedClients.TryGetValue(clientId, out var client))
+            {
+                client.PropertyChanged -= OnClientPropertyChanged;
+            }
             if (_streaming) SendStop();
         };
 
         TxtClientId.Text = $"[ {clientId} ]";
         TxtStatus.Text = "Connecting...";
+
+        if (_server.ConnectedClients.TryGetValue(_clientId, out var client))
+        {
+            client.PropertyChanged += OnClientPropertyChanged;
+            UpdateWebcamButtonState(client);
+        }
 
         // Fade-in animation on open
         Opacity = 0;
@@ -107,6 +120,16 @@ public partial class RemoteDesktopWindow : Window
             _ = _server.SendToClient(_clientId,
                 new Packet { Type = PacketType.RdpGetMonitors, Data = "{}" });
         };
+    }
+
+    private async void TxtClientId_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        Clipboard.SetText(_clientId);
+        TxtClientId.Text = "Copied!";
+        TxtClientId.Foreground = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+        await Task.Delay(1500);
+        TxtClientId.Text = _clientId;
+        TxtClientId.Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x90, 0xB8));
     }
 
     // ── Fullscreen toggle ─────────────────────────────────────────────────────
@@ -166,12 +189,14 @@ public partial class RemoteDesktopWindow : Window
             Clipboard = ChkClipboard.IsChecked == true,
         });
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RdpStart, Data = data });
+        ServerWindow.ReportGlobalActivity("Remote desktop started", _clientId, "running");
         SetStreamingState(true);
     }
 
     private void SendStop()
     {
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.RdpStop, Data = "{}" });
+        ServerWindow.ReportGlobalActivity("Remote desktop stopped", _clientId, "complete");
         SetStreamingState(false);
     }
 
@@ -206,6 +231,7 @@ public partial class RemoteDesktopWindow : Window
         // its pipeline full — without this the 8 in-flight credits drain and the stream freezes.
         if (_renderBusy) { if (!_closed) SendAck(); return; }
         _renderBusy = true;
+        _bytesReceived += json.Length;
 
         Task.Run(async () =>
         {
@@ -361,6 +387,29 @@ public partial class RemoteDesktopWindow : Window
         {
             TxtFps.Text = $"{_frameCount} fps";
             _frameCount = 0; _fpsTime = now;
+            UpdateMetrics();
+        }
+    }
+    
+    private int _bytesReceived;
+    
+    private void UpdateMetrics()
+    {
+        double mbps = (_bytesReceived * 8.0) / 1000000.0;
+        TxtBandwidth.Text = $"{mbps:F1} Mbps";
+        _bytesReceived = 0;
+        
+        if (_server.ConnectedClients.TryGetValue(_clientId, out var client))
+        {
+            int ping = client.PingMs;
+            TxtPing.Text = $"{ping} ms";
+            if (ping < 100) {
+                SignalIcon.Foreground = new SolidColorBrush(Color.FromRgb(0x22, 0xC5, 0x5E));
+            } else if (ping < 250) {
+                SignalIcon.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            } else {
+                SignalIcon.Foreground = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+            }
         }
     }
 
@@ -600,5 +649,39 @@ public partial class RemoteDesktopWindow : Window
     {
         Width  = Math.Max(MinWidth,  Width  + e.HorizontalChange);
         Height = Math.Max(MinHeight, Height + e.VerticalChange);
+    }
+
+    private void OnClientPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ConnectedClient.CameraStatus))
+        {
+            if (sender is ConnectedClient client)
+            {
+                Dispatcher.BeginInvoke(() => UpdateWebcamButtonState(client));
+            }
+        }
+    }
+
+    private void UpdateWebcamButtonState(ConnectedClient client)
+    {
+        bool hasCam = client.CameraStatus.Equals("Yes", StringComparison.OrdinalIgnoreCase);
+        BtnWebcam.IsEnabled = hasCam;
+        BtnWebcam.Opacity = hasCam ? 1.0 : 0.35;
+    }
+
+    private void BtnWebcam_Click(object sender, RoutedEventArgs e)
+    {
+        var mainWin = Application.Current.MainWindow as ServerWindow;
+        if (mainWin == null) return;
+
+        mainWin.OpenFeatureWindow<WebcamWindow>(_clientId, () =>
+        {
+            var area = SystemParameters.WorkArea;
+            const int margin = 60;
+            var w = new WebcamWindow(_server, _clientId);
+            w.Left = area.Left + margin;
+            w.Top  = area.Top  + margin;
+            return w;
+        });
     }
 }

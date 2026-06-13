@@ -77,10 +77,29 @@ public static class NotificationService
 
     public static void SetEnabled(bool enabled) => _enabled = enabled;
 
+    private static bool IsSndEnabled(string key)
+    {
+        return UiPrefs.GetInt("SndEnabled_" + key, 1) == 1;
+    }
+
+    public static void PlayPreviewFile(string fileName)
+    {
+        PlaySound(S(fileName));
+    }
+
     // ── Always plays (server lifecycle) ──────────────────────────────────────
-    public static void PlayIntro()    => PlaySound(SndIntro);
-    public static void PlayStartup()  => PlaySound(SndStartup);
-    public static void PlayShutdown() => PlaySound(SndShutdown);
+    public static void PlayIntro()
+    {
+        if (IsSndEnabled("Intro")) PlaySound(SndIntro);
+    }
+    public static void PlayStartup()
+    {
+        if (IsSndEnabled("Startup")) PlaySound(SndStartup);
+    }
+    public static void PlayShutdown()
+    {
+        if (IsSndEnabled("Shutdown")) PlaySound(SndShutdown);
+    }
 
     // ── Gated by notification checkbox ───────────────────────────────────────
     public static void NotifyConnected(string clientId, bool isNewHwid = false)
@@ -94,27 +113,34 @@ public static class NotificationService
         if (now - last > TimeSpan.TicksPerMillisecond * 400)
         {
             Interlocked.Exchange(ref _lastConnectSoundTicks, now);
-            PlaySound(isNewHwid ? SndPowerUp : SndConnected);
+            if (isNewHwid)
+            {
+                if (IsSndEnabled("NewClient")) PlaySound(SndPowerUp);
+            }
+            else
+            {
+                if (IsSndEnabled("Connected")) PlaySound(SndConnected);
+            }
         }
     }
 
     public static void NotifyDisconnected(string clientId)
     {
         if (!_enabled) return;
-        PlaySound(SndDisconnected);
+        if (IsSndEnabled("Disconnected")) PlaySound(SndDisconnected);
         ShowBalloon("Client Disconnected", clientId, ToolTipIcon.Warning);
     }
 
-    public static void NotifyBuildSuccess() { if (_enabled) PlaySound(SndSuccess); }
-    public static void NotifyBuildError()   { if (_enabled) PlaySound(SndError); }
+    public static void NotifyBuildSuccess() { if (_enabled && IsSndEnabled("BuildSuccess")) PlaySound(SndSuccess); }
+    public static void NotifyBuildError()   { if (_enabled && IsSndEnabled("BuildError")) PlaySound(SndError); }
 
-    public static void NotifyClipperTriggered() { if (_enabled) PlaySound(SndCoinCollect); }
-    public static void NotifyKeylogReceived()   { if (_enabled) PlaySound(SndMailChime); }
-    public static void NotifyAutoTaskDone()     { if (_enabled) PlaySound(SndScanDone); }
+    public static void NotifyClipperTriggered() { if (_enabled && IsSndEnabled("Clipper")) PlaySound(SndCoinCollect); }
+    public static void NotifyKeylogReceived()   { if (_enabled && IsSndEnabled("Keylogger")) PlaySound(SndMailChime); }
+    public static void NotifyAutoTaskDone()     { if (_enabled && IsSndEnabled("AutoTask")) PlaySound(SndScanDone); }
 
-    public static void NotifyDownloadComplete() { if (_enabled) PlaySound(SndDownload); }
-    public static void NotifyUploadComplete()   { if (_enabled) PlaySound(SndUpload); }
-    public static void NotifyFileDeleted()      { if (_enabled) PlaySound(SndFileDel); }
+    public static void NotifyDownloadComplete() { if (_enabled && IsSndEnabled("Download")) PlaySound(SndDownload); }
+    public static void NotifyUploadComplete()   { if (_enabled && IsSndEnabled("Upload")) PlaySound(SndUpload); }
+    public static void NotifyFileDeleted()      { if (_enabled && IsSndEnabled("FileDelete")) PlaySound(SndFileDel); }
 
     public static void Shutdown()
     {

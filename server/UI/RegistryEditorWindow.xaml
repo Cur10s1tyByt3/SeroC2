@@ -1,4 +1,4 @@
-﻿<Window x:Class="SeroServer.UI.RegistryEditorWindow"
+<Window x:Class="SeroServer.UI.RegistryEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Registry Editor" Width="1020" Height="620" MinWidth="740" MinHeight="440"
@@ -149,6 +149,9 @@
                           HeadersVisibility="Column" FontFamily="Consolas" FontSize="11"
                           SelectionMode="Single" CanUserAddRows="False"
                           VirtualizingStackPanel.IsVirtualizing="True"
+                          VirtualizingStackPanel.VirtualizationMode="Recycling"
+                          EnableColumnVirtualization="True"
+                          ScrollViewer.CanContentScroll="True"
                           ColumnHeaderStyle="{StaticResource SColHeader}"
                           MouseDoubleClick="GridValues_DoubleClick">
                     <DataGrid.ContextMenu>

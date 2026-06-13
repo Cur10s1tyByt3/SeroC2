@@ -24,6 +24,7 @@ public partial class InstalledAppsWindow : Window
     private readonly string    _clientId;
     private readonly ObservableCollection<InstalledAppVM> _all  = [];
     private          ObservableCollection<InstalledAppVM> _view = [];
+    private readonly HashSet<string> _iconPending = [];
 
     public InstalledAppsWindow(TlsServer server, string clientId, string label)
     {
@@ -33,7 +34,12 @@ public partial class InstalledAppsWindow : Window
         TxtTitle.Text = label;
         GridApps.ItemsSource = _view;
         _server.RegisterHandler(clientId, PacketType.InstalledListResult, OnList);
-        Closed += (_, _) => _server.UnregisterHandler(clientId, PacketType.InstalledListResult);
+        _server.RegisterHandler(clientId, PacketType.InstalledIconResult, OnIcon);
+        Closed += (_, _) =>
+        {
+            _server.UnregisterHandler(clientId, PacketType.InstalledListResult);
+            _server.UnregisterHandler(clientId, PacketType.InstalledIconResult);
+        };
         Refresh();
     }
 
@@ -46,11 +52,45 @@ public partial class InstalledAppsWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             _all.Clear();
+            _iconPending.Clear();
             foreach (var a in d.Apps)
-                _all.Add(new InstalledAppVM { Icon = DecodeIcon(a.IconB64), Name = a.Name, Version = a.Version, Publisher = a.Publisher, InstallDate = a.InstallDate, UninstallString = a.UninstallString });
+                _all.Add(new InstalledAppVM { Name = a.Name, Version = a.Version, Publisher = a.Publisher, InstallDate = a.InstallDate, UninstallString = a.UninstallString });
             ApplyFilter(TxtSearch.Text);
             TxtCount.Text = $"({d.Apps.Count})";
             TxtStatus.Text = $"Updated {DateTime.Now:HH:mm:ss} — {d.Apps.Count} apps";
+            _ = RequestIconsAsync(d.Apps);
+        });
+    }
+
+    private async Task RequestIconsAsync(List<InstalledApp> apps)
+    {
+        foreach (var a in apps)
+        {
+            if (string.IsNullOrEmpty(a.Name)) continue;
+            lock (_iconPending)
+            {
+                if (!_iconPending.Add(a.Name)) continue;
+            }
+            await _server.SendToClient(_clientId, new Packet { Type = PacketType.InstalledGetIcon, Data = JsonConvert.SerializeObject(new InstalledIconRequestData { Name = a.Name }) });
+            await Task.Delay(50);
+        }
+    }
+
+    private void OnIcon(Packet pkt)
+    {
+        var d = JsonConvert.DeserializeObject<InstalledIconResultData>(pkt.Data);
+        if (d == null || string.IsNullOrEmpty(d.Name)) return;
+        var icon = DecodeIcon(d.IconB64);
+        Dispatcher.BeginInvoke(() =>
+        {
+            for (int i = 0; i < _all.Count; i++)
+            {
+                if (string.Equals(_all[i].Name, d.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    _all[i] = new InstalledAppVM { Icon = icon, Name = _all[i].Name, Version = _all[i].Version, Publisher = _all[i].Publisher, InstallDate = _all[i].InstallDate, UninstallString = _all[i].UninstallString };
+                    break;
+                }
+            }
         });
     }
 
@@ -91,6 +131,18 @@ public partial class InstalledAppsWindow : Window
         if (FindName("BtnMax") is System.Windows.Controls.Button btn)
             btn.Content = _max ? "❐" : "☐";
     }
+    private void GridApps_CopyName_Click(object s, RoutedEventArgs e)
+    {
+        if (GridApps.SelectedItem is InstalledAppVM vm)
+            try { System.Windows.Clipboard.SetText(vm.Name); TxtStatus.Text = $"Copied: {vm.Name}"; } catch { }
+    }
+
+    private void GridApps_CopyPublisher_Click(object s, RoutedEventArgs e)
+    {
+        if (GridApps.SelectedItem is InstalledAppVM vm && !string.IsNullOrEmpty(vm.Publisher))
+            try { System.Windows.Clipboard.SetText(vm.Publisher); TxtStatus.Text = $"Copied: {vm.Publisher}"; } catch { }
+    }
+
     private void Close_Click(object s, RoutedEventArgs e) => Close();
 
     private static System.Windows.Media.ImageSource? DecodeIcon(string b64)

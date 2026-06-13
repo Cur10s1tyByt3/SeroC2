@@ -101,6 +101,9 @@
                       HeadersVisibility="Column" FontFamily="Segoe UI" FontSize="12"
                       SelectionMode="Extended" CanUserAddRows="False"
                       VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      EnableColumnVirtualization="True"
+                      ScrollViewer.CanContentScroll="True"
                       EnableRowVirtualization="True"
                       ColumnHeaderStyle="{StaticResource SColHeader}">
                 <DataGrid.RowStyle>
@@ -141,6 +144,8 @@
                         <Separator/>
                         <MenuItem Header="⊘ Disable" Click="BtnDisable_Click"/>
                         <MenuItem Header="✖ Delete"  Click="BtnDelete_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Copy Name" Click="GridServices_CopyName_Click"/>
                         <Separator/>
                         <MenuItem Header="⟳ Refresh" Click="BtnRefresh_Click"/>
                     </ContextMenu>

@@ -39,6 +39,15 @@ internal static class ScreenshotFeature
     static readonly Guid JpegClsid  = new("557CF401-1A04-11D3-9A73-0000F81EF32E");
     static readonly Guid EncQuality = new("1D5BE4B5-FA4A-452D-9CDD-5DB35105E7EB");
 
+    private static readonly nint _gdipToken;
+
+    static ScreenshotFeature()
+    {
+        var gdipInp = new GdipIn { Version = 1 };
+        GdiplusStartup(out var tok, ref gdipInp, 0);
+        _gdipToken = tok;
+    }
+
     internal static unsafe string Capture(int quality = 55)
     {
         int sw = GetSystemMetrics(0);
@@ -68,52 +77,46 @@ internal static class ScreenshotFeature
             SelectObject(hdcMem, hbm);
             BitBlt(hdcMem, 0, 0, sw, sh, hdcScreen, 0, 0, 0x00CC0020u); // SRCCOPY
 
-            var gdipInp = new GdipIn { Version = 1 };
-            GdiplusStartup(out nint tok, ref gdipInp, 0);
+            if (GdipCreateBitmapFromScan0(sw, sh, sw * 4, 0x26200A, bits, out nint bmp) != 0 || bmp == 0)
+                { DeleteObject(hbm); DeleteDC(hdcMem); return ""; }
             try
             {
-                if (GdipCreateBitmapFromScan0(sw, sh, sw * 4, 0x26200A, bits, out nint bmp) != 0 || bmp == 0)
-                { DeleteObject(hbm); DeleteDC(hdcMem); return ""; }
-                try
+                nint stream = SHCreateMemStream(0, 0);
+                if (stream == 0) { GdipDisposeImage(bmp); DeleteObject(hbm); DeleteDC(hdcMem); return ""; }
+
+                int q = quality;
+                var ep = new EncParams
                 {
-                    nint stream = SHCreateMemStream(0, 0);
-                    if (stream == 0) { GdipDisposeImage(bmp); DeleteObject(hbm); DeleteDC(hdcMem); return ""; }
+                    Count = 1,
+                    Param = new EncParam { Guid = EncQuality, Count = 1, Type = 4, Value = (nint)(&q) }
+                };
+                var cls = JpegClsid;
+                GdipSaveImageToStream(bmp, stream, ref cls, (nint)(&ep));
 
-                    int q = quality;
-                    var ep = new EncParams
+                long pos = 0;
+                var seek = Marshal.GetDelegateForFunctionPointer<VtSeek>((*(nint**)stream)[5]);
+                seek(stream, 0, 0, ref pos);
+
+                var chunks = new List<byte[]>(); int total = 0;
+                var buf = new byte[65536];
+                fixed (byte* pb = buf)
+                {
+                    var read = Marshal.GetDelegateForFunctionPointer<VtRead>((*(nint**)stream)[3]);
+                    while (true)
                     {
-                        Count = 1,
-                        Param = new EncParam { Guid = EncQuality, Count = 1, Type = 4, Value = (nint)(&q) }
-                    };
-                    var cls = JpegClsid;
-                    GdipSaveImageToStream(bmp, stream, ref cls, (nint)(&ep));
-
-                    long pos = 0;
-                    var seek = Marshal.GetDelegateForFunctionPointer<VtSeek>((*(nint**)stream)[5]);
-                    seek(stream, 0, 0, ref pos);
-
-                    var chunks = new List<byte[]>(); int total = 0;
-                    var buf = new byte[65536];
-                    fixed (byte* pb = buf)
-                    {
-                        var read = Marshal.GetDelegateForFunctionPointer<VtRead>((*(nint**)stream)[3]);
-                        while (true)
-                        {
-                            uint n = 0; read(stream, (nint)pb, (uint)buf.Length, out n);
-                            if (n == 0) break;
-                            var c = new byte[n]; Buffer.BlockCopy(buf, 0, c, 0, (int)n);
-                            chunks.Add(c); total += (int)n;
-                        }
+                        uint n = 0; read(stream, (nint)pb, (uint)buf.Length, out n);
+                        if (n == 0) break;
+                        var c = new byte[n]; Buffer.BlockCopy(buf, 0, c, 0, (int)n);
+                        chunks.Add(c); total += (int)n;
                     }
-                    Marshal.GetDelegateForFunctionPointer<VtRelease>((*(nint**)stream)[2])(stream);
-                    if (total == 0) return "";
-                    var result = new byte[total]; int off = 0;
-                    foreach (var ch in chunks) { Buffer.BlockCopy(ch, 0, result, off, ch.Length); off += ch.Length; }
-                    return Convert.ToBase64String(result);
                 }
-                finally { GdipDisposeImage(bmp); }
+                Marshal.GetDelegateForFunctionPointer<VtRelease>((*(nint**)stream)[2])(stream);
+                if (total == 0) return "";
+                var result = new byte[total]; int off = 0;
+                foreach (var ch in chunks) { Buffer.BlockCopy(ch, 0, result, off, ch.Length); off += ch.Length; }
+                return Convert.ToBase64String(result);
             }
-            finally { GdiplusShutdown(tok); DeleteObject(hbm); DeleteDC(hdcMem); }
+            finally { GdipDisposeImage(bmp); DeleteObject(hbm); DeleteDC(hdcMem); }
         }
         finally { ReleaseDC(0, hdcScreen); }
     }

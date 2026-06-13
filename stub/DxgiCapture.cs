@@ -145,7 +145,7 @@ internal static class DxgiCapture
 
             // Copy rows — row pitch may include GPU alignment padding
             int rowPitch = (int)msr.RowPitch, rowBytes = _w * 4;
-            var px = new byte[rowBytes * _h];
+            var px = System.Buffers.ArrayPool<byte>.Shared.Rent(rowBytes * _h);
             unsafe
             {
                 byte* src = (byte*)msr.pData;
