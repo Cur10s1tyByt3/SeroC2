@@ -2634,12 +2634,17 @@
                     <!-- Top row: server info + current action -->
                     <Grid Grid.Row="0" Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="ACTIVITY LOG" Foreground="#4A5270"
                                    FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" x:Name="TxtStatusBar" Text="Ready"
+                        <TextBlock Grid.Column="1" x:Name="TxtSignalIcon" Text="📶" FontSize="10"
+                                   Foreground="#35f89c" VerticalAlignment="Center" Margin="8,0,0,0"
+                                   ToolTip="Connection health"/>
+                        <TextBlock Grid.Column="3" x:Name="TxtStatusBar" Text="Ready"
                                    Foreground="#94A3B8" FontSize="10" VerticalAlignment="Center"
                                    HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
                     </Grid>

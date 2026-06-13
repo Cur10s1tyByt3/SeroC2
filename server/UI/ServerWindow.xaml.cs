@@ -144,6 +144,45 @@ public partial class ServerWindow : Window
             ActivityLogScroll.ScrollToEnd();
     }
 
+    private void UpdateSignalHealth()
+    {
+        if (TxtSignalIcon == null || _server == null) return;
+        var clients = _server.ConnectedClients.Values.ToList();
+        if (clients.Count == 0)
+        {
+            TxtSignalIcon.Foreground = MakeBrush(0x50, 0x58, 0x70); // Dim — no clients
+            TxtSignalIcon.ToolTip = "No clients connected";
+            return;
+        }
+        int maxPing = 0;
+        int reconnecting = 0;
+        foreach (var c in clients)
+        {
+            if (c.PingMs > maxPing) maxPing = c.PingMs;
+            if (!c.IsAlive) reconnecting++;
+        }
+        if (reconnecting > 0)
+        {
+            TxtSignalIcon.Foreground = MakeBrush(0xEF, 0x44, 0x44); // Red
+            TxtSignalIcon.ToolTip = $"{reconnecting} client(s) with degraded connection";
+        }
+        else if (maxPing > 500)
+        {
+            TxtSignalIcon.Foreground = MakeBrush(0xEF, 0x44, 0x44); // Red
+            TxtSignalIcon.ToolTip = $"High latency detected (worst: {maxPing}ms)";
+        }
+        else if (maxPing > 200)
+        {
+            TxtSignalIcon.Foreground = MakeBrush(0xF5, 0x9E, 0x0B); // Yellow
+            TxtSignalIcon.ToolTip = $"Moderate latency (worst: {maxPing}ms)";
+        }
+        else
+        {
+            TxtSignalIcon.Foreground = MakeBrush(0x35, 0xF8, 0x9C); // Green
+            TxtSignalIcon.ToolTip = $"All connections healthy ({clients.Count} client{(clients.Count != 1 ? "s" : "")})";
+        }
+    }
+
     // Coloured log brushes (frozen = thread-safe, allocated once)
     private static readonly Brush _brushLogError      = MakeBrush(0xF8, 0x71, 0x71); // Soft Coral Red
     private static readonly Brush _brushLogSuccess    = MakeBrush(0x4A, 0xDE, 0x80); // Mint Green
@@ -219,6 +258,11 @@ public partial class ServerWindow : Window
         _batchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _batchTimer.Tick += FlushClientQueue;
         _batchTimer.Start();
+
+        // Connection health signal indicator — updates every 5 seconds
+        var signalTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        signalTimer.Tick += (_, _) => UpdateSignalHealth();
+        signalTimer.Start();
 
         Loaded += (_, _) =>
         {
