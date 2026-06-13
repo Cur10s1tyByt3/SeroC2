@@ -934,7 +934,7 @@ public partial class ServerWindow : Window
         }
     }
 
-    private void OpenFeatureWindow<T>(string clientId, Func<T> factory) where T : Window
+    internal void OpenFeatureWindow<T>(string clientId, Func<T> factory) where T : Window
     {
         string key = $"{clientId}:{typeof(T).Name}";
         if (_featureWindows.TryGetValue(key, out var existing))
