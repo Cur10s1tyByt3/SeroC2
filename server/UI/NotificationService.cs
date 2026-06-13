@@ -9,7 +9,8 @@ public static class NotificationService
 {
     private static NotifyIcon? _trayIcon;
     private static MediaPlayer? _player;
-    private static bool _enabled;
+    private static bool _soundsEnabled;
+    private static bool _visualEnabled;
     private static long _lastConnectSoundTicks;
     private static System.Drawing.Bitmap? _seroBmp;   // kept alive so GetHicon() handle stays valid
     private static System.Drawing.Icon?   _seroIcon;  // notification icon from serofondtransparent.png
@@ -42,9 +43,10 @@ public static class NotificationService
     private static readonly string SndFileDel    = S("23_file_deletion.mp3");
     private static readonly string SndScanDone   = S("20_scan_complete.mp3");
 
-    public static void Initialize(bool enabled)
+    public static void Initialize(bool soundsEnabled, bool visualEnabled)
     {
-        _enabled = enabled;
+        _soundsEnabled = soundsEnabled;
+        _visualEnabled = visualEnabled;
 
         // sero.ico is a WPF embedded resource — load it via pack URI, not filesystem path
         Icon icon;
@@ -75,7 +77,11 @@ public static class NotificationService
         PlayIntro();
     }
 
-    public static void SetEnabled(bool enabled) => _enabled = enabled;
+    public static void SetEnabled(bool soundsEnabled, bool visualEnabled)
+    {
+        _soundsEnabled = soundsEnabled;
+        _visualEnabled = visualEnabled;
+    }
 
     private static bool IsSndEnabled(string key)
     {
@@ -104,8 +110,11 @@ public static class NotificationService
     // ── Gated by notification checkbox ───────────────────────────────────────
     public static void NotifyConnected(string clientId, bool isNewHwid = false)
     {
-        if (!_enabled) return;
-        ShowBalloon(isNewHwid ? "New Client!" : "Client Connected", clientId, ToolTipIcon.Info);
+        if (_visualEnabled)
+            ShowBalloon(isNewHwid ? "New Client!" : "Client Connected", clientId, ToolTipIcon.Info);
+
+        if (!_soundsEnabled) return;
+
         // Debounce: only play a sound if at least 400ms passed since the last connect sound.
         // Prevents a blast of simultaneous sounds when many clients reconnect at startup.
         long now  = DateTime.UtcNow.Ticks;
@@ -126,21 +135,20 @@ public static class NotificationService
 
     public static void NotifyDisconnected(string clientId)
     {
-        if (!_enabled) return;
-        if (IsSndEnabled("Disconnected")) PlaySound(SndDisconnected);
-        ShowBalloon("Client Disconnected", clientId, ToolTipIcon.Warning);
+        if (_soundsEnabled && IsSndEnabled("Disconnected")) PlaySound(SndDisconnected);
+        if (_visualEnabled) ShowBalloon("Client Disconnected", clientId, ToolTipIcon.Warning);
     }
 
-    public static void NotifyBuildSuccess() { if (_enabled && IsSndEnabled("BuildSuccess")) PlaySound(SndSuccess); }
-    public static void NotifyBuildError()   { if (_enabled && IsSndEnabled("BuildError")) PlaySound(SndError); }
+    public static void NotifyBuildSuccess() { if (_soundsEnabled && IsSndEnabled("BuildSuccess")) PlaySound(SndSuccess); }
+    public static void NotifyBuildError()   { if (_soundsEnabled && IsSndEnabled("BuildError")) PlaySound(SndError); }
 
-    public static void NotifyClipperTriggered() { if (_enabled && IsSndEnabled("Clipper")) PlaySound(SndCoinCollect); }
-    public static void NotifyKeylogReceived()   { if (_enabled && IsSndEnabled("Keylogger")) PlaySound(SndMailChime); }
-    public static void NotifyAutoTaskDone()     { if (_enabled && IsSndEnabled("AutoTask")) PlaySound(SndScanDone); }
+    public static void NotifyClipperTriggered() { if (_soundsEnabled && IsSndEnabled("Clipper")) PlaySound(SndCoinCollect); }
+    public static void NotifyKeylogReceived()   { if (_soundsEnabled && IsSndEnabled("Keylogger")) PlaySound(SndMailChime); }
+    public static void NotifyAutoTaskDone()     { if (_soundsEnabled && IsSndEnabled("AutoTask")) PlaySound(SndScanDone); }
 
-    public static void NotifyDownloadComplete() { if (_enabled && IsSndEnabled("Download")) PlaySound(SndDownload); }
-    public static void NotifyUploadComplete()   { if (_enabled && IsSndEnabled("Upload")) PlaySound(SndUpload); }
-    public static void NotifyFileDeleted()      { if (_enabled && IsSndEnabled("FileDelete")) PlaySound(SndFileDel); }
+    public static void NotifyDownloadComplete() { if (_soundsEnabled && IsSndEnabled("Download")) PlaySound(SndDownload); }
+    public static void NotifyUploadComplete()   { if (_soundsEnabled && IsSndEnabled("Upload")) PlaySound(SndUpload); }
+    public static void NotifyFileDeleted()      { if (_soundsEnabled && IsSndEnabled("FileDelete")) PlaySound(SndFileDel); }
 
     public static void Shutdown()
     {
