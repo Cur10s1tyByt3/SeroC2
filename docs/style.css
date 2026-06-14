@@ -201,8 +201,6 @@ body::before {
 .oss-section, .features-section, .price-section,
 .showcase-section, .tech-section, .deepdive-section, .cta-section {
   position: relative; z-index: 1; padding: 80px 0;
-  background: rgba(7,8,15,0.55);
-  backdrop-filter: blur(0px);
 }
 .oss-section::before, .features-section::before, .price-section::before,
 .showcase-section::before, .tech-section::before, .deepdive-section::before,
