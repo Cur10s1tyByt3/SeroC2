@@ -34,9 +34,7 @@ internal static class FlagCache
             {
                 try
                 {
-                    var text = key == "lan" ? "LAN" : "LOC";
-                    var color = key == "lan" ? System.Windows.Media.Colors.MediumSeaGreen : System.Windows.Media.Colors.SlateGray;
-                    var bmp = GenerateBadge(text, color);
+                    var bmp = GenerateBadge("?", System.Windows.Media.Colors.DimGray);
                     if (bmp != null)
                     {
                         _mem[key] = bmp;

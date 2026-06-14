@@ -599,12 +599,13 @@ public class SvcAckData         { public bool Success { get; set; } public strin
 // ── Window Manager ────────────────────────────────────
 public class WindowEntry
 {
-    public long   Handle    { get; set; }
-    public string Title     { get; set; } = string.Empty;
-    public string ClassName { get; set; } = string.Empty;
-    public int    Pid       { get; set; }
-    public bool   Visible   { get; set; }
-    public string IconB64   { get; set; } = string.Empty;
+    public long   Handle      { get; set; }
+    public string Title       { get; set; } = string.Empty;
+    public string ClassName   { get; set; } = string.Empty;
+    public int    Pid         { get; set; }
+    public bool   Visible     { get; set; }
+    public string IconB64     { get; set; } = string.Empty;
+    public string ProcessName { get; set; } = string.Empty;
 }
 public class WinListResultData { public List<WindowEntry> Windows { get; set; } = []; }
 public class WinActionData

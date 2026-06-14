@@ -239,11 +239,20 @@ internal static class RemoteDesktopFeature
             // Warm-up: discard the first 3 DXGI frames so the initial snapshot we send
             // is fully composited by DWM (first frame after init often has black regions
             // for GPU-layered content that hasn't been flushed to the output yet).
+            // Wrapped in try-catch: if DXGI throws during warmup (GPU driver reset,
+            // exclusive fullscreen app, etc.) fall back to GDI instead of killing the thread.
             if (DxgiCapture.IsInitialized)
             {
-                for (int i = 0; i < 3; i++)
-                    DxgiCapture.CaptureFrame(out _, out _, 20);
+                try
+                {
+                    for (int i = 0; i < 3; i++)
+                        DxgiCapture.CaptureFrame(out _, out _, 20);
+                }
+                catch { DxgiCapture.Release(); }
             }
+
+            // Send monitor list — wrapped so a transient send error doesn't kill the thread
+            try { SendMonitorListPublic(_send!); } catch { }
 
             while (_running)
             {

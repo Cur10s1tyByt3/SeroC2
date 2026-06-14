@@ -836,9 +836,9 @@ public partial class ServerWindow : Window
 
     private void ClearOfflineClients_Click(object s, RoutedEventArgs e)
     {
-        if (_server == null) return;
-        var onlineHwids = _server.ConnectedClients.Values
-            .Select(c => c.Hwid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var onlineHwids = _server?.ConnectedClients.Values
+            .Select(c => c.Hwid).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var toRemove = _store.AllClients.Keys
             .Where(hwid => !onlineHwids.Contains(hwid)).ToList();
         foreach (var k in toRemove)
@@ -2170,6 +2170,9 @@ public partial class ServerWindow : Window
                 BgLogoImage.Visibility = Visibility.Collapsed;
             }
             SettingsShowSeconds.IsChecked = UiPrefs.GetInt("ShowSeconds", 0) == 1;
+            SettingsHideActivityLog.IsChecked = UiPrefs.GetInt("HideActivityLog", 0) == 1;
+            if (SettingsHideActivityLog.IsChecked == true)
+                ActivityLogPanel.Visibility = Visibility.Collapsed;
             if (cfg.TryGetValue("BlockCapture", out v) && v == "1")
             {
                 SettingsBlockCapture.IsChecked = true;
@@ -3591,6 +3594,13 @@ Read-Host 'Press Enter to close'
     {
         UiPrefs.Set("ShowSeconds", SettingsShowSeconds.IsChecked == true ? 1 : 0);
         SaveConfig();
+    }
+
+    private void SettingsHideActivityLog_Changed(object sender, RoutedEventArgs e)
+    {
+        bool hide = SettingsHideActivityLog.IsChecked == true;
+        ActivityLogPanel.Visibility = hide ? Visibility.Collapsed : Visibility.Visible;
+        UiPrefs.Set("HideActivityLog", hide ? 1 : 0);
     }
 
     private void LoadSoundPreferences()

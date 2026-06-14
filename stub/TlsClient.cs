@@ -2302,7 +2302,7 @@ internal class SvcActionStub      { public string ServiceName { get; set; } = ""
 internal class SvcAckStub         { public bool Success { get; set; } public string Error { get; set; } = ""; }
 
 // ── Window Manager ────────────────────────────────────
-internal class WindowEntryStub    { public long Handle { get; set; } public string Title { get; set; } = ""; public string ClassName { get; set; } = ""; public int Pid { get; set; } public bool Visible { get; set; } public string IconB64 { get; set; } = ""; }
+internal class WindowEntryStub    { public long Handle { get; set; } public string Title { get; set; } = ""; public string ClassName { get; set; } = ""; public int Pid { get; set; } public bool Visible { get; set; } public string IconB64 { get; set; } = ""; public string ProcessName { get; set; } = ""; }
 internal class WinListResultStub  { public List<WindowEntryStub> Windows { get; set; } = []; }
 internal class WinActionStub      { public long Handle { get; set; } public string Action { get; set; } = ""; }
 

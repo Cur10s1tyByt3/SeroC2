@@ -195,7 +195,7 @@
                 <RowDefinition Height="3"  />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"  />
-                <RowDefinition Height="100" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- ── Background ─────────────────────────────────────────── -->
@@ -2227,6 +2227,8 @@
                                               Checked="SettingsHideLogo_Changed" Unchecked="SettingsHideLogo_Changed" />
                                     <CheckBox x:Name="SettingsShowSeconds" Content="Show seconds in timestamps" Style="{StaticResource SChk}" Margin="0,0,0,8"
                                               Checked="SettingsShowSeconds_Changed" Unchecked="SettingsShowSeconds_Changed" />
+                                    <CheckBox x:Name="SettingsHideActivityLog" Content="Hide activity log panel" Style="{StaticResource SChk}" Margin="0,0,0,8"
+                                              Checked="SettingsHideActivityLog_Changed" Unchecked="SettingsHideActivityLog_Changed" />
                                     <CheckBox x:Name="SettingsBlockCapture" Content="Block screen recording (window hidden from OBS / screenshots / RDP)" Style="{StaticResource SChk}" Margin="0,0,0,4"
                                               Checked="SettingsBlockCapture_Changed" Unchecked="SettingsBlockCapture_Changed" />
                                     <TextBlock Text="Uses SetWindowDisplayAffinity — window appears black in any capture tool." Foreground="#404060" FontSize="10" Margin="0,0,0,24"/>
@@ -2620,7 +2622,7 @@
             </TabControl>
 
             <!-- ── Activity panel ────────────────────────────────── -->
-            <Border Grid.Row="4" Background="#C0111222"
+            <Border x:Name="ActivityLogPanel" Grid.Row="4" Height="100" Background="#C0111222"
                     BorderThickness="0,1,0,0"
                     CornerRadius="0,0,10,10" Padding="16,8">
                 <Border.BorderBrush>

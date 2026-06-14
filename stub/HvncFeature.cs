@@ -1632,58 +1632,72 @@ internal static class HvncFeature
         "cache2", "startupCache", "shader-cache", "thumbnails", "storage"
     };
 
-    private static int CountProfileFiles(string src)
+    private static readonly ParallelOptions _cloneParallel = new() { MaxDegreeOfParallelism = 4 };
+
+    // Single-pass: collect all file pairs + create all destination dirs, then copy in parallel.
+    // This avoids a separate count pass and eliminates nested Parallel.ForEach calls.
+    private static void CollectFilePairs(string src, string dst,
+        List<(string Src, string Dst)> pairs)
     {
-        if (!Directory.Exists(src)) return 0;
-        int n = 0;
-        try { foreach (var _ in Directory.EnumerateFiles(src)) n++; } catch { }
-        try {
+        if (!Directory.Exists(src)) return;
+        try { Directory.CreateDirectory(dst); } catch { }
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(src))
+                pairs.Add((file, Path.Combine(dst, Path.GetFileName(file))));
+        }
+        catch { }
+        try
+        {
             foreach (var dir in Directory.EnumerateDirectories(src))
             {
                 if (_skipProfileDirs.Contains(Path.GetFileName(dir))) continue;
-                n += CountProfileFiles(dir);
+                CollectFilePairs(dir, Path.Combine(dst, Path.GetFileName(dir)), pairs);
             }
-        } catch { }
-        return n;
+        }
+        catch { }
     }
 
-    private static void CloneProfileToDir(string src, string dst, int[]? progress = null)
+    private static void CloneProfileToDir(string src, string dst)
     {
-        if (!Directory.Exists(src)) return;
-        Directory.CreateDirectory(dst);
-        foreach (var file in Directory.EnumerateFiles(src))
+        var pairs = new List<(string Src, string Dst)>();
+        CollectFilePairs(src, dst, pairs);
+        if (pairs.Count == 0) return;
+        Parallel.ForEach(pairs, _cloneParallel, static pair =>
         {
-            try { File.Copy(file, Path.Combine(dst, Path.GetFileName(file)), overwrite: true); }
+            try { File.Copy(pair.Src, pair.Dst, overwrite: true); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
             catch { }
-            if (progress != null) Interlocked.Increment(ref progress[0]);
-        }
-        foreach (var dir in Directory.EnumerateDirectories(src))
-        {
-            if (_skipProfileDirs.Contains(Path.GetFileName(dir))) continue;
-            CloneProfileToDir(dir, Path.Combine(dst, Path.GetFileName(dir)), progress);
-        }
+        });
     }
 
     private static void CloneProfileWithProgress(string src, string dst, string label)
     {
-        int total = CountProfileFiles(src);
-        if (total <= 0) { CloneProfileToDir(src, dst); return; }
+        var pairs = new List<(string Src, string Dst)>();
+        CollectFilePairs(src, dst, pairs);
+        int total = pairs.Count;
+        if (total <= 0) return;
         var progress = new int[1];
         using var cts = new System.Threading.CancellationTokenSource();
         var reporter = new Thread(() =>
         {
             while (!cts.IsCancellationRequested)
             {
-                int copied = Volatile.Read(ref progress[0]);
-                int pct = Math.Clamp(copied * 99 / total, 0, 99);
+                int pct = Math.Clamp(Volatile.Read(ref progress[0]) * 99 / total, 0, 99);
                 SendHvncProgress(pct, label);
                 Thread.Sleep(150);
             }
         }) { IsBackground = true, Name = "HvncProgressReporter" };
         reporter.Start();
-        CloneProfileToDir(src, dst, progress);
+        Parallel.ForEach(pairs, _cloneParallel, pair =>
+        {
+            try { File.Copy(pair.Src, pair.Dst, overwrite: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            catch { }
+            Interlocked.Increment(ref progress[0]);
+        });
         cts.Cancel();
         reporter.Join(500);
         SendHvncProgress(100, label);

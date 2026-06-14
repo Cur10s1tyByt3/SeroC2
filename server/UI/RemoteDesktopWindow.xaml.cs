@@ -458,10 +458,9 @@ public partial class RemoteDesktopWindow : Window
             if (_wasStreaming)
             {
                 _wasStreaming = false;
-                // Request monitor list then auto-start
+                _autoStarted = false; // let OnRdpMonitorList trigger auto-start with its normal delay
                 _ = _server.SendToClient(_clientId,
                     new Packet { Type = PacketType.RdpGetMonitors, Data = "{}" });
-                SendStart();
             }
         });
     }

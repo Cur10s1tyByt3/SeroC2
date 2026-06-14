@@ -56,6 +56,12 @@ internal static class WindowManagerFeature
         return GetExeIcon(pid);
     }
 
+    private static string GetProcessName(uint pid)
+    {
+        try { using var p = System.Diagnostics.Process.GetProcessById((int)pid); return p.ProcessName; }
+        catch { return ""; }
+    }
+
     private static string GetExeIcon(uint pid)
     {
         try
@@ -118,9 +124,12 @@ internal static class WindowManagerFeature
             EnumWindows(cb, IntPtr.Zero); // fallback
         }
 
-        // Second pass: load icons (window-level icon first, then exe icon fallback)
+        // Second pass: load icons and process names
         foreach (var w in wins)
-            w.IconB64 = GetWindowIconB64(new IntPtr(w.Handle), (uint)w.Pid);
+        {
+            w.IconB64     = GetWindowIconB64(new IntPtr(w.Handle), (uint)w.Pid);
+            w.ProcessName = GetProcessName((uint)w.Pid);
+        }
 
         return JsonSerializer.Serialize(new WinListResultStub { Windows = wins }, SeroJson.Default.WinListResultStub);
     }
