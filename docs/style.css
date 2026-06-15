@@ -439,17 +439,18 @@ body::before {
           drop-shadow(0 0 22px rgba(74,133,245,0.92))
           drop-shadow(0 0 44px rgba(74,133,245,0.50))
           drop-shadow(0 4px 10px rgba(0,0,0,0.65));
-  animation: logo3d 12s ease-in-out infinite;
+  animation: logo3d 7s ease-in-out infinite;
   will-change: transform;
 }
 @keyframes logo3d {
-  0%   { transform: perspective(190px) rotateY(-22deg) rotateX(10deg)  rotateZ(-1.5deg) translateY(0px);   }
-  18%  { transform: perspective(190px) rotateY(-5deg)  rotateX(-7deg)  rotateZ(1.2deg)  translateY(-11px); }
-  36%  { transform: perspective(190px) rotateY(20deg)  rotateX(8deg)   rotateZ(2deg)    translateY(-4px);  }
-  54%  { transform: perspective(190px) rotateY(24deg)  rotateX(-10deg) rotateZ(-1deg)   translateY(-14px); }
-  72%  { transform: perspective(190px) rotateY(6deg)   rotateX(6deg)   rotateZ(1.8deg)  translateY(-6px);  }
-  88%  { transform: perspective(190px) rotateY(-15deg) rotateX(-4deg)  rotateZ(-2deg)   translateY(-9px);  }
-  100% { transform: perspective(190px) rotateY(-22deg) rotateX(10deg)  rotateZ(-1.5deg) translateY(0px);   }
+  0%   { transform: perspective(180px) rotateY(-26deg) rotateX(10deg)  rotateZ(-2deg)   translateY(0px);   }
+  12%  { transform: perspective(180px) rotateY(-12deg) rotateX(-10deg) rotateZ(1deg)    translateY(-13px); }
+  25%  { transform: perspective(180px) rotateY(6deg)   rotateX(7deg)   rotateZ(3deg)    translateY(-5px);  }
+  40%  { transform: perspective(180px) rotateY(24deg)  rotateX(-6deg)  rotateZ(-1.5deg) translateY(-16px); }
+  55%  { transform: perspective(180px) rotateY(28deg)  rotateX(11deg)  rotateZ(2.5deg)  translateY(-3px);  }
+  70%  { transform: perspective(180px) rotateY(10deg)  rotateX(-9deg)  rotateZ(-3deg)   translateY(-11px); }
+  85%  { transform: perspective(180px) rotateY(-10deg) rotateX(6deg)   rotateZ(1.5deg)  translateY(-7px);  }
+  100% { transform: perspective(180px) rotateY(-26deg) rotateX(10deg)  rotateZ(-2deg)   translateY(0px);   }
 }
 .cta-section h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
 .cta-section > .container > p { color: var(--muted); font-size: 0.95rem; max-width: 420px; }
