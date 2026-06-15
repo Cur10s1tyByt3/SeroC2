@@ -433,9 +433,11 @@ body::before {
 .cta-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .cta-logo {
   width: clamp(80px, 14vw, 160px);
-  opacity: 0.28;
+  opacity: 0.55;
   margin-bottom: 8px;
-  filter: brightness(6) drop-shadow(0 0 40px rgba(74,133,245,0.90)) drop-shadow(0 0 18px rgba(124,92,232,0.65));
+  filter: invert(1) brightness(0.88)
+          drop-shadow(0 0 28px rgba(74,133,245,0.95))
+          drop-shadow(0 0 12px rgba(255,255,255,0.45));
   animation: logo3d 9s ease-in-out infinite;
 }
 @keyframes logo3d {
@@ -669,6 +671,54 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
 }
 .feat-col h4, .tech-list h4 {
   text-shadow: 0 0 20px rgba(7,8,15,0.95), 0 2px 8px rgba(7,8,15,0.75);
+}
+
+/* ── iPhone-specific fixes (≤390px — SE/12/13/14/15 standard) ──────────── */
+@media (max-width: 390px) {
+  /* Nav — tighter on iPhone */
+  .btn-gh { padding: 6px 9px; font-size: 0.74rem; }
+  .lang-btn { padding: 5px 7px; gap: 3px; font-size: 0.72rem; }
+  #lang-current { display: none; }          /* globe icon only, no "EN" text */
+
+  /* Hero */
+  .hero { padding: 76px 0 28px; }
+  .hero h1 { font-size: clamp(1.55rem, 9vw, 2.2rem); line-height: 1.10; }
+  .hero-lead { font-size: 0.84rem; margin-bottom: 24px; max-width: 100%; }
+  .hero-meta { flex-wrap: wrap; column-gap: 6px; row-gap: 4px; }
+  .hero-meta .sep { display: none; }
+
+  /* Buttons — large touch targets */
+  .btn-primary { padding: 13px 18px; font-size: 0.88rem; }
+  .btn-outline  { padding: 12px 18px; font-size: 0.88rem; }
+
+  /* Section headings */
+  .section-h   { font-size: clamp(1.25rem, 7vw, 1.75rem); }
+  .section-sub { font-size: 0.84rem; margin-bottom: 22px; }
+
+  /* Code block — prevent horizontal overflow */
+  .code-wrap   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .code-body   { min-width: 0; white-space: pre; overflow-x: auto; }
+  .code-body code { font-size: 0.65rem; }
+
+  /* Deep dive cards — full-width on iPhone SE */
+  .deepdive-card { padding: 14px 12px; }
+  .deepdive-card h3 { font-size: 0.88rem; }
+  .deepdive-card p  { font-size: 0.80rem; }
+
+  /* Feature columns */
+  .feat-col h4  { font-size: 0.60rem; }
+  .feat-col li  { font-size: 0.78rem; }
+
+  /* CTA */
+  .cta-section h2 { font-size: 1.4rem; line-height: 1.18; }
+  .cta-section p  { font-size: 0.78rem; }
+  .cta-logo { width: clamp(64px, 20vw, 110px); }
+
+  /* Gallery */
+  .gallery { grid-template-columns: 1fr; gap: 8px; }
+
+  /* Price table */
+  .price-table td { font-size: 0.76rem; padding: 9px 6px; }
 }
 
 /* ── RTL support (Arabic) ──────────────────────────────────────────────── */

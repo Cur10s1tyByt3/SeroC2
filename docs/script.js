@@ -360,21 +360,19 @@ function applyLang(code) {
       my = (e.clientY / window.innerHeight - 0.5) * 0.045;
     }, { passive: true });
   } else {
-    /* On mobile: track touch position to tilt the sky */
-    let tx0 = 0, ty0 = 0;
+    /* Mobile: map finger position to tilt — same logic as mouse */
     window.addEventListener('touchstart', e => {
-      tx0 = e.touches[0].clientX;
-      ty0 = e.touches[0].clientY;
+      const t = e.touches[0];
+      mx = (t.clientX / window.innerWidth  - 0.5) * 0.18;
+      my = (t.clientY / window.innerHeight - 0.5) * 0.12;
     }, { passive: true });
     window.addEventListener('touchmove', e => {
-      const dx = e.touches[0].clientX - tx0;
-      const dy = e.touches[0].clientY - ty0;
-      mx = (dx / window.innerWidth)  *  0.10;
-      my = (dy / window.innerHeight) *  0.07;
+      const t = e.touches[0];
+      mx = (t.clientX / window.innerWidth  - 0.5) * 0.18;
+      my = (t.clientY / window.innerHeight - 0.5) * 0.12;
     }, { passive: true });
     window.addEventListener('touchend', () => {
-      /* Slowly reset back to neutral */
-      mx *= 0.5; my *= 0.5;
+      mx = 0; my = 0; /* lerp in tick() returns to neutral smoothly */
     }, { passive: true });
   }
 
