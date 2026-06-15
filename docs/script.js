@@ -334,58 +334,77 @@ function applyLang(code) {
 })();
 
 /* ══════════════════════════════════════════════════════════════════
-   Three.js — C2 global surveillance globe
+   Three.js — Orbital Defense Network
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   const canvas = document.getElementById('bg-canvas');
   if (!canvas || typeof THREE === 'undefined') return;
 
-  const mobile = window.innerWidth < 768;
-  const R = 9.5;
+  const W = window.innerWidth, H = window.innerHeight;
+  const portrait = H > W;
+  const mobile = W < 768;
+  const R = 9;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: !mobile });
   renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
-  renderer.setClearColor(0x060810, 1);
+  renderer.setClearColor(0x05070e, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x060810, mobile ? 0.016 : 0.011);
+  scene.fog = new THREE.FogExp2(0x05070e, mobile ? 0.011 : 0.009);
 
-  const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 120);
-  camera.position.set(0, mobile ? 1.5 : 3, mobile ? 17 : 21);
+  /* On portrait mobile the globe must fill the screen impressively */
+  const fov = mobile && portrait ? 62 : 48;
+  const camZ = mobile && portrait ? 13 : mobile ? 16 : 20;
+  const camY = mobile ? 1.5 : 3.5;
+  const camera = new THREE.PerspectiveCamera(fov, W / H, 0.1, 120);
+  camera.position.set(0, camY, camZ);
   camera.lookAt(0, 0, 0);
 
-  /* ── Atmosphere — 3 layered glows ───────────────────────────────────── */
+  /* ── Glow sprite helper ─────────────────────────────────────────────── */
   function makeGlow(sz, c0, c1, scale) {
     const cv = document.createElement('canvas'); cv.width = cv.height = sz;
     const ctx = cv.getContext('2d'), c = sz / 2;
     const g = ctx.createRadialGradient(c, c, 0, c, c, c);
-    g.addColorStop(0, c0); g.addColorStop(0.45, c1); g.addColorStop(1, 'rgba(0,0,0,0)');
+    g.addColorStop(0, c0); g.addColorStop(0.5, c1); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, sz, sz);
     const s = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(cv), transparent: true,
-      depthWrite: false, blending: THREE.AdditiveBlending,
+      depthWrite: false, blending: THREE.AdditiveBlending
     }));
-    s.scale.set(scale, scale, 1);
-    return s;
+    s.scale.set(scale, scale, 1); return s;
   }
-  const gs = mobile ? 1.3 : 1.0; // mobile: larger glow to compensate for fewer lines
-  const glowCore  = makeGlow(512, 'rgba(30,90,220,0.28)', 'rgba(10,45,160,0.08)', 28 * gs);
-  const glowMid   = makeGlow(256, 'rgba(15,55,180,0.13)', 'rgba(0,25,90,0.03)',   48 * gs);
-  const glowOuter = makeGlow(128, 'rgba(0,190,255,0.08)', 'rgba(0,80,180,0.02)',  70 * gs);
-  scene.add(glowCore); scene.add(glowMid); scene.add(glowOuter);
 
-  /* ── Globe wireframe — 3-tier brightness ───────────────────────────── */
+  /* 4 nested glow layers — deep blue core to faint cyan edge */
+  const gs = mobile ? 1.4 : 1;
+  const g1 = makeGlow(512, 'rgba(60,140,255,0.35)', 'rgba(20,70,200,0.10)',  22*gs);
+  const g2 = makeGlow(512, 'rgba(20,80,220,0.20)',  'rgba(5,30,120,0.04)',   42*gs);
+  const g3 = makeGlow(256, 'rgba(0,200,255,0.12)',  'rgba(0,80,200,0.02)',   62*gs);
+  const g4 = makeGlow(128, 'rgba(0,160,255,0.06)',  'rgba(0,0,0,0)',         88*gs);
+  [g1,g2,g3,g4].forEach(g => scene.add(g));
+
+  /* ── Globe — architectural structure (not uniform grid) ─────────────── */
   const globeGroup = new THREE.Group();
   scene.add(globeGroup);
 
-  const SEG = mobile ? 56 : 100;
+  const SEG = mobile ? 60 : 110;
 
-  /* Helper: lat ring at angle phi from north pole */
-  function latRing(phi, color, opacity) {
-    const ry = R * Math.cos(phi), rr = R * Math.sin(phi), pts = [];
+  function addCircle(radius, yOff, color, opacity, parent) {
+    const pts = [];
     for (let j = 0; j <= SEG; j++) {
       const th = (j / SEG) * Math.PI * 2;
-      pts.push(new THREE.Vector3(rr * Math.cos(th), ry, rr * Math.sin(th)));
+      pts.push(new THREE.Vector3(radius * Math.cos(th), yOff, radius * Math.sin(th)));
+    }
+    (parent || globeGroup).add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity })
+    ));
+  }
+
+  function addMeridian(lonAngle, color, opacity) {
+    const pts = [];
+    for (let j = 0; j <= SEG; j++) {
+      const phi = (j / SEG) * Math.PI;
+      pts.push(new THREE.Vector3(R*Math.sin(phi)*Math.cos(lonAngle), R*Math.cos(phi), R*Math.sin(phi)*Math.sin(lonAngle)));
     }
     globeGroup.add(new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
@@ -393,39 +412,40 @@ function applyLang(code) {
     ));
   }
 
-  /* Tier 1 — accent circles (equator, tropics, arctic circles) */
-  const ACCENT_PHI = [0.5, Math.PI / 2, Math.PI - 0.5]; // ~28°N, equator, ~28°S
-  ACCENT_PHI.forEach(phi => latRing(phi, 0x2255c8, mobile ? 0.55 : 0.42));
+  /* Structural lat lines: equator + 30°N/S + 60°N/S */
+  addCircle(R, 0, 0x4488ff, mobile ? 0.75 : 0.62);                              // equator — bright
+  [30, -30].forEach(deg => {
+    const y = R * Math.sin(deg * Math.PI / 180);
+    const r = R * Math.cos(deg * Math.PI / 180);
+    addCircle(r, y, 0x2255c8, mobile ? 0.48 : 0.36);                            // tropics
+  });
+  [60, -60].forEach(deg => {
+    const y = R * Math.sin(deg * Math.PI / 180);
+    const r = R * Math.cos(deg * Math.PI / 180);
+    addCircle(r, y, 0x132a5e, mobile ? 0.30 : 0.22);                            // arctic / antarctic
+  });
 
-  /* Equator — brightest */
-  latRing(Math.PI / 2, 0x3878f8, mobile ? 0.80 : 0.65);
-
-  /* Tier 2 — minor lat lines */
-  const LAT_MINOR = mobile ? 5 : 10;
-  for (let i = 1; i < LAT_MINOR; i++) {
-    const phi = (i / LAT_MINOR) * Math.PI;
-    if (Math.abs(phi - Math.PI / 2) < 0.12) continue; // skip equator area
-    latRing(phi, 0x0e2050, mobile ? 0.35 : 0.25);
+  /* Minor lat filler — very dim */
+  if (!mobile) {
+    [-50,-40,-20,-10,10,20,40,50].forEach(deg => {
+      const y = R * Math.sin(deg * Math.PI / 180);
+      const r = R * Math.cos(deg * Math.PI / 180);
+      addCircle(r, y, 0x0a1a38, 0.16);
+    });
   }
 
-  /* Meridians — every 3rd one brighter */
-  const LON_N = mobile ? 12 : 24;
-  for (let i = 0; i < LON_N; i++) {
-    const th = (i / LON_N) * Math.PI * 2;
-    const pts = [];
-    for (let j = 0; j <= SEG; j++) {
-      const phi = (j / SEG) * Math.PI;
-      pts.push(new THREE.Vector3(R*Math.sin(phi)*Math.cos(th), R*Math.cos(phi), R*Math.sin(phi)*Math.sin(th)));
-    }
-    const accent = (i % 3 === 0);
-    globeGroup.add(new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: accent ? 0x1a3a88 : 0x0b1e44, transparent: true, opacity: accent ? (mobile?0.42:0.32) : (mobile?0.20:0.14) })
-    ));
+  /* Structural meridians: 4 cardinal + 8 intermediate */
+  [0, 90, 180, 270].forEach(deg => addMeridian(deg * Math.PI / 180, 0x1e3e80, mobile ? 0.45 : 0.36));
+  if (!mobile) {
+    [45, 135, 225, 315].forEach(deg => addMeridian(deg * Math.PI / 180, 0x112040, 0.22));
+    [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].forEach(deg =>
+      addMeridian(deg * Math.PI / 180, 0x080f20, 0.12));
+  } else {
+    [45, 135, 225, 315].forEach(deg => addMeridian(deg * Math.PI / 180, 0x0c1830, 0.20));
   }
 
-  /* ── Orbit rings — gyroscope, 5 on desktop / 2 mobile ──────────────── */
-  function makeFullRing(r, segs, color, opacity, rx, rz) {
+  /* ── Orbit rings with travelling sentinels ──────────────────────────── */
+  function makeRingDef(r, segs, color, opacity, rx, rz, rotSpeed) {
     const pts = [];
     for (let i = 0; i <= segs; i++) {
       const th = (i / segs) * Math.PI * 2;
@@ -437,63 +457,71 @@ function applyLang(code) {
     );
     ring.rotation.x = rx; ring.rotation.z = rz;
     scene.add(ring);
-    return ring;
+
+    /* Sentinel — bright short arc that orbits on this ring */
+    const span = Math.PI * (mobile ? 0.18 : 0.14);
+    const spts = [];
+    for (let i = 0; i <= 24; i++) {
+      const th = (i / 24) * span;
+      spts.push(new THREE.Vector3(r * Math.cos(th), 0, r * Math.sin(th)));
+    }
+    const sentinel = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(spts),
+      new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: mobile ? 0.90 : 0.78, blending: THREE.AdditiveBlending })
+    );
+    sentinel.rotation.x = rx; sentinel.rotation.z = rz;
+    scene.add(sentinel);
+
+    return { ring, sentinel, rotSpeed };
   }
 
-  const rings = [];
-  rings.push(makeFullRing(R*1.36, 110, 0x2255b8, mobile?0.58:0.45, Math.PI*0.29,  0.28));
+  const ringDefs = [];
+  ringDefs.push(makeRingDef(R*1.34, 110, 0x1d4cb0, mobile?0.55:0.42, Math.PI*0.28,  0.26, -0.028));
   if (!mobile) {
-    rings.push(makeFullRing(R*1.60, 130, 0x5a1eb8, 0.30, Math.PI*0.44, -0.52));
-    rings.push(makeFullRing(R*1.22, 90,  0x0e8888, 0.28, Math.PI*0.08,  Math.PI*0.5));
-    rings.push(makeFullRing(R*1.76, 140, 0x2240a0, 0.18, Math.PI*0.62,  1.10));
-    rings.push(makeFullRing(R*1.48, 120, 0x380e80, 0.22, Math.PI*0.20, -1.40));
+    ringDefs.push(makeRingDef(R*1.58, 130, 0x4a18a8, 0.28, Math.PI*0.43, -0.50,  0.017));
+    ringDefs.push(makeRingDef(R*1.22, 90,  0x0a7878, 0.26, Math.PI*0.09,  Math.PI*0.50, -0.048));
+    ringDefs.push(makeRingDef(R*1.74, 140, 0x1a3898, 0.17, Math.PI*0.61,  1.08,  0.011));
+    ringDefs.push(makeRingDef(R*1.46, 120, 0x300c78, 0.20, Math.PI*0.19, -1.38, -0.025));
   } else {
-    rings.push(makeFullRing(R*1.58, 90, 0x4a1090, 0.32, Math.PI*0.40, -0.45));
+    ringDefs.push(makeRingDef(R*1.56, 90, 0x3a0e80, 0.30, Math.PI*0.40, -0.45,  0.016));
   }
-  const ringSpeeds = [-0.030, 0.018, -0.052, 0.011, -0.027];
 
-  /* ── Radar sweep — electric cyan leading arc + long trail ───────────── */
-  function makePartArc(r, a0, a1, segs, color, opacity, tiltX) {
+  /* ── Radar sweep — twin-layer electric cyan ─────────────────────────── */
+  function makeArcSeg(r, a0, a1, n, color, opacity, tiltX) {
     const pts = [];
-    for (let i = 0; i <= segs; i++) {
-      const th = a0 + (a1 - a0) * (i / segs);
+    for (let i = 0; i <= n; i++) {
+      const th = a0 + (a1 - a0) * (i / n);
       pts.push(new THREE.Vector3(r * Math.cos(th), 0, r * Math.sin(th)));
     }
-    const arc = new THREE.Line(
+    const a = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity })
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending })
     );
-    arc.rotation.x = tiltX;
-    scene.add(arc);
-    return arc;
+    a.rotation.x = tiltX; scene.add(a); return a;
   }
 
-  const sweepLead  = makePartArc(R*1.012, 0, Math.PI*0.12, 20, 0x00e5ff, mobile?0.95:0.85, 0.09);
-  const sweepMid   = makePartArc(R*1.012, -Math.PI*0.30, 0, 35, 0x0088cc, mobile?0.38:0.28, 0.09);
-  const sweepTrail = makePartArc(R*1.012, -Math.PI*0.75, -Math.PI*0.30, 50, 0x003366, mobile?0.12:0.08, 0.09);
+  const sweepTilt = 0.10;
+  const sl  = makeArcSeg(R*1.010, 0, Math.PI*0.13, 22, 0x00eeff, mobile?1.0:0.90, sweepTilt);
+  const sm  = makeArcSeg(R*1.010, -Math.PI*0.35, 0, 40, 0x0099cc, mobile?0.45:0.32, sweepTilt);
+  const str = makeArcSeg(R*1.010, -Math.PI*0.85, -Math.PI*0.35, 60, 0x003355, mobile?0.14:0.09, sweepTilt);
 
-  /* ── Pulse ring — periodic radar ping ──────────────────────────────── */
-  function makePulseRing() {
-    const pts = [];
-    for (let i = 0; i <= 100; i++) {
+  /* ── Pulse ring ping ────────────────────────────────────────────────── */
+  const pGeo = new THREE.BufferGeometry().setFromPoints(
+    Array.from({ length: 101 }, (_, i) => {
       const th = (i / 100) * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(th), 0, Math.sin(th)));
-    }
-    const ring = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0 })
-    );
-    ring.rotation.x = 0.08;
-    scene.add(ring);
-    return ring;
-  }
-  const pulseRing = makePulseRing();
+      return new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+    })
+  );
+  const pMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending });
+  const pulseRing = new THREE.Line(pGeo, pMat);
+  pulseRing.rotation.x = 0.06;
+  scene.add(pulseRing);
+  const PULSE_PERIOD = 4.5;
   let pulseClock = 0;
-  const PULSE_PERIOD = 5.0;
 
   /* ── Traveling connection arcs ──────────────────────────────────────── */
-  const ARC_COLORS = [0x3b82f6, 0x06b6d4, 0x7c3aed, 0x2563eb, 0x0ea5e9, 0x8b5cf6];
-  const ARC_N = mobile ? 3 : 7;
+  const ARC_COLORS = [0x3b82f6, 0x06b6d4, 0x7c3aed, 0x0ea5e9, 0x8b5cf6, 0x00b8ff];
+  const ARC_N = mobile ? 4 : 9;
   const arcs  = [];
 
   function surfacePt() {
@@ -504,37 +532,38 @@ function applyLang(code) {
 
   function spawnArc(delay) {
     const a = surfacePt(), b = surfacePt();
-    const ctrl = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(R * 1.72);
-    const PTS  = 80;
+    const ctrl = a.clone().add(b).multiplyScalar(0.5).normalize().multiplyScalar(R * 1.75);
+    const PTS  = 90;
     const pts  = new THREE.QuadraticBezierCurve3(a, ctrl, b).getPoints(PTS);
     const geo  = new THREE.BufferGeometry().setFromPoints(pts);
     geo.setDrawRange(0, 0);
     const mat  = new THREE.LineBasicMaterial({
       color: ARC_COLORS[Math.floor(Math.random() * ARC_COLORS.length)],
-      transparent: true, opacity: 0
+      transparent: true, opacity: 0, blending: THREE.AdditiveBlending
     });
     const line = new THREE.Line(geo, mat);
     globeGroup.add(line);
-    const peak = 0.70 + Math.random() * 0.25;
     return {
-      line, mat, geo,
+      line, mat, geo, PTS,
       t: -(delay || 0),
-      drawDur:  0.6 + Math.random() * 0.8,
-      holdDur:  1.0 + Math.random() * 2.5,
-      fadeDur:  0.45,
-      peak, PTS,
+      drawDur: 0.45 + Math.random() * 0.65,
+      holdDur: 0.9  + Math.random() * 2.2,
+      fadeDur: 0.40,
+      peak: 0.80 + Math.random() * 0.18,
       phase: 'draw',
     };
   }
 
   for (let i = 0; i < ARC_N; i++) arcs.push(spawnArc((i / ARC_N) * 7.0));
 
-  /* ── Resize ─────────────────────────────────────────────────────────── */
+  /* ── Resize — update aspect + FOV for orientation change ────────────── */
   let resizeTimer;
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    camera.fov = (w < 768 && h > w) ? 62 : 48;
+    camera.position.z = (w < 768 && h > w) ? 13 : w < 768 ? 16 : 20;
     camera.updateProjectionMatrix();
   }
   window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 120); }, { passive: true });
@@ -555,31 +584,34 @@ function applyLang(code) {
     const dt = Math.min(clock.getDelta(), 0.05);
     t += dt;
 
-    /* Globe */
-    globeGroup.rotation.y = t * 0.042;
-    globeGroup.rotation.x = Math.sin(t * 0.010) * 0.055;
+    /* Globe — slow spin + subtle nod */
+    globeGroup.rotation.y = t * 0.040;
+    globeGroup.rotation.x = Math.sin(t * 0.009) * 0.05;
 
-    /* Rings — independent gyroscope axes */
-    rings.forEach((ring, i) => { ring.rotation.y = t * (ringSpeeds[i] || -0.02); });
+    /* Orbit rings + sentinels — sentinels orbit opposite direction, faster */
+    ringDefs.forEach(({ ring, sentinel, rotSpeed }) => {
+      ring.rotation.y     = t * rotSpeed;
+      const sv = rotSpeed < 0 ? Math.abs(rotSpeed) * 1.5 + 0.05 : -(Math.abs(rotSpeed) * 1.5 + 0.05);
+      sentinel.rotation.y = t * sv;
+    });
 
-    /* Radar sweep — scene-space so it doesn't rotate with globe */
-    const sy = t * 0.50;
-    sweepLead.rotation.y  = sy;
-    sweepMid.rotation.y   = sy;
-    sweepTrail.rotation.y = sy;
+    /* Radar sweep */
+    const sy = t * 0.52;
+    sl.rotation.y = sm.rotation.y = str.rotation.y = sy;
 
     /* Atmosphere breathe */
-    const b = 1 + Math.sin(t * 0.38) * 0.045;
-    glowCore.scale.set(28 * b, 28 * b, 1);
-    glowMid.scale.set(48 / b, 48 / b, 1);
-    glowOuter.scale.set(72 * (0.97 + Math.sin(t * 0.21) * 0.03), 72 * (0.97 + Math.sin(t * 0.21) * 0.03), 1);
+    const b = 1 + Math.sin(t * 0.36) * 0.05;
+    g1.scale.set(22*gs*b,  22*gs*b,  1);
+    g2.scale.set(42*gs/b,  42*gs/b,  1);
+    g3.scale.set(62*gs*b,  62*gs*b,  1);
+    g4.scale.set(88*gs,    88*gs,    1);
 
     /* Pulse ring */
     pulseClock += dt;
     const pp = (pulseClock % PULSE_PERIOD) / PULSE_PERIOD;
-    const ps = R * (1.0 + pp * 1.4);
+    const ps = R * (1.0 + pp * 1.6);
     pulseRing.scale.set(ps, 1, ps);
-    pulseRing.material.opacity = 0.80 * Math.max(0, 1 - pp * 2.2);
+    pMat.opacity = 0.85 * Math.max(0, 1 - pp * 1.8);
 
     /* Traveling arcs */
     for (let i = 0; i < arcs.length; i++) {
@@ -595,10 +627,10 @@ function applyLang(code) {
           a.mat.opacity = a.peak;
         } else {
           a.geo.setDrawRange(0, Math.max(1, Math.ceil(p * a.PTS)));
-          a.mat.opacity = a.peak * Math.min(p * 4, 1);
+          a.mat.opacity = a.peak * Math.min(p * 5, 1);
         }
       } else if (a.phase === 'hold') {
-        a.mat.opacity = a.peak * (1 + Math.sin(a.t * 3.2) * 0.08);
+        a.mat.opacity = a.peak * (1 + Math.sin(a.t * 3.0) * 0.07);
         if (a.t >= a.holdDur) { a.phase = 'fade'; a.t = 0; }
       } else {
         const p = a.t / a.fadeDur;
@@ -606,7 +638,7 @@ function applyLang(code) {
         if (p >= 1) {
           globeGroup.remove(a.line);
           a.line.geometry.dispose(); a.mat.dispose();
-          arcs[i] = spawnArc(Math.random() * 0.5);
+          arcs[i] = spawnArc(Math.random() * 0.4);
         }
       }
     }
