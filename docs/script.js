@@ -661,16 +661,23 @@ document.querySelectorAll('.reveal').forEach((el, i) => {
     function doTilt() {
       clearTimeout(resetTimer);
       tilted = true;
-      box.style.transition = 'transform 0.13s ease';
-      box.style.transform = 'perspective(600px) rotateY(12deg) scale(0.96)';
+      /* Phase 1 — tilt right with depth + lift shadow */
+      box.style.transition = 'transform 0.14s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.14s ease';
+      box.style.transform  = 'perspective(380px) rotateY(20deg) rotateX(-5deg) scale(0.93)';
+      box.style.boxShadow  = '8px 14px 36px rgba(0,0,0,0.65), -2px -4px 18px rgba(74,133,245,0.18)';
       setTimeout(() => {
-        box.style.transform = 'perspective(600px) rotateY(-8deg) scale(0.96)';
+        /* Phase 2 — spring rebound left, slightly overshoot */
+        box.style.transition = 'transform 0.20s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.20s ease';
+        box.style.transform  = 'perspective(380px) rotateY(-11deg) rotateX(2deg) scale(0.97)';
+        box.style.boxShadow  = '-5px 10px 28px rgba(0,0,0,0.50)';
         setTimeout(() => {
-          box.style.transition = 'transform 0.20s ease';
-          box.style.transform = '';
+          /* Phase 3 — spring settle to flat */
+          box.style.transition = 'transform 0.28s cubic-bezier(0.34,1.30,0.64,1), box-shadow 0.28s ease';
+          box.style.transform  = '';
+          box.style.boxShadow  = '';
           resetTimer = setTimeout(() => { tilted = false; }, 1800);
-        }, 130);
-      }, 130);
+        }, 180);
+      }, 145);
     }
 
     function handleClick() {
