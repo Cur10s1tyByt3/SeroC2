@@ -525,8 +525,8 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   .footer-inner { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
   .footer-right { align-items: center; }
   .footer-links { justify-content: center; }
-  .code-block { max-width: 100%; overflow: hidden; }
-  .code-body { overflow-x: auto; max-width: 100%; }
+  .code-block { max-width: 100%; overflow: visible; }
+  .code-body { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
   .oss-section, .features-section, .price-section,
   .showcase-section, .tech-section, .deepdive-section,
   .testimonial-section, .contrib-section { padding: 56px 0; }
@@ -563,7 +563,12 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   .cta-section { padding: 52px 0; }
   .cta-section h2 { font-size: 1.7rem; }
   .footer-links { flex-wrap: wrap; gap: 14px; }
+  .tech-list { gap: 18px; margin-top: 22px; }
   .tech-list li { padding-left: 10px; }
+  .tech-list li p { line-height: 1.60; }
+  .deepdive-card p { line-height: 1.65; }
+  .gallery { margin-top: 28px; }
+  .contrib-grid { margin-top: 28px; }
   .code-body code { font-size: 0.7rem; }
   .code-body { padding: 14px; }
   .section-h { margin-bottom: 10px; }
@@ -576,7 +581,7 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   .contrib-avatar { width: 50px; height: 50px; }
   .contrib-name { font-size: 0.82rem; }
   /* video */
-  .video-wrap { border-radius: 7px; margin-top: 28px; }
+  .video-wrap { border-radius: 7px; margin-top: 20px; }
 }
 
 @media (max-width: 420px) {
@@ -695,30 +700,52 @@ footer { position: relative; z-index: 1; border-top: 1px solid var(--border); pa
   .section-h   { font-size: clamp(1.25rem, 7vw, 1.75rem); }
   .section-sub { font-size: 0.84rem; margin-bottom: 22px; }
 
-  /* Code block — prevent horizontal overflow */
-  .code-wrap   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .code-body   { min-width: 0; white-space: pre; overflow-x: auto; }
-  .code-body code { font-size: 0.65rem; }
+  /* Code block — scrollable, not clipped */
+  .code-block  { overflow: visible; }
+  .code-body   { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: pre; }
+  .code-body code { font-size: 0.62rem; }
 
-  /* Deep dive cards — full-width on iPhone SE */
+  /* Inline code in prose — allow break */
+  .deepdive-card code { word-break: break-all; }
+
+  /* Price table edge-to-edge on tiny screen */
+  .price-table-wrap { margin-left: -12px; margin-right: -12px; padding: 0 12px; }
+
+  /* Deep dive cards */
   .deepdive-card { padding: 14px 12px; }
   .deepdive-card h3 { font-size: 0.88rem; }
-  .deepdive-card p  { font-size: 0.80rem; }
+  .deepdive-card p  { font-size: 0.79rem; }
+  .dd-tags span     { font-size: 0.60rem; padding: 2px 7px; }
 
   /* Feature columns */
-  .feat-col h4  { font-size: 0.60rem; }
-  .feat-col li  { font-size: 0.78rem; }
+  .feat-col h4 { font-size: 0.60rem; }
+  .feat-col li { font-size: 0.78rem; }
+
+  /* Tech list */
+  .tech-list li strong { font-size: 0.82rem; }
+  .tech-list li p      { font-size: 0.78rem; }
+
+  /* Contributors */
+  .contrib-card  { min-width: 90px; max-width: 130px; padding: 12px 10px; }
+  .contrib-avatar { width: 42px; height: 42px; }
+  .contrib-name  { font-size: 0.76rem; }
+  .contrib-role .tag-blue { font-size: 0.56rem; }
 
   /* CTA */
   .cta-section h2 { font-size: 1.4rem; line-height: 1.18; }
   .cta-section p  { font-size: 0.78rem; }
   .cta-logo { width: clamp(64px, 20vw, 110px); }
 
-  /* Gallery */
-  .gallery { grid-template-columns: 1fr; gap: 8px; }
+  /* Gallery — keep single col from 420px, tighten gap */
+  .gallery { gap: 8px; }
 
   /* Price table */
   .price-table td { font-size: 0.76rem; padding: 9px 6px; }
+
+  /* Footer compact */
+  .footer-brand p  { font-size: 0.74rem; }
+  .footer-links a  { font-size: 0.76rem; }
+  .footer-domain, .footer-copy { font-size: 0.70rem; }
 }
 
 /* ── RTL support (Arabic) ──────────────────────────────────────────────── */
