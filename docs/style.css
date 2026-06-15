@@ -433,11 +433,12 @@ body::before {
 .cta-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .cta-logo {
   width: clamp(80px, 14vw, 160px);
-  opacity: 0.55;
+  opacity: 0.82;
   margin-bottom: 8px;
-  filter: invert(1) brightness(0.88)
-          drop-shadow(0 0 28px rgba(74,133,245,0.95))
-          drop-shadow(0 0 12px rgba(255,255,255,0.45));
+  filter: brightness(3.5) contrast(1.1)
+          drop-shadow(0 0 24px rgba(74,133,245,1))
+          drop-shadow(0 0 48px rgba(74,133,245,0.70))
+          drop-shadow(0 0 8px rgba(255,255,255,0.60));
   animation: logo3d 9s ease-in-out infinite;
 }
 @keyframes logo3d {
