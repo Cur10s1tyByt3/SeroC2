@@ -28,8 +28,7 @@ public class ClientRecord : INotifyPropertyChanged
     public string LastGpuName   { get; set; } = string.Empty;
     public long   LastRamUsed   { get; set; }
     public long   LastRamTotal  { get; set; }
-    public string LastRamDisplay => LastRamTotal > 0
-        ? $"{(int)Math.Round(LastRamUsed / 1024.0)} / {StdGb(LastRamTotal)} GB" : "—";
+    public string LastRamDisplay => LastRamTotal > 0 ? $"{StdGb(LastRamTotal)} GB" : "—";
     private static int StdGb(long mb) { int g = (int)Math.Ceiling(mb / 1024.0); int s = 4; while (s < g) s *= 2; return s; }
     public bool   LastIsAdmin   { get; set; }
     public int    LastPort { get; set; }

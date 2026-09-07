@@ -132,9 +132,7 @@ public class ConnectedClient : INotifyPropertyChanged
     private long _ramTotal;
     public long RamUsed  { get => _ramUsed;  set { if (_ramUsed  != value) { _ramUsed  = value; Notify(); Notify(nameof(RamDisplay)); } } }
     public long RamTotal { get => _ramTotal; set { if (_ramTotal != value) { _ramTotal = value; Notify(); Notify(nameof(RamDisplay)); } } }
-    public string RamDisplay => _ramTotal > 0
-        ? $"{(int)Math.Round(_ramUsed / 1024.0)} / {StdGb(_ramTotal)} GB"
-        : "—";
+    public string RamDisplay => _ramTotal > 0 ? $"{StdGb(_ramTotal)} GB" : "—";
     private static string ToGb(long mb) => (mb / 1024.0).ToString("0.#");
     private static int StdGb(long mb) { int g = (int)Math.Ceiling(mb / 1024.0); int s = 4; while (s < g) s *= 2; return s; }
 
