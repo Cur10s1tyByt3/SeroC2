@@ -1682,7 +1682,23 @@ public partial class ServerWindow : ThemedWindow
             EventHandler widthH = (_, _) =>
             {
                 if (_suppressColumnSave) return;
-                if (c.Width.UnitType == DataGridLengthUnitType.Pixel)
+                if (c.Width.UnitType != DataGridLengthUnitType.Pixel) return;
+                if (c.Width.Value < 5 && c.Visibility == Visibility.Visible)
+                {
+                    string key = GetOriginalKey(c);
+                    if (string.IsNullOrEmpty(key) || key == "TAG") { SaveGridColumnWidths(); return; }
+                    _suppressColumnSave = true;
+                    _suppressCheckboxUpdate = true;
+                    c.Visibility = Visibility.Collapsed;
+                    _suppressColumnSave = false;
+                    _suppressCheckboxUpdate = false;
+                    UiPrefs.Set($"ColVis_{key}", 0);
+                    if (StackColumnCheckboxes != null)
+                        foreach (var child in StackColumnCheckboxes.Children)
+                            if (child is System.Windows.Controls.CheckBox cb && cb.Tag == c)
+                            { cb.IsChecked = false; break; }
+                }
+                else
                     SaveGridColumnWidths();
             };
             desc.AddValueChanged(c, widthH);
@@ -1790,7 +1806,23 @@ public partial class ServerWindow : ThemedWindow
             EventHandler widthH = (_, _) =>
             {
                 if (_suppressColumnSave) return;
-                if (c.Width.UnitType == DataGridLengthUnitType.Pixel)
+                if (c.Width.UnitType != DataGridLengthUnitType.Pixel) return;
+                if (c.Width.Value < 5 && c.Visibility == Visibility.Visible)
+                {
+                    string key = GetOriginalKey(c);
+                    if (string.IsNullOrEmpty(key) || key == "TAG") { SaveAllClientsColumnWidths(); return; }
+                    _suppressColumnSave = true;
+                    _suppressCheckboxUpdate = true;
+                    c.Visibility = Visibility.Collapsed;
+                    _suppressColumnSave = false;
+                    _suppressCheckboxUpdate = false;
+                    UiPrefs.Set($"AllColVis_{key}", 0);
+                    if (StackAllClientsColumnCheckboxes != null)
+                        foreach (var child in StackAllClientsColumnCheckboxes.Children)
+                            if (child is System.Windows.Controls.CheckBox cb && cb.Tag == c)
+                            { cb.IsChecked = false; break; }
+                }
+                else
                     SaveAllClientsColumnWidths();
             };
             desc.AddValueChanged(c, widthH);
@@ -8747,6 +8779,11 @@ Read-Host 'Press Enter to close'
                 if (_suppressCheckboxUpdate) return;
                 _suppressColumnSave = true;
                 col.Visibility = Visibility.Visible;
+                if (col.Width.UnitType == DataGridLengthUnitType.Pixel && col.Width.Value < 5)
+                {
+                    int saved = UiPrefs.GetInt($"ColWidth_{h}", 0);
+                    col.Width = new DataGridLength(saved > 20 ? saved : 75);
+                }
                 _suppressColumnSave = false;
                 UiPrefs.Set($"ColVis_{h}", 1);
                 SaveGridColumnWidths();
@@ -8790,6 +8827,11 @@ Read-Host 'Press Enter to close'
                 if (_suppressCheckboxUpdate) return;
                 _suppressColumnSave = true;
                 col.Visibility = Visibility.Visible;
+                if (col.Width.UnitType == DataGridLengthUnitType.Pixel && col.Width.Value < 5)
+                {
+                    int saved = UiPrefs.GetInt($"AllColWidth_{h}", 0);
+                    col.Width = new DataGridLength(saved > 20 ? saved : 75);
+                }
                 _suppressColumnSave = false;
                 UiPrefs.Set($"AllColVis_{h}", 1);
                 SaveAllClientsColumnWidths();
