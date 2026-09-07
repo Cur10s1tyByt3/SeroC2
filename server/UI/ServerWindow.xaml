@@ -2056,11 +2056,11 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"                          Width="75"  MinWidth="30" FontFamily="Consolas" FontSize="11"/>
                                         <DataGridTextColumn Header="CPU"      Binding="{Binding CpuDisplay}"                          Width="120" MinWidth="30" FontSize="11"/>
+                                        <DataGridTextColumn Header="GPU"      Binding="{Binding GpuDisplay}"                          Width="120" MinWidth="30" FontSize="11"/>
                                         <DataGridTextColumn x:Name="ColLoadHdr" Header="LOAD" Width="50" MinWidth="30" Binding="{Binding Payload}" FontFamily="Consolas" FontSize="11"/>
                                         <DataGridTextColumn Header="AV"       Binding="{Binding Antivirus}"                           Width="100" MinWidth="30" FontSize="11"/>
-                                        <DataGridTextColumn Header="RAM"      Binding="{Binding RamDisplay}"                          Width="75"  MinWidth="30" FontFamily="Consolas" FontSize="11"/>
-                                        <DataGridTextColumn Header="GPU"      Binding="{Binding GpuDisplay}"                          Width="120" MinWidth="30" FontSize="11"/>
                                         <DataGridTemplateColumn x:Name="ColOnlinePingHdr" Header="PING" Width="50" MinWidth="30" SortMemberPath="PingMs">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
