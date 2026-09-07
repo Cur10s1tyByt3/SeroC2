@@ -529,11 +529,6 @@
         <Style x:Key="SlimSlider" TargetType="Slider">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor"            Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.35"/>
-                </Trigger>
-            </Style.Triggers>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -585,6 +580,11 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.35"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- ── ToolTip ──────────────────────────────────────── -->
