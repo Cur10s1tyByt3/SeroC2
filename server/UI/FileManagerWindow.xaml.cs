@@ -92,7 +92,7 @@ public partial class FileManagerWindow : ThemedWindow
             Lang.LanguageChanged -= ApplyLanguage;
         };
         // MediaOpened fires when WMF has fully opened the file — safe moment to call Play()
-        PreviewVideo.MediaOpened += (_, _) => PreviewVideo.Play();
+        PreviewVideo.MediaOpened += (_, _) => { PreviewVideo.Play(); _videoPlaying = true; };
 
         Loaded += async (_, _) =>
         {
@@ -990,6 +990,7 @@ public partial class FileManagerWindow : ThemedWindow
     // ── Preview pane ─────────────────────────────────────────────────────────
 
     private string? _previewTempFile;
+    private bool _videoPlaying;
 
     private void GridFiles_SelectionChanged(object s, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -1076,14 +1077,29 @@ public partial class FileManagerWindow : ThemedWindow
             }
             else if (isVideo)
             {
-                if (_previewTempFile != null) try { System.IO.File.Delete(_previewTempFile); } catch { }
-                _previewTempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), _tempPrefix + Path.GetFileName(vm.Name));
+                // Retire the previous temp file asynchronously — WMF may still hold its lock.
+                var oldTmp = _previewTempFile;
+                if (oldTmp != null)
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(500);
+                        for (int i = 0; i < 20; i++)
+                        {
+                            try { System.IO.File.Delete(oldTmp); return; } catch { }
+                            await Task.Delay(250);
+                        }
+                    });
+                // Unique name (GUID) prevents collision when two videos share the same filename.
+                var ext2 = Path.GetExtension(vm.Name);
+                _previewTempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    _tempPrefix + Guid.NewGuid().ToString("N") + ext2);
                 await System.IO.File.WriteAllBytesAsync(_previewTempFile, bytes);
                 // Make element visible BEFORE setting source so MediaElement can measure
+                _videoPlaying = false;
                 ShowPreviewPanel("video");
                 PreviewVideo.Source = new Uri(System.IO.Path.GetFullPath(_previewTempFile), UriKind.Absolute);
                 PreviewVideo.Volume = 0.8;
-                // Play() is called by the MediaOpened event handler — not here
+                // Play() + _videoPlaying=true are set by the MediaOpened event handler — not here
                 TxtPreviewName.Text = vm.Name;
             }
             else if (isText)
@@ -1110,15 +1126,17 @@ public partial class FileManagerWindow : ThemedWindow
         PreviewVideo.Visibility = which == "video" ? Visibility.Visible : Visibility.Collapsed;
         TextScroll.Visibility   = which == "text"  ? Visibility.Visible : Visibility.Collapsed;
         PreviewEmpty.Visibility = which == "empty" ? Visibility.Visible : Visibility.Collapsed;
-        if (which != "video") { try { PreviewVideo.Stop(); PreviewVideo.Source = null; } catch { } }
+        // WMF: Source=null blocks the UI thread for several seconds — stop playback only (fast),
+        // let the Closing handler or the next video preview handle Source teardown asynchronously.
+        if (which != "video") { try { PreviewVideo.Stop(); } catch { } }
     }
 
     private void PreviewVideo_Click(object s, System.Windows.Input.MouseButtonEventArgs e)
     {
         try
         {
-            if (PreviewVideo.CanPause) PreviewVideo.Pause();
-            else PreviewVideo.Play();
+            if (_videoPlaying) { PreviewVideo.Pause(); _videoPlaying = false; }
+            else               { PreviewVideo.Play();  _videoPlaying = true;  }
         }
         catch { }
     }
