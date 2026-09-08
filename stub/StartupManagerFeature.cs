@@ -129,9 +129,11 @@ internal static class StartupManagerFeature
             {
                 var cols = SplitCsv(line);
                 if (cols.Length < 9) continue;
+                // schtasks /fo CSV /v columns: [0]=HostName [1]=TaskName [2]=NextRun
+                // [3]=Status [4]=LogonMode [5]=LastRun [6]=LastResult [7]=Author [8]=TaskToRun
+                var name = cols[1].Trim('"');
                 var status = cols[3].Trim('"');
                 if (status == "Disabled") continue;
-                var name = cols[0].Trim('"');
                 if (name.StartsWith("\\Microsoft\\", StringComparison.OrdinalIgnoreCase)) continue;
                 if (name.TrimStart('\\').StartsWith(hostname, StringComparison.OrdinalIgnoreCase)) continue;
                 var action = cols[8].Trim('"');
