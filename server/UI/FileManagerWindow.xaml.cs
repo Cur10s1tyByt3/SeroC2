@@ -92,7 +92,16 @@ public partial class FileManagerWindow : ThemedWindow
             Lang.LanguageChanged -= ApplyLanguage;
         };
         // MediaOpened fires when WMF has fully opened the file — safe moment to call Play()
-        PreviewVideo.MediaOpened += (_, _) => { PreviewVideo.Play(); _videoPlaying = true; };
+        PreviewVideo.MediaOpened  += (_, _) => { PreviewVideo.Play(); _videoPlaying = true; };
+        // MediaEnded: video finished — reset flag so next click restarts instead of pausing
+        PreviewVideo.MediaEnded   += (_, _) => { _videoPlaying = false; };
+        // MediaFailed: codec missing or corrupt file — show error in the preview panel
+        PreviewVideo.MediaFailed  += (_, args) =>
+        {
+            _videoPlaying = false;
+            TxtPreviewInfo.Text = args.ErrorException?.Message ?? "Media failed to load";
+            ShowPreviewPanel("empty");
+        };
 
         Loaded += async (_, _) =>
         {
@@ -1027,6 +1036,7 @@ public partial class FileManagerWindow : ThemedWindow
             return;
         }
 
+        _videoPlaying = false;
         TxtPreviewInfo.Text = Lang.Get("STATUS_LOADING");
         ShowPreviewPanel("empty");
         BtnPreview.IsEnabled = false;
@@ -1054,6 +1064,8 @@ public partial class FileManagerWindow : ThemedWindow
                 var b = (r != null && string.IsNullOrEmpty(r.Error)) ? Convert.FromBase64String(r.Data) : null;
                 return (r, b);
             });
+            // Re-check serial — user may have selected a different file while decoding (heavy for 30 MB video).
+            if (_previewSerial != mySerial) return;
             if (result == null || bytes == null || !string.IsNullOrEmpty(result.Error))
             { TxtPreviewInfo.Text = result?.Error ?? "Error"; ShowPreviewPanel("empty"); return; }
 
