@@ -84,14 +84,17 @@ public partial class StartupManagerWindow : ThemedWindow
                 _entries.Clear();
                 foreach (var e in data.Entries)
                 {
-                    // Skip COM-class activation tasks: no real path (varies by OS language —
-                    // "COM handler" on EN, "Gestionnaire COM" on FR, etc.)
-                    bool isComTask = !e.Path.Contains('\\') && !e.Path.Contains('/')
+                    // Skip COM-class activation stubs — schtasks "Task to Run" shows a localized
+                    // string like "COM handler" instead of a real path. Only applies to Task/WMI
+                    // sources; Reg/File sources always have a real path and must never be skipped.
+                    bool isComTask = e.Type != "Reg" && e.Type != "File"
+                                  && !e.Path.Contains('\\') && !e.Path.Contains('/')
                                   && !e.Path.Contains(':') && !e.Path.StartsWith("%");
                     if (isComTask) continue;
                     _entries.Add(new StartupEntryVM(e.Name, e.Type, e.Location, e.Path, e.Verified, e.Publisher));
                 }
                 _awaitingResponse = false;
+                _refreshCts?.Cancel();
                 TxtCount.Text  = $"({_entries.Count})";
                 TxtStatus.Text = string.Format(Lang.Get("STUP_UPDATED"), DateTime.Now.ToString("HH:mm:ss"), _entries.Count);
             });
@@ -144,7 +147,14 @@ public partial class StartupManagerWindow : ThemedWindow
 
 public record StartupEntryVM(string Name, string Type, string Location, string Path, bool Verified, string Publisher)
 {
-    public string PublisherDisplay => Verified
-        ? (string.IsNullOrEmpty(Publisher) ? "(Verified)" : $"(Verified) {Publisher}")
-        : "(Not Verified)";
+    public string PublisherDisplay
+    {
+        get
+        {
+            var prefix = Verified ? "✓" : "✗";
+            return string.IsNullOrEmpty(Publisher)
+                ? prefix
+                : $"{prefix} {Publisher}";
+        }
+    }
 }

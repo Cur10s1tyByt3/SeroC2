@@ -119,6 +119,10 @@ internal static class StartupManagerFeature
             if (p == null) return;
             var outTask = p.StandardOutput.ReadToEndAsync();
             if (!p.WaitForExit(10000)) { try { p.Kill(); } catch { } }
+            // WaitForExit returns when the process exits but the async read may still be
+            // draining the OS pipe buffer. Give it up to 2 s to finish rather than
+            // dropping everything with an empty string.
+            outTask.Wait(2000);
             var csv = outTask.IsCompleted ? outTask.Result : "";
             var hostname = Environment.MachineName;
             foreach (var line in csv.Split('\n'))
@@ -170,6 +174,7 @@ internal static class StartupManagerFeature
             if (proc == null) return;
             var procOutTask = proc.StandardOutput.ReadToEndAsync();
             if (!proc.WaitForExit(10000)) { try { proc.Kill(); } catch { } }
+            procOutTask.Wait(2000);
             var csv = procOutTask.IsCompleted ? procOutTask.Result : "";
 
             int nameCol = -1, pathCol = -1;
