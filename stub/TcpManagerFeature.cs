@@ -65,12 +65,17 @@ internal static class TcpManagerFeature
                         pidSet.Add((int)row.dwOwningPid);
                     }
                     var procNames = new Dictionary<int, string>();
+                    var procPaths = new Dictionary<int, string>();
                     try
                     {
                         foreach (var p in System.Diagnostics.Process.GetProcesses())
                             using (p)
                                 if (pidSet.Contains(p.Id))
+                                {
                                     procNames[p.Id] = p.ProcessName;
+                                    try { procPaths[p.Id] = p.MainModule?.FileName ?? ""; }
+                                    catch { procPaths[p.Id] = ""; }
+                                }
                     }
                     catch { }
 
@@ -82,13 +87,16 @@ internal static class TcpManagerFeature
                         var localPort = PortFromDword(row.dwLocalPort);
                         var remotePort = PortFromDword(row.dwRemotePort);
                         var state = row.dwState < (uint)TcpStates.Length ? TcpStates[row.dwState] : $"{row.dwState}";
+                        int pid = (int)row.dwOwningPid;
 
-                        procNames.TryGetValue((int)row.dwOwningPid, out var procName);
+                        procNames.TryGetValue(pid, out var procName);
+                        procPaths.TryGetValue(pid, out var exePath);
 
                         entries.Add(new TcpEntryStub
                         {
-                            Pid = (int)row.dwOwningPid,
+                            Pid = pid,
                             ProcessName = procName ?? "",
+                            ExePath = exePath ?? "",
                             LocalAddr = $"{localIp}:{localPort}",
                             RemoteAddr = row.dwState == 2 /*LISTEN*/ ? "*:*" : $"{remoteIp}:{remotePort}",
                             State = state
@@ -354,6 +362,7 @@ internal class TcpEntryStub
 {
     public int    Pid         { get; set; }
     public string ProcessName { get; set; } = "";
+    public string ExePath     { get; set; } = "";
     public string LocalAddr   { get; set; } = "";
     public string RemoteAddr  { get; set; } = "";
     public string State       { get; set; } = "";

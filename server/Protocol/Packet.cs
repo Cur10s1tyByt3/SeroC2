@@ -405,6 +405,7 @@ public class TcpEntry
 {
     public int    Pid         { get; set; }
     public string ProcessName { get; set; } = string.Empty;
+    public string ExePath     { get; set; } = string.Empty;
     public string LocalAddr   { get; set; } = string.Empty;
     public string RemoteAddr  { get; set; } = string.Empty;
     public string State       { get; set; } = string.Empty;

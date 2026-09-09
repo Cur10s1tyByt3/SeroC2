@@ -411,7 +411,7 @@ public partial class ProcessManagerWindow : ThemedWindow
         {
             _disconnected = true;
             _autoTimer.Stop();
-            TxtStatus.Text       = "⚠ Disconnected";
+            TxtStatus.Text       = Lang.Get("PM_DISCONNECTED");
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
             GridProcs.Opacity    = 0.55;
         });

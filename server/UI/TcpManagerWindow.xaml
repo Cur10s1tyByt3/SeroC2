@@ -163,9 +163,19 @@
                 <DataGridTemplateColumn Width="40" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <Image Source="{x:Static local:TcpEntryVM.ExeIcon}" Width="16" Height="16"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Image x:Name="ProcIcon" Source="{Binding IconImage}" Width="16" Height="16"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor" SnapsToDevicePixels="True"/>
+                                <dx:DXImage x:Name="ProcFallback"
+                                            Source="{dx:DXImageExtension 'SvgImages/Business Objects/BO_Organization.svg'}"
+                                            Width="14" Height="14" Visibility="Collapsed"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IconImage}" Value="{x:Null}">
+                                    <Setter TargetName="ProcFallback" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="ProcIcon"     Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
