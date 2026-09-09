@@ -434,6 +434,7 @@ public class FmEntry
 {
     public string Name       { get; set; } = string.Empty;
     public bool   IsDir      { get; set; }
+    public string IconB64    { get; set; } = string.Empty;
     public long   Size       { get; set; }
     public string Modified   { get; set; } = string.Empty;
     public bool   IsHidden   { get; set; }

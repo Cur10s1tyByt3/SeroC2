@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -6,6 +7,7 @@ namespace SeroStub;
 
 internal static class FileManagerFeature
 {
+    private static readonly ConcurrentDictionary<string, string> _iconCache = new(StringComparer.OrdinalIgnoreCase);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHSetDesktopWallpaper([In] string path);
 
@@ -77,6 +79,9 @@ internal static class FileManagerFeature
                         IsHidden = f.Attributes.HasFlag(FileAttributes.Hidden),
                         Created = f.CreationTime.ToString("yyyy-MM-dd HH:mm"),
                         Attributes = (int)f.Attributes,
+                        IconB64 = f.Extension.Equals(".exe", StringComparison.OrdinalIgnoreCase)
+                            ? _iconCache.GetOrAdd(f.FullName, p => StubIconHelper.ExtractExeIcon(p))
+                            : "",
                     });
                 }
                 catch { }
@@ -264,7 +269,7 @@ internal static class FileManagerFeature
     private static string Serialize(FmHashResultStub v)   => JsonSerializer.Serialize(v, SeroJson.Default.FmHashResultStub);
 }
 
-internal class FmEntryStub        { public string Name { get; set; } = ""; public bool IsDir { get; set; } public long Size { get; set; } public string Modified { get; set; } = ""; public bool IsHidden { get; set; } public string Created { get; set; } = ""; public int Attributes { get; set; } }
+internal class FmEntryStub        { public string Name { get; set; } = ""; public bool IsDir { get; set; } public long Size { get; set; } public string Modified { get; set; } = ""; public bool IsHidden { get; set; } public string Created { get; set; } = ""; public int Attributes { get; set; } public string IconB64 { get; set; } = ""; }
 internal class FmListResultStub   { public string Path { get; set; } = ""; public List<FmEntryStub> Entries { get; set; } = []; public string Error { get; set; } = ""; }
 internal class FmDownloadDataStub { public string Path { get; set; } = ""; }
 internal class FmFileDataResultStub { public string Path { get; set; } = ""; public string Data { get; set; } = ""; public string Error { get; set; } = ""; }

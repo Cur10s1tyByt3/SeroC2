@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using DevExpress.Xpf.Core;
 using Newtonsoft.Json;
 using SeroServer.Net;
@@ -1203,9 +1204,12 @@ public class FileEntryVM
         AttributesRaw = e.Attributes;
         SizeRaw  = e.IsDir ? -1 : e.Size;
         var ext = e.IsDir ? "" : Path.GetExtension(e.Name);
+        System.Windows.Media.ImageSource? decoded = null;
+        if (!e.IsDir && !string.IsNullOrEmpty(e.IconB64))
+            decoded = DecodeIcon(e.IconB64);
         IconImage = (e.IsDir && e.Name.Length >= 2 && e.Name[1] == ':')
             ? ShellIcon.GetDrive(e.Name.TrimEnd('\\', '/') + "\\")
-            : ShellIcon.Get(ext, e.IsDir);
+            : decoded ?? ShellIcon.Get(ext, e.IsDir);
 
         if (e.IsDir)
         {
@@ -1229,6 +1233,23 @@ public class FileEntryVM
         if (attrs.HasFlag(System.IO.FileAttributes.System))   parts.Append('S');
         if (attrs.HasFlag(System.IO.FileAttributes.Archive))  parts.Append('A');
         AttribDisplay = parts.Length > 0 ? parts.ToString() : "—";
+    }
+
+    private static BitmapImage? DecodeIcon(string b64)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(b64);
+            using var ms = new System.IO.MemoryStream(bytes);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
     }
 }
 
