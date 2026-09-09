@@ -1074,8 +1074,10 @@ internal class TlsClient : IDisposable
 
     private long _lastNetSent, _lastNetRecv;
     private DateTime _lastNetTs = DateTime.UtcNow;
+    private bool _netPrimed;
     private long _lastDiskRead, _lastDiskWrite;
     private DateTime _lastDiskTs = DateTime.UtcNow;
+    private bool _diskPrimed;
     private static readonly IntPtr INVALID_HANDLE = new(-1);
     private const uint GENERIC_READ = 0x80000000;
     private const uint FILE_SHARE_RW = 3; // FILE_SHARE_READ | FILE_SHARE_WRITE
@@ -1090,12 +1092,25 @@ internal class TlsClient : IDisposable
             foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
             {
                 if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
-                if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                var t = ni.NetworkInterfaceType;
+                // Skip loopback and virtual tunnel adapters (VPN, PPP, SLIP) to avoid double-counting
+                if (t == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                if (t == System.Net.NetworkInformation.NetworkInterfaceType.Tunnel)   continue;
+                if (t == System.Net.NetworkInformation.NetworkInterfaceType.Slip)     continue;
+                if (t == System.Net.NetworkInformation.NetworkInterfaceType.Ppp)      continue;
                 var stats = ni.GetIPStatistics();
                 sent += stats.BytesSent;
                 recv += stats.BytesReceived;
             }
             var now = DateTime.UtcNow;
+            // Prime on first call: record baseline so the first rate sample is not
+            // (cumulative-bytes-since-boot / time-since-stub-start) which would spike.
+            if (!_netPrimed)
+            {
+                _lastNetSent = sent; _lastNetRecv = recv; _lastNetTs = now;
+                _netPrimed = true;
+                return (0, 0);
+            }
             var elapsed = (now - _lastNetTs).TotalSeconds;
             long sentKBps = elapsed > 0 ? (long)((sent - _lastNetSent) / elapsed / 1024) : 0;
             long recvKBps = elapsed > 0 ? (long)((recv - _lastNetRecv) / elapsed / 1024) : 0;
@@ -1109,7 +1124,12 @@ internal class TlsClient : IDisposable
     {
         try
         {
+            // PhysicalDrive0 requires GENERIC_READ which needs admin rights.
+            // Fall back to \\.\C: (volume handle) which works unprivileged and
+            // also supports IOCTL_DISK_PERFORMANCE on most Windows versions.
             var h = CreateFileW(@"\\.\PhysicalDrive0", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+            if (h == INVALID_HANDLE)
+                h = CreateFileW(@"\\.\C:", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
             if (h == INVALID_HANDLE) return (0, 0);
             try
             {
@@ -1121,6 +1141,13 @@ internal class TlsClient : IDisposable
                     long bytesRead    = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 0);
                     long bytesWritten = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 8);
                     var now = DateTime.UtcNow;
+                    // Prime on first call to avoid (bytes-since-boot / elapsed) spike
+                    if (!_diskPrimed)
+                    {
+                        _lastDiskRead = bytesRead; _lastDiskWrite = bytesWritten; _lastDiskTs = now;
+                        _diskPrimed = true;
+                        return (0, 0);
+                    }
                     double elapsed = (now - _lastDiskTs).TotalSeconds;
                     long readKBps  = elapsed > 0 ? (long)((bytesRead    - _lastDiskRead)  / elapsed / 1024) : 0;
                     long writeKBps = elapsed > 0 ? (long)((bytesWritten - _lastDiskWrite) / elapsed / 1024) : 0;
