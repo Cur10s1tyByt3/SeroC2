@@ -185,7 +185,7 @@
                 <DataGridTextColumn x:Name="ColMem" Header="MEMORY" Width="110" SortMemberPath="Memory"
                                     Binding="{Binding MemDisplay}" FontFamily="Consolas" FontSize="11"/>
                 <!-- Remote IPs (ESTABLISHED connections) -->
-                <DataGridTextColumn x:Name="ColNet" Header="NETWORK" Binding="{Binding NetDisplay}" Width="180"
+                <DataGridTextColumn x:Name="ColNet" Header="I/O" Binding="{Binding NetDisplay}" Width="180"
                                     FontFamily="Consolas" FontSize="11"/>
                 <!-- Title -->
                 <DataGridTextColumn x:Name="ColTitle" Header="TITLE" Binding="{Binding Title}" Width="200" FontSize="11"/>

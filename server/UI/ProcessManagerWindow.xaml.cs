@@ -73,7 +73,7 @@ public class ProcEntryVM : INotifyPropertyChanged
     {
         get
         {
-            var mb = Memory > 1024 ? $"{Memory / 1024:N0} MB" : $"{Memory:N0} KB";
+            var mb = Memory >= 1024 ? $"{Memory / 1024:N0} MB" : $"{Memory:N0} KB";
             if (TotalRamMb > 0)
             {
                 float pct = Memory / 1024f / TotalRamMb * 100f;
@@ -94,8 +94,10 @@ public partial class ProcessManagerWindow : ThemedWindow
     private readonly string    _clientId;
     private readonly ObservableCollection<ProcEntryVM> _all  = [];
     private          ObservableCollection<ProcEntryVM> _view = [];
-    private string   _filter   = "";
-    private bool     _treeMode = false;
+    private string   _filter       = "";
+    private bool     _treeMode     = false;
+    private bool     _disconnected = false;
+    private volatile bool _pendingRefresh = false;
     private readonly DispatcherTimer _autoTimer;
 
     public ProcessManagerWindow(TlsServer server, string clientId, string label)
@@ -133,7 +135,7 @@ public partial class ProcessManagerWindow : ThemedWindow
         if (ColPid          != null) ColPid.Header          = Lang.Get("PM_COL_PID");
         if (ColCpu          != null) ColCpu.Header          = Lang.Get("PM_COL_CPU");
         if (ColMem          != null) ColMem.Header          = Lang.Get("PM_COL_MEM");
-        if (ColNet          != null) ColNet.Header          = Lang.Get("WIN_COL_NETWORK");
+        if (ColNet          != null) ColNet.Header          = "I/O";   // total disk+net throughput, not network-only
         if (ColTitle        != null) ColTitle.Header        = Lang.Get("WIN_COL_TITLE");
         if (TxtBtnTree      != null) TxtBtnTree.Text        = _treeMode ? Lang.Get("ACT_TREE") + " ✓" : Lang.Get("ACT_TREE");
         if (TxtStatus       != null && string.IsNullOrEmpty(TxtStatus.Text))
@@ -149,11 +151,14 @@ public partial class ProcessManagerWindow : ThemedWindow
 
     private void RequestRefresh()
     {
+        if (_disconnected || _pendingRefresh) return;
+        _pendingRefresh = true;
         _ = _server.SendToClient(_clientId, new Packet { Type = PacketType.ProcGetList });
     }
 
     private void OnProcList(Packet pkt)
     {
+        _pendingRefresh = false;
         var d = JsonConvert.DeserializeObject<ProcListResultData>(pkt.Data);
         if (d == null) return;
 
@@ -161,14 +166,10 @@ public partial class ProcessManagerWindow : ThemedWindow
         {
             var totalRam = d.TotalRamMb;
             var stubPid  = d.StubPid;
-            var byPid = d.Processes.ToDictionary(p => p.Pid);
 
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
             {
                 var selectedPid = (GridProcs.SelectedItem as ProcEntryVM)?.Pid;
-                var viewSortDescriptions = GridProcs.Items.SortDescriptions
-                    .Select(sd => new SortDescription(sd.PropertyName, sd.Direction)).ToList();
-                var viewSortArrows = GridProcs.Columns.Select(c => c.SortDirection).ToList();
 
                 // Update existing or add new
                 var seenPids = new System.Collections.Generic.HashSet<int>();
@@ -179,22 +180,20 @@ public partial class ProcessManagerWindow : ThemedWindow
                     allByPid.TryGetValue(p.Pid, out var existing);
                     if (existing != null)
                     {
-                        // Update in-place instead of replacing
                         existing.ParentPid = p.ParentPid;
-                        existing.Name = p.Name;
-                        existing.Memory = p.Memory;
+                        existing.Name      = p.Name;
+                        existing.Memory    = p.Memory;
                         existing.TotalRamMb = totalRam;
-                        existing.CpuUsage = p.CpuUsage;
-                        existing.Title = p.Title;
-                        existing.ExePath = p.ExePath;
-                        existing.TcpConns = p.TcpConns;
+                        existing.CpuUsage  = p.CpuUsage;
+                        existing.Title     = p.Title;
+                        existing.ExePath   = p.ExePath;
+                        existing.TcpConns  = p.TcpConns;
                         existing.RemoteIps = p.RemoteIps;
-                        existing.IsClient = stubPid > 0 && p.Pid == stubPid;
-                        existing.NetKbps = p.NetKbps;
+                        existing.IsClient  = stubPid > 0 && p.Pid == stubPid;
+                        existing.NetKbps   = p.NetKbps;
                     }
                     else
                     {
-                        // New process
                         _all.Add(new ProcEntryVM
                         {
                             Pid        = p.Pid,
@@ -222,11 +221,12 @@ public partial class ProcessManagerWindow : ThemedWindow
                 if (selectedPid.HasValue)
                     GridProcs.SelectedItem = _view.FirstOrDefault(p => p.Pid == selectedPid.Value);
 
-                TxtCount.Text = $"({d.Processes.Count})";
+                TxtCount.Text  = $"({d.Processes.Count})";
                 TxtStatus.Text = string.Format(Lang.Get("PM_UPDATED"), DateTime.Now.ToString("HH:mm:ss"), d.Processes.Count);
+                TxtStatus.Foreground = (Brush)FindResource("FieldLabelBrush");
             });
 
-            // Phase 2: load all icons in background, then push the whole batch in one Dispatcher call.
+            // Phase 2: load icons in background, then push batch to UI thread
             var iconBatch = new System.Collections.Generic.List<(int Pid, BitmapSource Icon)>();
             foreach (var p in d.Processes)
             {
@@ -257,10 +257,10 @@ public partial class ProcessManagerWindow : ThemedWindow
         if (!string.IsNullOrWhiteSpace(_filter))
             source = _all.Where(p => p.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase)
                                   || p.Title.Contains(_filter, StringComparison.OrdinalIgnoreCase)
+                                  || p.ExePath.Contains(_filter, StringComparison.OrdinalIgnoreCase)
                                   || p.Pid.ToString().Contains(_filter));
 
         var list = _treeMode ? BuildTree(source.ToList()) : source.ToList();
-        // Only replace ItemsSource if the filtered list changed
         if (_view.Count != list.Count || !_view.Select(x => x.Pid).SequenceEqual(list.Select(x => x.Pid)))
         {
             var savedSorts  = GridProcs.Items.SortDescriptions
@@ -286,7 +286,6 @@ public partial class ProcessManagerWindow : ThemedWindow
         var byPid    = flat.ToDictionary(p => p.Pid);
         var children = new Dictionary<int, List<ProcEntryVM>>();
 
-        // Reset depths and group by parent
         foreach (var p in flat)
         {
             p.Depth = 0;
@@ -297,7 +296,6 @@ public partial class ProcessManagerWindow : ThemedWindow
             }
         }
 
-        // Collect roots: processes with no parent in the list
         var childSet = children.Values.SelectMany(x => x).Select(x => x.Pid).ToHashSet();
         var roots    = flat.Where(p => !childSet.Contains(p.Pid)).OrderBy(p => p.Name).ToList();
 
@@ -312,7 +310,6 @@ public partial class ProcessManagerWindow : ThemedWindow
         }
         foreach (var root in roots) Dfs(root, 0);
 
-        // Append any orphaned processes (DFS-visited set != flat set)
         var visited = result.Select(p => p.Pid).ToHashSet();
         foreach (var p in flat.Where(p => !visited.Contains(p.Pid)))
         { p.Depth = 0; result.Add(p); }
@@ -334,7 +331,6 @@ public partial class ProcessManagerWindow : ThemedWindow
         ApplyFilter();
     }
 
-    // Typing any printable character while grid is focused → redirect to search box
     private void GridProcs_PreviewKeyDown(object s, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.Escape)
@@ -373,70 +369,59 @@ public partial class ProcessManagerWindow : ThemedWindow
     private const uint SHGFI_USEFILEATTRIBS = 0x010;
     private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
 
-    // Cache icons by path to avoid repeated SHGetFileInfo calls
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, BitmapSource?> _iconCache = new();
 
     private static BitmapSource? GetIcon(string path)
     {
-        var key = string.IsNullOrEmpty(path) ? "__generic__" : path;
-        if (_iconCache.TryGetValue(key, out var cached)) return cached;
+        var ext = string.IsNullOrEmpty(path) ? ".exe" : (System.IO.Path.GetExtension(path) is { Length: > 0 } e ? e : ".exe");
+        if (_iconCache.TryGetValue(ext, out var cached)) return cached;
 
-        // SHGetFileInfo (USEFILEATTRIBUTES) + CreateBitmapSourceFromHIcon + Freeze() are
-        // safe on background threads — no Dispatcher.Invoke needed, which was causing
-        // 150+ synchronous UI-thread round-trips and making the window slow to populate.
         BitmapSource? result = null;
         try
         {
-            if (!string.IsNullOrEmpty(path))
+            // ExtractAssociatedIcon requires the file to exist on the local machine — it will
+            // always fail for victim paths. Go straight to SHGetFileInfo with USEFILEATTRIBUTES
+            // which resolves icon by extension without touching the filesystem.
+            var fakeName = "file" + ext;
+            var sfi = new SHFILEINFO();
+            if (SHGetFileInfo(fakeName, FILE_ATTRIBUTE_NORMAL, ref sfi,
+                (uint)System.Runtime.InteropServices.Marshal.SizeOf<SHFILEINFO>(),
+                SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBS) != 0 && sfi.hIcon != 0)
             {
                 try
                 {
-                    using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                    if (icon != null)
-                    {
-                        result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                        result?.Freeze();
-                    }
+                    result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                        sfi.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    result?.Freeze();
                 }
-                catch { /* file not found on server — fall through to SHGetFileInfo */ }
-            }
-            if (result == null)
-            {
-                var sfi = new SHFILEINFO();
-                var fakePath = string.IsNullOrEmpty(path) ? "unknown.exe"
-                    : (System.IO.Path.GetExtension(path).Length > 0 ? System.IO.Path.GetFileName(path) : path + ".exe");
-                if (SHGetFileInfo(fakePath, FILE_ATTRIBUTE_NORMAL, ref sfi,
-                    (uint)System.Runtime.InteropServices.Marshal.SizeOf<SHFILEINFO>(),
-                    SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBS) != 0 && sfi.hIcon != 0)
-                {
-                    try
-                    {
-                        result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            sfi.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                        result?.Freeze();
-                    }
-                    finally { DestroyIcon(sfi.hIcon); }
-                }
+                finally { DestroyIcon(sfi.hIcon); }
             }
         }
         catch { }
 
-        _iconCache[key] = result;
-        if (_iconCache.Count > 500) _iconCache.Clear();
+        _iconCache[ext] = result;
+        if (_iconCache.Count > 200) _iconCache.Clear();
         return result;
     }
 
     private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)
     {
         if (c.Id != _clientId) return;
-        Dispatcher.BeginInvoke(() => _autoTimer.Stop());
+        Dispatcher.BeginInvoke(() =>
+        {
+            _disconnected = true;
+            _autoTimer.Stop();
+            TxtStatus.Text       = "⚠ Disconnected";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            GridProcs.Opacity    = 0.55;
+        });
     }
 
     private void BtnRefresh_Click(object s, RoutedEventArgs e) => RequestRefresh();
 
     private void BtnKill_Click(object s, RoutedEventArgs e)
     {
+        if (_disconnected) return;
         var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
         if (sel.Count == 0) return;
         string msg = sel.Count == 1
@@ -452,6 +437,7 @@ public partial class ProcessManagerWindow : ThemedWindow
 
     private void BtnSuspend_Click(object s, RoutedEventArgs e)
     {
+        if (_disconnected) return;
         var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
         if (sel.Count == 0) return;
         foreach (var vm in sel)
@@ -463,6 +449,7 @@ public partial class ProcessManagerWindow : ThemedWindow
 
     private void BtnResume_Click(object s, RoutedEventArgs e)
     {
+        if (_disconnected) return;
         var sel = GridProcs.SelectedItems.Cast<ProcEntryVM>().ToList();
         if (sel.Count == 0) return;
         foreach (var vm in sel)
@@ -471,7 +458,6 @@ public partial class ProcessManagerWindow : ThemedWindow
         ServerWindow.ReportGlobalActivity("Resume process", sel.Count == 1 ? sel[0].Name : $"{sel.Count} processes", "complete");
         ServerWindow.LogGlobal($"[PROC] Resumed process {(sel.Count == 1 ? $"'{sel[0].Name}' (PID {sel[0].Pid})" : $"{sel.Count} processes")} on client {_clientId}.");
     }
-
 
     private void GridProcs_CopyPid_Click(object s, RoutedEventArgs e)
     {
@@ -490,8 +476,6 @@ public partial class ProcessManagerWindow : ThemedWindow
         if (GridProcs.SelectedItem is ProcEntryVM vm && !string.IsNullOrEmpty(vm.ExePath))
             try { System.Windows.Clipboard.SetText(vm.ExePath); TxtStatus.Text = string.Format(Lang.Get("PM_COPIED_PATH"), vm.ExePath); } catch { }
     }
-
-    private void Close_Click(object s, RoutedEventArgs e) => Close();
 
     private void GridProcs_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {

@@ -119,7 +119,7 @@ public enum PacketType
 
     // Process Manager
     ProcGetList    = 190,  // server→client: request process list
-    ProcListResult = 191,  // client→server: [{Pid, Name, Memory, CpuUsage, Title, ExePath}]
+    ProcListResult = 191,  // client→server: [{Pid, ParentPid, Name, Memory, CpuUsage, Title, ExePath, TcpConns, RemoteIps, NetKbps, TotalRamMb, StubPid}]
     ProcKill       = 192,  // server→client: {Pid}
     ProcSuspend    = 193,  // server→client: {Pid}
     ProcResume     = 194,  // server→client: {Pid}
@@ -579,10 +579,6 @@ public class PerfMonData
     public string CpuName       { get; set; } = "";
     public string GpuName       { get; set; } = "";
 }
-
-// ── Process Manager (extended) ────────────────────────
-public class ProcSuspendData { public int Pid { get; set; } }
-public class ProcResumeData  { public int Pid { get; set; } }
 
 // ── TCP Firewall ──────────────────────────────────────
 public class TcpFirewallBlockData
