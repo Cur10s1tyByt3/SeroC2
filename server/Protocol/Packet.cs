@@ -569,11 +569,15 @@ public class HardwareStatsData
 public class PerfMonStartData { public int IntervalMs { get; set; } = 1000; }
 public class PerfMonData
 {
-    public float CpuUsage      { get; set; }
-    public long  RamUsed       { get; set; }   // MB
-    public long  RamTotal      { get; set; }   // MB
-    public long  NetworkSentKB { get; set; }   // KB/s
-    public long  NetworkRecvKB { get; set; }   // KB/s
+    public float  CpuUsage      { get; set; }
+    public long   RamUsed       { get; set; }   // MB
+    public long   RamTotal      { get; set; }   // MB
+    public long   NetworkSentKB { get; set; }   // KB/s
+    public long   NetworkRecvKB { get; set; }   // KB/s
+    public long   DiskReadKBps  { get; set; }   // KB/s
+    public long   DiskWriteKBps { get; set; }   // KB/s
+    public string CpuName       { get; set; } = "";
+    public string GpuName       { get; set; } = "";
 }
 
 // ── Process Manager (extended) ────────────────────────
