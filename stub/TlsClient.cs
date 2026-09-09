@@ -703,8 +703,12 @@ internal class TlsClient : IDisposable
                     var iconReq = JsonSerializer.Deserialize(packet.Data, SeroJson.Default.InstalledIconRequestStub);
                     if (iconReq != null)
                     {
-                        var icoB64 = InstalledAppsFeature.GetIcon(iconReq.Name);
-                        _ = Task.Run(async () => await WritePacketAsync(new Packet { Type = PacketType.InstalledIconResult, Data = JsonSerializer.Serialize(new InstalledIconResultStub { Name = iconReq.Name, IconB64 = icoB64 }, SeroJson.Default.InstalledIconResultStub) }, CancellationToken.None));
+                        var name = iconReq.Name;
+                        _ = Task.Run(async () =>
+                        {
+                            var icoB64 = InstalledAppsFeature.GetIcon(name);
+                            await WritePacketAsync(new Packet { Type = PacketType.InstalledIconResult, Data = JsonSerializer.Serialize(new InstalledIconResultStub { Name = name, IconB64 = icoB64 }, SeroJson.Default.InstalledIconResultStub) }, CancellationToken.None);
+                        });
                     }
                     break;
                 }
