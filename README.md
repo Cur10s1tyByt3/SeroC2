@@ -458,7 +458,7 @@ SeroC2/
 │   │   ├── Socks5Window.*         # SOCKS5 reverse proxy viewer
 │   │   ├── TikTokWindow.*         # TikTok comment + livestream feature
 │   │   ├── MinerStatsWindow.*     # XMR miner live stats
-│   │   ├── PerformanceMonitorWindow.* # CPU / RAM / GPU performance monitor
+│   │   ├── PerformanceMonitorWindow.* # CPU / RAM / GPU / NETWORK performance monitor
 │   │   ├── ClientLogWindow.*      # Per-client activity log
 │   │   ├── NotificationPopup.*    # Desktop notification overlay
 │   │   ├── WebcamLayoutDialog.*   # Multi-webcam layout picker
