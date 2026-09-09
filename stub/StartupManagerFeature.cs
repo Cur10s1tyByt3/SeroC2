@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -77,6 +78,8 @@ internal static class StartupManagerFeature
         return sp > 0 ? raw[..sp] : raw;
     }
 
+    private static readonly ConcurrentDictionary<string, string> _iconCache = new();
+
     // ── Main entry point ───────────────────────────────────────────────────
     internal static string GetList()
     {
@@ -101,6 +104,10 @@ internal static class StartupManagerFeature
         // Parallelize Authenticode checks — WinVerifyTrust is I/O-bound per file
         Parallel.ForEach(entries, new ParallelOptions { MaxDegreeOfParallelism = 4 },
             e => (e.Verified, e.Publisher) = SignatureInfo(e.Path));
+
+        // Extract real per-app icons (cached by exe path so first call is the only slow one)
+        Parallel.ForEach(entries, new ParallelOptions { MaxDegreeOfParallelism = 4 },
+            e => e.IconB64 = _iconCache.GetOrAdd(ExtractExePath(e.Path), p => StubIconHelper.ExtractExeIcon(p)));
 
         return JsonSerializer.Serialize(new StartupListResultStub { Entries = entries }, SeroJson.Default.StartupListResultStub);
     }
@@ -306,6 +313,7 @@ internal class StartupEntryStub
     public string Path      { get; set; } = "";
     public string Type      { get; set; } = "";
     public string Location  { get; set; } = "";
+    public string IconB64   { get; set; } = "";
     public bool   Verified  { get; set; }
     public string Publisher { get; set; } = "";
 }

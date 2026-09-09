@@ -137,16 +137,16 @@ public partial class TcpManagerWindow : ThemedWindow
                     }
                 });
 
-                // Phase 2: resolve icons by extension in background, push batch to UI
+                // Phase 2: decode per-app icons sent inline by stub (cached on stub side per exe path)
                 var iconBatch = new List<(string key, BitmapSource icon)>();
                 foreach (var e in data.Entries)
                 {
-                    var ext = string.IsNullOrEmpty(e.ExePath)
-                        ? ".exe"
-                        : (System.IO.Path.GetExtension(e.ExePath) is { Length: > 0 } ex ? ex : ".exe");
-                    var icon = ShellIcon.Get(ext, false);
-                    if (icon != null)
-                        iconBatch.Add((MakeKey(e.LocalAddr, e.RemoteAddr, e.Pid), icon));
+                    if (!string.IsNullOrEmpty(e.IconB64))
+                    {
+                        var icon = DecodeIcon(e.IconB64);
+                        if (icon != null)
+                            iconBatch.Add((MakeKey(e.LocalAddr, e.RemoteAddr, e.Pid), icon));
+                    }
                 }
                 if (iconBatch.Count > 0)
                 {
@@ -247,6 +247,24 @@ public partial class TcpManagerWindow : ThemedWindow
             await Refresh();
         }
         catch { }
+    }
+
+    private static BitmapSource? DecodeIcon(string b64)
+    {
+        if (string.IsNullOrEmpty(b64)) return null;
+        try
+        {
+            var bytes = Convert.FromBase64String(b64);
+            using var ms = new System.IO.MemoryStream(bytes);
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption  = BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch { return null; }
     }
 
     private async void BlockIp_Click(object s, RoutedEventArgs e)

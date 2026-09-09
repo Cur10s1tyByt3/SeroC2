@@ -124,6 +124,25 @@
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
+                <DataGridTemplateColumn Width="40" CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Image x:Name="StupIcon" Source="{Binding IconImage}" Width="16" Height="16"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor" SnapsToDevicePixels="True"/>
+                                <dx:DXImage x:Name="StupFallback"
+                                            Source="{dx:DXImageExtension 'SvgImages/Icon Builder/Actions_Clock.svg'}"
+                                            Width="14" Height="14" Visibility="Collapsed"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IconImage}" Value="{x:Null}">
+                                    <Setter TargetName="StupFallback" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="StupIcon"     Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn x:Name="ColStupName"     Header="NAME"      Binding="{Binding Name}"             Width="200" FontSize="12"/>
                 <DataGridTextColumn x:Name="ColStupType"     Header="TYPE"      Binding="{Binding Type}"             Width="70"  FontSize="11"/>
                 <DataGridTextColumn x:Name="ColStupLocation" Header="LOCATION"  Binding="{Binding Location}"         Width="115" FontSize="11"/>

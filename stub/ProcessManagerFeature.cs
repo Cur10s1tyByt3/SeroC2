@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -78,6 +79,8 @@ internal static class ProcessManagerFeature
     private static readonly object _samplesLock = new();
     private const uint PROCESS_QUERY_INFORMATION = 0x0400;
 
+    private static readonly ConcurrentDictionary<string, string> _iconCache = new();
+
     // Opens ONE handle per process to get both ParentPid and I/O counters,
     // halving the OpenProcess/CloseHandle kernel calls vs. calling each separately.
     private static (int parentPid, float netKbps) GetProcessInfoNative(int pid, DateTime now)
@@ -143,6 +146,7 @@ internal static class ProcessManagerFeature
 
                 tcpCounts.TryGetValue(p.Id, out var remIps);
                 var (parentPid, netKbps) = GetProcessInfoNative(p.Id, now);
+                var exePath = GetExePath(p);
                 list.Add(new ProcEntryStub
                 {
                     Pid       = p.Id,
@@ -154,7 +158,8 @@ internal static class ProcessManagerFeature
                     RemoteIps = remIps,
                     NetKbps   = netKbps,
                     Title     = p.MainWindowHandle != IntPtr.Zero ? p.MainWindowTitle : "",
-                    ExePath   = GetExePath(p)
+                    ExePath   = exePath,
+                    IconB64   = _iconCache.GetOrAdd(exePath, path => StubIconHelper.ExtractExeIcon(path))
                 });
             }
             catch { list.Add(new ProcEntryStub { Pid = p.Id, Name = p.ProcessName }); }
@@ -218,6 +223,7 @@ internal class ProcEntryStub
     public float         NetKbps   { get; set; }
     public string        Title     { get; set; } = "";
     public string        ExePath   { get; set; } = "";
+    public string        IconB64   { get; set; } = "";
 }
 internal class ProcListResultStub { public List<ProcEntryStub> Processes { get; set; } = []; public long TotalRamMb { get; set; } public int StubPid { get; set; } }
 internal class ProcKillDataStub   { public int Pid { get; set; } }

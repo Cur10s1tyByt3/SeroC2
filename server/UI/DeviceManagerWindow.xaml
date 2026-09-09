@@ -78,9 +78,64 @@
                     <DataGridTemplateColumn Width="40" CanUserSort="False">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Image Source="{x:Static local:DeviceEntryVM.DeviceIcon}" Width="16" Height="16"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                                <dx:DXImage Width="16" Height="16"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <dx:DXImage.Style>
+                                        <Style TargetType="dx:DXImage">
+                                            <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Mouse.svg'}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Class}" Value="Display">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Monitor.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Net">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Router.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="NetClient">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Router.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="NetService">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Router.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="DiskDrive">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_HardDrive.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="HDC">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_HardDrive.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="USB">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Usb.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Processor">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Cpu.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Keyboard">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Keyboard.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Media">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Speaker.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="AudioEndpoint">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Speaker.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Bluetooth">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Bluetooth.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Camera">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Camera.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Image">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Camera.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="Printer">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Printer.svg'}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Class}" Value="PrintQueue">
+                                                    <Setter Property="Source" Value="{dx:DXImageExtension 'SvgImages/Icon Builder/Electronics_Printer.svg'}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </dx:DXImage.Style>
+                                </dx:DXImage>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

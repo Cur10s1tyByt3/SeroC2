@@ -406,6 +406,7 @@ public class TcpEntry
     public int    Pid         { get; set; }
     public string ProcessName { get; set; } = string.Empty;
     public string ExePath     { get; set; } = string.Empty;
+    public string IconB64     { get; set; } = string.Empty;
     public string LocalAddr   { get; set; } = string.Empty;
     public string RemoteAddr  { get; set; } = string.Empty;
     public string State       { get; set; } = string.Empty;
@@ -422,6 +423,7 @@ public class StartupEntry
     public string Location  { get; set; } = string.Empty;
     public bool   Verified  { get; set; }
     public string Publisher { get; set; } = string.Empty;
+    public string IconB64   { get; set; } = string.Empty;
 }
 public class StartupListResultData { public List<StartupEntry> Entries { get; set; } = []; }
 public class StartupDeleteData     { public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; public string Location { get; set; } = string.Empty; }
@@ -493,6 +495,7 @@ public class ProcEntry
     public float         NetKbps   { get; set; }
     public string        Title     { get; set; } = string.Empty;
     public string        ExePath   { get; set; } = string.Empty;
+    public string        IconB64   { get; set; } = string.Empty;
 }
 public class ProcListResultData  { public List<ProcEntry> Processes { get; set; } = []; public long TotalRamMb { get; set; } public int StubPid { get; set; } }
 public class ProcKillData        { public int Pid { get; set; } }
