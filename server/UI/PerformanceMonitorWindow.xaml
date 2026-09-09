@@ -135,16 +135,32 @@
                     </StackPanel>
                 </Border>
 
-                <!-- GPU (shown only when name is available) -->
-                <Border x:Name="CardGpu" Background="{DynamicResource SidebarCtrlBgBrush}" CornerRadius="6" Padding="14,10"
+                <!-- GPU (shown only when name or utilization is available) -->
+                <Border x:Name="CardGpu" Background="{DynamicResource SidebarCtrlBgBrush}" CornerRadius="6" Padding="14,12"
                         BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" Visibility="Collapsed">
-                    <Grid>
-                        <TextBlock Text="GPU" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource LabelBrush}"
-                                   VerticalAlignment="Center"/>
-                        <TextBlock x:Name="TxtGpuName" FontSize="11" Foreground="{DynamicResource AccentBrush}"
-                                   HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Consolas"
-                                   TextTrimming="CharacterEllipsis" MaxWidth="480"/>
-                    </Grid>
+                    <StackPanel>
+                        <Grid Margin="0,0,0,4">
+                            <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                                <TextBlock Text="GPU" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource LabelBrush}"/>
+                                <TextBlock x:Name="TxtGpuName" Text="" FontSize="9" Foreground="{DynamicResource FieldLabelBrush}"
+                                           FontFamily="Consolas" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <TextBlock x:Name="TxtGpuUsage" FontSize="20" FontWeight="Bold" Foreground="#F0B429"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Consolas"/>
+                        </Grid>
+                        <Border Height="14" Background="{DynamicResource InputBgBrush}" CornerRadius="3" Margin="0,4,0,0">
+                            <Border x:Name="BarGpu" HorizontalAlignment="Left" Width="0" Height="14" CornerRadius="3">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#604000" Offset="0"/>
+                                        <GradientStop Color="#F0B429" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Border>
+                        <Canvas x:Name="SparkGpu" Height="52" Margin="0,8,0,0" ClipToBounds="True"
+                                Background="{DynamicResource ChartBgBrush}"/>
+                    </StackPanel>
                 </Border>
 
             </StackPanel>

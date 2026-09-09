@@ -21,6 +21,7 @@ public partial class PerformanceMonitorWindow : ThemedWindow
     private readonly List<long>  _netRHistory  = [];
     private readonly List<long>  _diskRHistory = [];
     private readonly List<long>  _diskWHistory = [];
+    private readonly List<float> _gpuHistory   = [];
     private const int MaxPoints = 60;
 
     // ── Sparkline caches (avoids per-tick allocation) ──────────────────────
@@ -163,10 +164,21 @@ public partial class PerformanceMonitorWindow : ThemedWindow
             DrawDualSparkline(SparkDisk, _diskRHistory, _diskWHistory, maxDisk,
                 Color.FromRgb(0xF5, 0x9E, 0x42), Color.FromRgb(0xEC, 0x48, 0x99));
 
-            // ── GPU (name only, shown once) ───────────────────────────────
-            if (!string.IsNullOrEmpty(d.GpuName) && CardGpu.Visibility == Visibility.Collapsed)
+            // ── GPU ──────────────────────────────────────────────────────────
+            if (!string.IsNullOrEmpty(d.GpuName) && TxtGpuName.Text != d.GpuName)
+                TxtGpuName.Text = d.GpuName;
+            if (d.GpuUsage >= 0f)
             {
-                TxtGpuName.Text    = d.GpuName;
+                if (CardGpu.Visibility != Visibility.Visible)
+                    CardGpu.Visibility = Visibility.Visible;
+                TxtGpuUsage.Text = $"{d.GpuUsage:F1}%";
+                SetBar(BarGpu, d.GpuUsage / 100f);
+                AddPoint(_gpuHistory, d.GpuUsage);
+                DrawSparkline(SparkGpu, _gpuHistory, 100f,
+                    Color.FromRgb(0xF0, 0xB4, 0x29), Color.FromRgb(0x60, 0x40, 0x00));
+            }
+            else if (!string.IsNullOrEmpty(d.GpuName) && CardGpu.Visibility != Visibility.Visible)
+            {
                 CardGpu.Visibility = Visibility.Visible;
             }
 

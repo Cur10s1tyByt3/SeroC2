@@ -583,6 +583,7 @@ public class PerfMonData
     public long   DiskWriteKBps { get; set; }   // KB/s
     public string CpuName       { get; set; } = "";
     public string GpuName       { get; set; } = "";
+    public float  GpuUsage      { get; set; } = -1f;  // 0-100 or -1 if unavailable
 }
 
 // ── TCP Firewall ──────────────────────────────────────
