@@ -225,6 +225,16 @@ internal static class RemoteDesktopFeature
             System.Buffers.ArrayPool<byte>.Shared.Return(_prevPixels);
         _prevPixels = null;
         _prevFromPool = false;
+        // Free cursor overlay GDI objects — only when thread has exited (safe), otherwise just zero refs.
+        if (exited)
+        {
+            if (_cursorBitmap != 0) { DeleteObject(_cursorBitmap); _cursorBitmap = 0; }
+            if (_cursorDc     != 0) { DeleteDC(_cursorDc);          _cursorDc     = 0; }
+        }
+        else { _cursorBitmap = 0; _cursorDc = 0; }
+        _cursorBits   = 0;
+        _cursorCacheW = 0;
+        _cursorCacheH = 0;
         _h264Enc?.Dispose(); _h264Enc = null;
         _h264W = 0; _h264H = 0;
     }
@@ -556,8 +566,9 @@ internal static class RemoteDesktopFeature
         if (forceAt != 0 && Environment.TickCount64 >= forceAt)
         {
             Interlocked.Exchange(ref _forceRefreshAt, 0);
-            if (_prevPixels != null) { System.Buffers.ArrayPool<byte>.Shared.Return(_prevPixels); }
-            _prevPixels = null;
+            if (_prevPixels != null && _prevFromPool) { System.Buffers.ArrayPool<byte>.Shared.Return(_prevPixels); }
+            _prevPixels   = null;
+            _prevFromPool = false;
         }
 
         bool firstFrame = _prevPixels == null || _prevW != dstW || _prevH != dstH;
@@ -967,6 +978,7 @@ internal static class RemoteDesktopFeature
                 nint h = GlobalAlloc(GMEM_MOVEABLE, (nuint)bytes.Length);
                 if (h == 0) return;
                 nint p = GlobalLock(h);
+                if (p == 0) return;
                 Marshal.Copy(bytes, 0, p, bytes.Length);
                 GlobalUnlock(h);
                 SetClipboardData(CF_UNICODETEXT, h);
