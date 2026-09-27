@@ -259,14 +259,17 @@ internal static class FeatureContextMenu
                 {
                     DevExpress.Xpf.Core.ThemeManager.SetThemeName(menu, theme);
                     foreach (var item in menu.Items.OfType<MenuItem>())
+                    {
                         DevExpress.Xpf.Core.ThemeManager.SetThemeName(item, theme);
+                        if (item.Tag is string p && p.Length > 0)
+                            item.Icon = MakeIcon(p);
+                    }
                 }
             }
             catch { }
         };
 
         // Also re-apply when any top-level sub-menu opens (each sub-menu is a separate Popup).
-        // Apply theme to the parent AND all children so icons inherit the correct palette.
         foreach (var item in menu.Items.OfType<MenuItem>())
         {
             item.SubmenuOpened += (s, _) =>
@@ -278,7 +281,11 @@ internal static class FeatureContextMenu
                     {
                         DevExpress.Xpf.Core.ThemeManager.SetThemeName(mi, theme);
                         foreach (var child in mi.Items.OfType<MenuItem>())
+                        {
                             DevExpress.Xpf.Core.ThemeManager.SetThemeName(child, theme);
+                            if (child.Tag is string p && p.Length > 0)
+                                child.Icon = MakeIcon(p);
+                        }
                     }
                 }
                 catch { }
@@ -290,16 +297,14 @@ internal static class FeatureContextMenu
 
     private static MenuItem MakeParent(string header, string svgPath)
     {
-        var mi = new MenuItem { Header = header };
+        var mi = new MenuItem { Header = header, Tag = svgPath };
         mi.Icon = MakeIcon(svgPath);
-        // DX theme sets hover background but does not adapt foreground on IsHighlighted
-        // for top-level parent items. Force system highlight text color directly.
         return mi;
     }
 
     private static MenuItem MakeItem(string header, string svgPath, Action onClick)
     {
-        var mi = new MenuItem { Header = header };
+        var mi = new MenuItem { Header = header, Tag = svgPath };
         mi.Icon = MakeIcon(svgPath);
         mi.Click += (_, _) =>
         {

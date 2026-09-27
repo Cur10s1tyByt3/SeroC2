@@ -346,10 +346,38 @@ public partial class ServerWindow : ThemedWindow
                         var t = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName;
                         if (!string.IsNullOrEmpty(t))
                             DevExpress.Xpf.Core.ThemeManager.SetThemeName(GridClients.ContextMenu, t);
+                        ApplyContextMenuIcons(GridClients.ContextMenu);
                     }
                     catch { }
                 };
                 foreach (var item in GridClients.ContextMenu.Items.OfType<System.Windows.Controls.MenuItem>())
+                {
+                    item.SubmenuOpened += (s, _) =>
+                    {
+                        try
+                        {
+                            var t = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName;
+                            if (!string.IsNullOrEmpty(t) && s is System.Windows.Controls.MenuItem mi)
+                                DevExpress.Xpf.Core.ThemeManager.SetThemeName(mi, t);
+                        }
+                        catch { }
+                    };
+                }
+            }
+            if (GridAllClients.ContextMenu != null)
+            {
+                GridAllClients.ContextMenu.Opened += (_, _) =>
+                {
+                    try
+                    {
+                        var t = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName;
+                        if (!string.IsNullOrEmpty(t))
+                            DevExpress.Xpf.Core.ThemeManager.SetThemeName(GridAllClients.ContextMenu, t);
+                        ApplyContextMenuIcons(GridAllClients.ContextMenu);
+                    }
+                    catch { }
+                };
+                foreach (var item in GridAllClients.ContextMenu.Items.OfType<System.Windows.Controls.MenuItem>())
                 {
                     item.SubmenuOpened += (s, _) =>
                     {
