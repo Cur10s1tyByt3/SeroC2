@@ -1257,12 +1257,15 @@ internal static class HvncFeature
                                      | (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
                                      | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
                                      | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
+                    nint preMoveWParam = (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
+                                      | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                                      | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
                     if (useSync)
                     {
                         // Qt needs WM_MOUSEMOVE processed before DOWN so hover/underMouse state
                         // is established in the correct widget before mousePressEvent fires.
                         if (isQt)
-                            SendMessageTimeout(hwnd, WM_MOUSEMOVE, 0, lParam, SMTO_ABORTIFHUNG, 50, out _);
+                            SendMessageTimeout(hwnd, WM_MOUSEMOVE, preMoveWParam, lParam, SMTO_ABORTIFHUNG, 50, out _);
                         _lbDownHwnd = hwnd;
                         if (isDbl)
                         {
@@ -1288,7 +1291,7 @@ internal static class HvncFeature
                     {
                         // WM_MOUSEMOVE first: Qt and Electron apps track hover state and
                         // won't fire click handlers if the cursor "appears" without moving there.
-                        PostMessage(hwnd, WM_MOUSEMOVE, 0, lParam);
+                        PostMessage(hwnd, WM_MOUSEMOVE, preMoveWParam, lParam);
                         _lbDownHwnd = hwnd;
                         if (isDbl)
                             // WM_LBUTTONDBLCLK replaces WM_LBUTTONDOWN on the 2nd click — sending both produces a spurious extra DOWN
