@@ -313,16 +313,10 @@ internal static class FeatureContextMenu
         AppDomain.CurrentDomain.BaseDirectory, "plugin_cache",
         name.ToLowerInvariant().Replace(" ", "_").Replace("\\", "").Replace(":", "").Replace("/", "_") + ".dll");
 
-    private static System.Windows.FrameworkElement MakeIcon(string path)
+    internal static System.Windows.FrameworkElement MakeIcon(string path)
     {
         try
         {
-            if (path.StartsWith("SvgImages/"))
-            {
-                var xaml = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
-                           $"Source=\"{{dx:DXImageExtension '{path}'}}\" Width=\"16\" Height=\"16\"/>";
-                return (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(xaml);
-            }
             if (path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
             {
                 var bmp = new System.Windows.Media.Imaging.BitmapImage();
@@ -335,13 +329,86 @@ internal static class FeatureContextMenu
                 System.Windows.Media.RenderOptions.SetBitmapScalingMode(img, System.Windows.Media.BitmapScalingMode.HighQuality);
                 return img;
             }
-            var fallback = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
-                           $"Source=\"pack://application:,,,/{path}\" Width=\"16\" Height=\"16\"/>";
-            return (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(fallback);
+
+            string dxNs  = "xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\"";
+            string source = path.StartsWith("SvgImages/")
+                ? $"{{dx:DXImageExtension '{path}'}}"
+                : $"pack://application:,,,/{path}";
+            string dxXaml = $"<dx:DXImage {dxNs} Source=\"{source}\" Width=\"16\" Height=\"16\"/>";
+            var icon = (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(dxXaml);
+
+            // In Office Dark themes, some SVG icon palette colors are too dark against
+            // the menu background. Add a white shape-masked overlay to brighten them
+            // while preserving their original hue.
+            string theme = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName ?? "";
+            if (path.StartsWith("SvgImages/") &&
+                theme.IndexOf("Dark", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var maskShape = (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(dxXaml);
+                var overlay = new System.Windows.Shapes.Rectangle
+                {
+                    Width = 16, Height = 16, IsHitTestVisible = false,
+                    Fill  = new System.Windows.Media.SolidColorBrush(
+                                System.Windows.Media.Color.FromArgb(140, 255, 255, 255))
+                };
+                overlay.OpacityMask = new System.Windows.Media.VisualBrush
+                {
+                    Visual  = maskShape,
+                    Stretch = System.Windows.Media.Stretch.Uniform
+                };
+                var grid = new System.Windows.Controls.Grid { Width = 16, Height = 16 };
+                grid.Children.Add(icon);
+                grid.Children.Add(overlay);
+                return grid;
+            }
+
+            return icon;
         }
         catch
         {
             return new System.Windows.Shapes.Rectangle { Width = 16, Height = 16, Fill = System.Windows.Media.Brushes.Transparent };
+        }
+    }
+
+    // Walks all ContextMenus in the logical tree of `root` and adds a white brightness
+    // overlay over every DXImage icon so they remain visible in Office Dark themes.
+    internal static void BrightenMenuIcons(System.Windows.DependencyObject root)
+    {
+        string theme = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName ?? "";
+        if (theme.IndexOf("Dark", StringComparison.OrdinalIgnoreCase) < 0) return;
+        WalkAndBrighten(root);
+    }
+
+    private static void WalkAndBrighten(System.Windows.DependencyObject element)
+    {
+        if (element is System.Windows.FrameworkElement fe && fe.ContextMenu != null)
+            BrightenItems(fe.ContextMenu.Items);
+        foreach (object child in System.Windows.LogicalTreeHelper.GetChildren(element))
+            if (child is System.Windows.DependencyObject dep)
+                WalkAndBrighten(dep);
+    }
+
+    private static void BrightenItems(System.Windows.Controls.ItemCollection items)
+    {
+        foreach (object obj in items)
+        {
+            if (obj is not System.Windows.Controls.MenuItem mi) continue;
+            if (mi.Icon is DevExpress.Xpf.Core.DXImage dxi)
+            {
+                double w = dxi.Width > 0 ? dxi.Width : 14;
+                double h = dxi.Height > 0 ? dxi.Height : 14;
+                mi.Icon = null;
+                var grid = new System.Windows.Controls.Grid { Width = w, Height = h };
+                grid.Children.Add(dxi);
+                grid.Children.Add(new System.Windows.Shapes.Rectangle
+                {
+                    Width = w, Height = h, IsHitTestVisible = false,
+                    Fill  = new System.Windows.Media.SolidColorBrush(
+                                System.Windows.Media.Color.FromArgb(140, 255, 255, 255))
+                });
+                mi.Icon = grid;
+            }
+            if (mi.Items.Count > 0) BrightenItems(mi.Items);
         }
     }
 }
