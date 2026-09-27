@@ -426,7 +426,7 @@ internal static class HvncFeature
             // running (e.g. waiting for _captureThread.Join) it would free the new session's
             // GDI handles on return. Spin until StopCore() finishes (clears _stopping → 0)
             // so the caller is always past the free before it proceeds.
-            SpinWait.SpinUntil(() => Volatile.Read(ref _stopping) == 0, 6000);
+            SpinWait.SpinUntil(() => Volatile.Read(ref _stopping) == 0, 10000);
             return;
         }
         try { StopCore(); } finally { Interlocked.Exchange(ref _stopping, 0); }
@@ -1076,7 +1076,8 @@ internal static class HvncFeature
         // Carry all held button flags — Qt/Electron synthesize fake releases if a held button is absent
         nint moveWParam = (_leftButtonDown  ? (nint)MK_LBUTTON : 0)
                         | (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
-                        | (_middleButtonDown ? (nint)MK_MBUTTON : 0);
+                        | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                        | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
         PostMessage(hwnd, WM_MOUSEMOVE, moveWParam, MakeLParam(cPt.x, cPt.y));
     }
 
@@ -1100,7 +1101,10 @@ internal static class HvncFeature
                 nint fwd = _captionFwdHwnd; _captionFwdHwnd = 0;
                 var cUp = new POINT { x = x, y = y };
                 ScreenToClient(fwd, ref cUp);
-                PostMessage(fwd, WM_LBUTTONUP, 0, MakeLParam(cUp.x, cUp.y));
+                nint fwdUpWParam = (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
+                           | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                           | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
+        PostMessage(fwd, WM_LBUTTONUP, fwdUpWParam, MakeLParam(cUp.x, cUp.y));
             }
             return;
         }
@@ -1353,7 +1357,10 @@ internal static class HvncFeature
         if (hwnd == 0) return;
         // Include modifier keys: MK_CONTROL (0x0008) enables Ctrl+scroll (browser zoom),
         // MK_SHIFT (0x0004) enables horizontal scroll in apps that support it.
-        uint mkeys = (_ctrlDown ? 0x0008u : 0u) | (_shiftDown ? 0x0004u : 0u);
+        uint mkeys = (_leftButtonDown  ? MK_LBUTTON : 0u)
+                   | (_rightButtonDown  ? MK_RBUTTON : 0u)
+                   | (_middleButtonDown ? MK_MBUTTON : 0u)
+                   | (_ctrlDown ? 0x0008u : 0u) | (_shiftDown ? 0x0004u : 0u);
         nint wp = (nint)(((uint)(short)delta << 16) | mkeys);
         PostMessage(hwnd, WM_MOUSEWHEEL, wp, MakeLParam(_curX, _curY));
     }
