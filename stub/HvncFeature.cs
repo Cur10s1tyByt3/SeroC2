@@ -1166,7 +1166,10 @@ internal static class HvncFeature
                         // so their close button widget fires clicked(). WM_CLOSE to root handles Win32 windows.
                         var cClose = new POINT { x = x, y = y };
                         ScreenToClient(hwnd, ref cClose);
-                        PostMessage(hwnd, WM_LBUTTONUP, 0, MakeLParam(cClose.x, cClose.y));
+                        nint closeUpWParam = (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
+                                          | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                                          | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
+                        PostMessage(hwnd, WM_LBUTTONUP, closeUpWParam, MakeLParam(cClose.x, cClose.y));
                         _lbDownHwnd = 0;
                         PostMessage(root, WM_CLOSE, 0, 0);
                         // Explorer with a media preview can take several seconds to handle WM_CLOSE
