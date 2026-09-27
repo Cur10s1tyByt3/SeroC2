@@ -211,12 +211,16 @@ internal static class FeatureContextMenu
         }));
         mgmt.Items.Add(MakeItem(Lang.Get("FEAT_UNINSTALL"),      "SvgImages/Icon Builder/Actions_Trash.svg",             () =>
         {
-            if (MessageBox.Show(string.Format(Lang.Get("POPUP_UNINSTALL_CONFIRM"), 1), Lang.Get("POPUP_CONFIRM"), MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-            {
-                _ = server.SendToClient(clientId, new Packet { Type = PacketType.Uninstall, Data = "{}" });
-                ServerWindow.ReportGlobalActivity("Uninstall", clientId, "complete");
-                ServerWindow.LogGlobal(string.Format(Lang.Get("EVT_UNINSTALL"), clientId));
-            }
+            var dlg = new ConfirmDialog(
+                Lang.Get("POPUP_CONFIRM"),
+                string.Format(Lang.Get("POPUP_UNINSTALL_CONFIRM"), 1),
+                Lang.Get("POPUP_YES"),
+                Lang.Get("POPUP_NO"),
+                icon: "", iconColor: "#E04040") { Owner = mainWindow };
+            if (dlg.ShowDialog() != true) return;
+            _ = server.SendToClient(clientId, new Packet { Type = PacketType.Uninstall, Data = "{}" });
+            ServerWindow.ReportGlobalActivity("Uninstall", clientId, "complete");
+            ServerWindow.LogGlobal(string.Format(Lang.Get("EVT_UNINSTALL"), clientId));
         }));
         mgmt.Items.Add(new Separator());
         mgmt.Items.Add(MakeItem(Lang.Get("FEAT_SET_TAG"),        "SvgImages/Icon Builder/Actions_Label.svg",             () =>

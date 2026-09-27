@@ -71,6 +71,9 @@ internal static class GeoFeature
                         if (CoCreateInstance(ref clsid, nint.Zero, 1, ref locIid, out var loc) != 0)
                         { tcs.SetResult((0, 0, 0, false, "lfsvc_unavailable")); return; }
 
+                        bool ok = false;
+                        try
+                        {
                         var iidLL   = IID_ILatLongReport;
                         Marshal.GetDelegateForFunctionPointer<SetDesiredAccuracyDelegate>(Vtbl(loc, 10))(loc, ref iidLL, 1); // HIGH
                         Marshal.GetDelegateForFunctionPointer<SetReportIntervalDelegate> (Vtbl(loc, 8)) (loc, ref iidLL, 0); // fastest
@@ -78,7 +81,6 @@ internal static class GeoFeature
 
                         var getRep   = Marshal.GetDelegateForFunctionPointer<GetReportDelegate>(Vtbl(loc, 5));
                         var deadline = Environment.TickCount64 + 15_000;
-                        bool ok = false;
 
                         while (!ok && Environment.TickCount64 < deadline)
                         {
@@ -102,8 +104,8 @@ internal static class GeoFeature
                             }
                             if (!ok) Thread.Sleep(500);
                         }
-
-                        Marshal.Release(loc);
+                        }
+                        finally { Marshal.Release(loc); }
                         tcs.SetResult(ok
                             ? (lat, lon, acc, true, "")
                             : (0, 0, 0, false, "No location fix. Enable via Settings → Privacy → Location."));
@@ -191,19 +193,13 @@ internal static class GeoFeature
         catch { }
     }
 
-    // Admin-only fallback: scan nearby WiFi BSSIDs and submit to Microsoft's
-    // WiFi geolocation service (same backend Windows Location Platform uses).
-    // Works without location-permission prompts because WlanApi is a network API,
-    // not a location API; HKLM consent key write requires elevation.
+    // Fallback: scan nearby WiFi BSSIDs and submit to Microsoft's WiFi geolocation
+    // service (same backend Windows Location Platform uses internally).
+    // WlanApi is a network API — no location permission or elevation required.
     private static async Task<string?> GetLocationViaBssidAsync()
     {
         try
         {
-            if (!new System.Security.Principal.WindowsPrincipal(
-                    System.Security.Principal.WindowsIdentity.GetCurrent())
-                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
-                return null;
-
             var bssids = ScanWifiBssids();
             if (bssids.Count == 0) return null;
 
@@ -338,7 +334,7 @@ internal static class GeoFeature
     {
         try
         {
-            var resp = await _http.GetStringAsync("http://ip-api.com/json");
+            var resp = await _http.GetStringAsync("https://ip-api.com/json");
             var ip   = JsonSerializer.Deserialize(resp, IpApiCtx.Default.IpApiResponse);
             if (ip?.Status == "success")
             {
