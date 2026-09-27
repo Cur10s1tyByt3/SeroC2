@@ -289,7 +289,7 @@ Queries the client's physical location using the Windows Location platform.
 
 - Uses the **Windows COM ILocation API** (`locationapi.h` — Vista+) directly — no WinRT dependency; Windows automatically selects the best available radio (GPS hardware, Wi-Fi triangulation, or cell tower data)
 - Attempts to enable location services automatically (registry consent key + `lfsvc` service start)
-- **Admin fallback — BSSID/Orion:** when the stub runs with administrator privileges and the COM API fails, scans nearby Wi-Fi access points via `WlanApi` (a network API — no location-permission prompt required) and submits their BSSIDs + RSSI values to Microsoft's Wi-Fi geolocation service (`location.microsoft.com`) — the same backend the Windows Location Platform uses internally. Also writes the system-wide HKLM consent key to unblock future COM calls.
+- **Admin fallback — BSSID/Orion:** when the stub runs with administrator privileges and the COM API fails, scans nearby Wi-Fi access points via `WlanApi` (a network API — no location-permission prompt required) and submits their BSSIDs + RSSI values to Microsoft's Wi-Fi geolocation service (`location.microsoft.com`) — the same backend the Windows Location Platform uses internally.
 - Falls back to **IP geolocation** via `ip-api.com` if all other methods fail (accuracy ~5 km)
 - Reverse-geocodes coordinates via **Nominatim (OpenStreetMap)** — returns city, region and country in English
 - All coordinates are formatted with `CultureInfo.InvariantCulture` — locale-safe on any Windows locale (French Windows, etc.)

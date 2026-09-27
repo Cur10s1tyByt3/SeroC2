@@ -204,15 +204,6 @@ internal static class GeoFeature
                     .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
                 return null;
 
-            // Force system-wide location consent (admin-only registry key)
-            try
-            {
-                Registry.SetValue(
-                    @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location",
-                    "Value", "Allow");
-            }
-            catch { }
-
             var bssids = ScanWifiBssids();
             if (bssids.Count == 0) return null;
 
