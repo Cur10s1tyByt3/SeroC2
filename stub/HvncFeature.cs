@@ -1443,8 +1443,9 @@ internal static class HvncFeature
         bool needsSysKey = _altDown || vk == 0x79; // 0x79 = VK_F10
         if (needsSysKey)
         {
-            nint sysDn = lpDn | (nint)KF_ALTDOWN;
-            nint sysUp = lpUp | (nint)KF_ALTDOWN;
+            // F10 alone uses WM_SYSKEYDOWN but context code (bit 29) must be 0 — Alt is not held.
+            nint sysDn = _altDown ? (lpDn | (nint)KF_ALTDOWN) : lpDn;
+            nint sysUp = _altDown ? (lpUp | (nint)KF_ALTDOWN) : lpUp;
             PostMessage(hwnd, down ? WM_SYSKEYDOWN : WM_SYSKEYUP, (nint)vk, down ? sysDn : sysUp);
             return;
         }
