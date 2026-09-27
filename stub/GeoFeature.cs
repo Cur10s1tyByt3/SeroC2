@@ -289,8 +289,8 @@ internal static class GeoFeature
         nint handle = nint.Zero, ifList = nint.Zero, bssList = nint.Zero;
         try
         {
-            if (WlanOpenHandle(2, nint.Zero, out _, out handle) != 0) return result;
-            if (WlanEnumInterfaces(handle, nint.Zero, out ifList)  != 0) return result;
+            if (WlanOpenHandle(2, nint.Zero, out _, out handle) != 0) { handle = nint.Zero; return result; }
+            if (WlanEnumInterfaces(handle, nint.Zero, out ifList)  != 0) { ifList = nint.Zero; return result; }
 
             uint ifCount = (uint)Marshal.ReadInt32(ifList);
             nint ifBase  = ifList + 8;            // skip NumberOfItems(4) + Index(4)
@@ -304,7 +304,7 @@ internal static class GeoFeature
                 var ifGuid = new Guid(guidBytes);
 
                 if (WlanGetNetworkBssList(handle, ref ifGuid, nint.Zero, 1, false, nint.Zero, out bssList) != 0)
-                    continue;
+                { bssList = nint.Zero; continue; }
 
                 uint total    = (uint)Marshal.ReadInt32(bssList);
                 uint numItems = (uint)Marshal.ReadInt32(bssList, 4);
