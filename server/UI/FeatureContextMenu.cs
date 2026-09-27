@@ -319,27 +319,9 @@ internal static class FeatureContextMenu
         {
             if (path.StartsWith("SvgImages/"))
             {
-                // Opacity-mask technique: DXImage is used only as shape; a Rectangle
-                // filled with ContentTextBrush provides the actual color.
-                // This makes every icon adapt to dark/light themes automatically,
-                // instead of relying on DevExpress's SVG palette (which can be too dark
-                // for Office dark themes where the accent color is a deep blue).
-                var iconXaml = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
-                               $"Source=\"{{dx:DXImageExtension '{path}'}}\" Width=\"16\" Height=\"16\"/>";
-                var shape = (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(iconXaml);
-
-                var tint = new System.Windows.Shapes.Rectangle { Width = 16, Height = 16, IsHitTestVisible = false };
-                tint.SetResourceReference(System.Windows.Shapes.Rectangle.FillProperty, "ContentTextBrush");
-                tint.OpacityMask = new System.Windows.Media.VisualBrush
-                {
-                    Visual  = shape,
-                    Stretch = System.Windows.Media.Stretch.Uniform
-                };
-
-                var grid = new System.Windows.Controls.Grid { Width = 16, Height = 16 };
-                grid.Children.Add(shape);
-                grid.Children.Add(tint);
-                return grid;
+                var xaml = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
+                           $"Source=\"{{dx:DXImageExtension '{path}'}}\" Width=\"16\" Height=\"16\"/>";
+                return (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(xaml);
             }
             if (path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
             {
@@ -351,23 +333,11 @@ internal static class FeatureContextMenu
                 bmp.EndInit(); bmp.Freeze();
                 var img = new System.Windows.Controls.Image { Source = bmp, Width = 16, Height = 16, Stretch = System.Windows.Media.Stretch.Uniform };
                 System.Windows.Media.RenderOptions.SetBitmapScalingMode(img, System.Windows.Media.BitmapScalingMode.HighQuality);
-
-                var tint = new System.Windows.Shapes.Rectangle { Width = 16, Height = 16, IsHitTestVisible = false };
-                tint.SetResourceReference(System.Windows.Shapes.Rectangle.FillProperty, "ContentTextBrush");
-                tint.OpacityMask = new System.Windows.Media.VisualBrush
-                {
-                    Visual  = img,
-                    Stretch = System.Windows.Media.Stretch.Uniform
-                };
-
-                var grid = new System.Windows.Controls.Grid { Width = 16, Height = 16 };
-                grid.Children.Add(img);
-                grid.Children.Add(tint);
-                return grid;
+                return img;
             }
-            var xaml = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
-                       $"Source=\"pack://application:,,,/{path}\" Width=\"16\" Height=\"16\"/>";
-            return (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(xaml);
+            var fallback = $"<dx:DXImage xmlns:dx=\"http://schemas.devexpress.com/winfx/2008/xaml/core\" " +
+                           $"Source=\"pack://application:,,,/{path}\" Width=\"16\" Height=\"16\"/>";
+            return (System.Windows.FrameworkElement)System.Windows.Markup.XamlReader.Parse(fallback);
         }
         catch
         {
