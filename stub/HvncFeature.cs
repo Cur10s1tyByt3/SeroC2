@@ -760,11 +760,11 @@ internal static class HvncFeature
                 bR = Math.Max(0, r.right    - visR.right);
                 bB = Math.Max(0, r.bottom   - visR.bottom);
             }
-            // Always skip 1 extra row at top: the 1-px visible accent border is inside
-            // DWMWA_EXTENDED_FRAME_BOUNDS but PrintWindow renders it white on the HVNC
-            // hidden desktop. For maximized windows bT is already 8 (shadow), adding 1
-            // skips row 8 which is the accent line. For non-maximized bT=0 → becomes 1.
-            bT++;
+            // Skip 2 extra rows at top: the DWM accent border is 1-2 px depending on DPI
+            // (150% DPI = 2 physical pixels) and Chromium's tabbed-frame geometry on a
+            // hidden desktop (DWM inactive) can leave an extra fringe row. +2 is safe
+            // because it falls inside the shadow/accent area and never clips browser content.
+            bT += 2;
 
             // Clip source/dest intersection to canvas, skipping invisible border pixels
             int srcX = bL, srcY = bT;
