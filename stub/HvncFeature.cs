@@ -760,11 +760,6 @@ internal static class HvncFeature
                 bR = Math.Max(0, r.right    - visR.right);
                 bB = Math.Max(0, r.bottom   - visR.bottom);
             }
-            // Skip 2 extra rows at top: the DWM accent border is 1-2 px depending on DPI
-            // (150% DPI = 2 physical pixels) and Chromium's tabbed-frame geometry on a
-            // hidden desktop (DWM inactive) can leave an extra fringe row. +2 is safe
-            // because it falls inside the shadow/accent area and never clips browser content.
-            bT += 2;
 
             // Clip source/dest intersection to canvas, skipping invisible border pixels
             int srcX = bL, srcY = bT;
@@ -777,6 +772,14 @@ internal static class HvncFeature
             if (dstX + copyW > w) copyW = w - dstX;
             if (dstY + copyH > h) copyH = h - dstY;
             if (copyW <= 0 || copyH <= 0) continue;
+
+            // Skip 2 extra rows at top AFTER clipping so the shadow-offset (negative r.top)
+            // does not cancel the skip. The accent border is 1-2 px (varies with DPI and
+            // whether DWM is active on the hidden desktop). Applied here it always trims 2
+            // visible rows from the copied region regardless of r.top sign.
+            const int AccentSkip = 2;
+            if (copyH > AccentSkip) { srcY += AccentSkip; dstY += AccentSkip; copyH -= AccentSkip; }
+            else continue;
 
             // Direct pixel copy: DIBSection → composite (no BitBlt overhead)
             if (_compBits == 0) return false; // Stop() freed composite mid-loop
