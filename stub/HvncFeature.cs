@@ -1246,6 +1246,10 @@ internal static class HvncFeature
                     _lastClickY = y;
 
                     StubLog.Info($"[Mouse] {(isDbl ? "DBLCLICK" : "LDOWN")} → 0x{hwnd:X} [{cls}]");
+                    nint ldownWParam = (nint)MK_LBUTTON
+                                     | (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
+                                     | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                                     | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
                     if (useSync)
                     {
                         // Qt needs WM_MOUSEMOVE processed before DOWN so hover/underMouse state
@@ -1258,19 +1262,19 @@ internal static class HvncFeature
                             // WM_LBUTTONDBLCLK replaces WM_LBUTTONDOWN on the 2nd click — sending both is spurious
                             if (origIsUia)
                             {
-                                SendMessageTimeout(hwnd, WM_LBUTTONDBLCLK, (nint)MK_LBUTTON, lParam, SMTO_ABORTIFHUNG, 200, out _);
+                                SendMessageTimeout(hwnd, WM_LBUTTONDBLCLK, ldownWParam, lParam, SMTO_ABORTIFHUNG, 200, out _);
                                 uint scanRet = MapVirtualKey(0x0D, 0);
                                 PostMessage(root, WM_KEYDOWN, 0x0D, (nint)(1u | (scanRet << 16)));
                                 PostMessage(root, WM_KEYUP,   0x0D, unchecked((nint)(0xC0000001u | (scanRet << 16))));
                             }
                             else
                             {
-                                SendMessageTimeout(hwnd, WM_LBUTTONDBLCLK, (nint)MK_LBUTTON, lParam, SMTO_ABORTIFHUNG, 200, out _);
+                                SendMessageTimeout(hwnd, WM_LBUTTONDBLCLK, ldownWParam, lParam, SMTO_ABORTIFHUNG, 200, out _);
                             }
                         }
                         else
                         {
-                            SendMessageTimeout(hwnd, WM_LBUTTONDOWN, (nint)MK_LBUTTON, lParam, SMTO_ABORTIFHUNG, 200, out _);
+                            SendMessageTimeout(hwnd, WM_LBUTTONDOWN, ldownWParam, lParam, SMTO_ABORTIFHUNG, 200, out _);
                         }
                     }
                     else
@@ -1281,9 +1285,9 @@ internal static class HvncFeature
                         _lbDownHwnd = hwnd;
                         if (isDbl)
                             // WM_LBUTTONDBLCLK replaces WM_LBUTTONDOWN on the 2nd click — sending both produces a spurious extra DOWN
-                            PostMessage(hwnd, WM_LBUTTONDBLCLK, (nint)MK_LBUTTON, lParam);
+                            PostMessage(hwnd, WM_LBUTTONDBLCLK, ldownWParam, lParam);
                         else
-                            PostMessage(hwnd, WM_LBUTTONDOWN, (nint)MK_LBUTTON, lParam);
+                            PostMessage(hwnd, WM_LBUTTONDOWN, ldownWParam, lParam);
                     }
                 }
                 else
