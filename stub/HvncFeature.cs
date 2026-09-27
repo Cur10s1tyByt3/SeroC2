@@ -920,7 +920,7 @@ internal static class HvncFeature
                     Param = new EncoderParam { Guid = EncQuality, Count = 1, Type = 4, Value = (nint)(&q) }
                 };
                 var clsid = JpegClsid;
-                GdipSaveImageToStream(bmp, stream, ref clsid, (nint)(&ep));
+                if (GdipSaveImageToStream(bmp, stream, ref clsid, (nint)(&ep)) != 0) return null;
 
                 // Seek to end to get size, then seek back to start — one alloc, one read
                 long size = 0;
@@ -1255,7 +1255,8 @@ internal static class HvncFeature
                     bool isDbl = (now - _lastLeftMs) < 800 &&
                                  Math.Abs(x - _lastClickX) < 8 &&
                                  Math.Abs(y - _lastClickY) < 8;
-                    _lastLeftMs = now;
+                    // Reset timer after dblclick so a 3rd click within 800ms doesn't send a second WM_LBUTTONDBLCLK.
+                    _lastLeftMs = isDbl ? 0 : now;
                     _lastClickX = x;
                     _lastClickY = y;
 
