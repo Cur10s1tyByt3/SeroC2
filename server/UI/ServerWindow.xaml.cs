@@ -358,7 +358,10 @@ public partial class ServerWindow : ThemedWindow
                         {
                             var t = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName;
                             if (!string.IsNullOrEmpty(t) && s is System.Windows.Controls.MenuItem mi)
+                            {
                                 DevExpress.Xpf.Core.ThemeManager.SetThemeName(mi, t);
+                                ApplyIconsToItems(mi.Items);
+                            }
                         }
                         catch { }
                     };
@@ -385,7 +388,10 @@ public partial class ServerWindow : ThemedWindow
                         {
                             var t = DevExpress.Xpf.Core.ApplicationThemeHelper.ApplicationThemeName;
                             if (!string.IsNullOrEmpty(t) && s is System.Windows.Controls.MenuItem mi)
+                            {
                                 DevExpress.Xpf.Core.ThemeManager.SetThemeName(mi, t);
+                                ApplyIconsToItems(mi.Items);
+                            }
                         }
                         catch { }
                     };
