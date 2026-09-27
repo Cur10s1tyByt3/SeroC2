@@ -1157,7 +1157,11 @@ internal static class HvncFeature
                     // areas (tab strip, toolbar) and process input via client-area messages.
                     var cFwd = new POINT { x = x, y = y };
                     ScreenToClient(hwnd, ref cFwd);
-                    PostMessage(hwnd, WM_LBUTTONDOWN, (nint)MK_LBUTTON, MakeLParam(cFwd.x, cFwd.y));
+                    nint captionFwdWParam = (nint)MK_LBUTTON
+                        | (_rightButtonDown  ? (nint)MK_RBUTTON : 0)
+                        | (_middleButtonDown ? (nint)MK_MBUTTON : 0)
+                        | (_shiftDown ? (nint)0x0004 : 0) | (_ctrlDown ? (nint)0x0008 : 0);
+                    PostMessage(hwnd, WM_LBUTTONDOWN, captionFwdWParam, MakeLParam(cFwd.x, cFwd.y));
                     _captionFwdHwnd = hwnd;
                     return;
                 }
