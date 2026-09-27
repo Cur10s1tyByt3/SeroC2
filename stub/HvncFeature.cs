@@ -1316,6 +1316,13 @@ internal static class HvncFeature
                     _lbDownHwnd = 0;
                     if (upTarget != hwnd)
                     {
+                        // Re-evaluate useSync against the DOWN target: if the widget that
+                        // received DOWN is Qt/UIA, the UP must also be synchronous even when
+                        // the UP-position hwnd (jitter) is a different, non-Qt child.
+                        string upCls = WinClass(upTarget);
+                        if (upCls is "UIItemsView" or "DirectUIHWND" ||
+                            upCls.StartsWith("Qt5") || upCls.StartsWith("Qt6") || upCls.StartsWith("Qt4"))
+                            useSync = true;
                         var upPt = new POINT { x = x, y = y };
                         ScreenToClient(upTarget, ref upPt);
                         lParam = MakeLParam(upPt.x, upPt.y);
