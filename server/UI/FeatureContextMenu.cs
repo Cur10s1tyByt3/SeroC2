@@ -313,7 +313,7 @@ internal static class FeatureContextMenu
         AppDomain.CurrentDomain.BaseDirectory, "plugin_cache",
         name.ToLowerInvariant().Replace(" ", "_").Replace("\\", "").Replace(":", "").Replace("/", "_") + ".dll");
 
-    private static System.Windows.FrameworkElement MakeIcon(string path)
+    internal static System.Windows.FrameworkElement MakeIcon(string path)
     {
         try
         {

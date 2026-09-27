@@ -363,6 +363,8 @@ public partial class ServerWindow : ThemedWindow
                     };
                 }
             }
+            ApplyContextMenuIcons(GridClients.ContextMenu);
+            ApplyContextMenuIcons(GridAllClients.ContextMenu);
             GridWinNotify.ItemsSource = _winNotifyEntries;
             LoadColumnVisibility();
             RestoreGridColumnWidths();
@@ -598,6 +600,24 @@ public partial class ServerWindow : ThemedWindow
     }
 
     private void ClipperEnabled_Changed(object sender, RoutedEventArgs e) { }
+
+    private static void ApplyContextMenuIcons(System.Windows.Controls.ContextMenu? menu)
+    {
+        if (menu == null) return;
+        ApplyIconsToItems(menu.Items);
+    }
+
+    private static void ApplyIconsToItems(System.Windows.Controls.ItemCollection items)
+    {
+        foreach (var obj in items)
+        {
+            if (obj is not System.Windows.Controls.MenuItem mi) continue;
+            if (mi.Tag is string path && path.Length > 0)
+                mi.Icon = FeatureContextMenu.MakeIcon(path);
+            if (mi.Items.Count > 0)
+                ApplyIconsToItems(mi.Items);
+        }
+    }
 
     private void ClipperApply_Click(object sender, RoutedEventArgs e) { }
 
